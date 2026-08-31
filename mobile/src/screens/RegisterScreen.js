@@ -1,0 +1,491 @@
+import React, { useState } from 'react';
+import {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    StyleSheet,
+    ScrollView,
+    SafeAreaView,
+    StatusBar,
+    Alert,
+    Image
+} from 'react-native';
+
+export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess }) {
+    const [role, setRole] = useState('Seeker'); // Seeker | Owner
+    const [fullName, setFullName] = useState('');
+    const [phone, setPhone] = useState('');
+    const [email, setEmail] = useState('');
+    const [age, setAge] = useState('');
+    const [gender, setGender] = useState('Male');
+    const [showGenderPicker, setShowGenderPicker] = useState(false);
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [agreeTerms, setAgreeTerms] = useState(false);
+
+    const handleRegister = () => {
+        if (!fullName || !phone || !email || !password || !confirmPassword) {
+            Alert.alert('Required Fields', 'Please fill in all required fields.');
+            return;
+        }
+        if (password !== confirmPassword) {
+            Alert.alert('Password Mismatch', 'Password and Confirm Password do not match.');
+            return;
+        }
+        if (!agreeTerms) {
+            Alert.alert('Terms & Conditions', 'Please agree to the Terms of Service and Privacy Policy.');
+            return;
+        }
+
+        Alert.alert('Account Created!', `Welcome to BoardingHub, ${fullName}!`);
+        if (onRegisterSuccess) {
+            onRegisterSuccess();
+        }
+    };
+
+    return (
+        <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Header Logo & Title */}
+                <View style={styles.logoContainer}>
+                    <Image
+                        source={require('../../assets/logo.png')}
+                        style={styles.logoImage}
+                        resizeMode="contain"
+                    />
+                </View>
+
+                <Text style={styles.title}>Join BoardingHub</Text>
+                <Text style={styles.subtitle}>
+                    Find your stay or manage your properties seamlessly.
+                </Text>
+
+                {/* Role Switcher */}
+                <View style={styles.roleContainer}>
+                    <TouchableOpacity
+                        style={[styles.roleTab, role === 'Seeker' && styles.roleTabActive]}
+                        onPress={() => setRole('Seeker')}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={[styles.roleText, role === 'Seeker' && styles.roleTextActive]}>
+                            Seeker
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.roleTab, role === 'Owner' && styles.roleTabActive]}
+                        onPress={() => setRole('Owner')}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={[styles.roleText, role === 'Owner' && styles.roleTextActive]}>
+                            Owner
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Form Fields */}
+                <View style={styles.formGroup}>
+                    <Text style={styles.label}>Full Name</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="John Doe"
+                        placeholderTextColor="#94A3B8"
+                        value={fullName}
+                        onChangeText={setFullName}
+                    />
+                </View>
+
+                <View style={styles.formGroup}>
+                    <Text style={styles.label}>Phone Number</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="+94 77 000 0000"
+                        placeholderTextColor="#94A3B8"
+                        value={phone}
+                        onChangeText={setPhone}
+                        keyboardType="phone-pad"
+                    />
+                </View>
+
+                <View style={styles.formGroup}>
+                    <Text style={styles.label}>Email Address</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="name@company.com"
+                        placeholderTextColor="#94A3B8"
+                        value={email}
+                        onChangeText={setEmail}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                    />
+                </View>
+
+                <View style={styles.formGroup}>
+                    <Text style={styles.label}>Age</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="e.g. 24"
+                        placeholderTextColor="#94A3B8"
+                        value={age}
+                        onChangeText={setAge}
+                        keyboardType="numeric"
+                    />
+                </View>
+
+                {/* Gender Selector */}
+                <View style={styles.formGroup}>
+                    <Text style={styles.label}>Gender</Text>
+                    <TouchableOpacity
+                        style={styles.dropdownBtn}
+                        onPress={() => setShowGenderPicker(!showGenderPicker)}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={styles.dropdownText}>{gender}</Text>
+                        <Text style={styles.dropdownArrow}>▼</Text>
+                    </TouchableOpacity>
+
+                    {showGenderPicker && (
+                        <View style={styles.genderOptionsContainer}>
+                            {['Male', 'Female', 'Other'].map((item) => (
+                                <TouchableOpacity
+                                    key={item}
+                                    style={[styles.genderOption, gender === item && styles.genderOptionSelected]}
+                                    onPress={() => {
+                                        setGender(item);
+                                        setShowGenderPicker(false);
+                                    }}
+                                >
+                                    <Text style={[styles.genderOptionText, gender === item && styles.genderOptionTextSelected]}>
+                                        {item}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
+                </View>
+
+                {/* Password */}
+                <View style={styles.formGroup}>
+                    <Text style={styles.label}>Password</Text>
+                    <View style={styles.passwordWrapper}>
+                        <TextInput
+                            style={styles.passwordInput}
+                            placeholder="••••••••"
+                            placeholderTextColor="#94A3B8"
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry={!showPassword}
+                        />
+                        <TouchableOpacity
+                            onPress={() => setShowPassword(!showPassword)}
+                            style={styles.eyeBtn}
+                        >
+                            <Text style={styles.eyeIcon}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {/* Confirm Password */}
+                <View style={styles.formGroup}>
+                    <Text style={styles.label}>Confirm Password</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="••••••••"
+                        placeholderTextColor="#94A3B8"
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
+                        secureTextEntry={!showPassword}
+                    />
+                </View>
+
+                {/* Terms Agreement Checkbox */}
+                <TouchableOpacity
+                    style={styles.termsContainer}
+                    onPress={() => setAgreeTerms(!agreeTerms)}
+                    activeOpacity={0.7}
+                >
+                    <View style={[styles.checkbox, agreeTerms && styles.checkboxChecked]}>
+                        {agreeTerms && <Text style={styles.checkmark}>✓</Text>}
+                    </View>
+                    <Text style={styles.termsText}>
+                        I agree to the <Text style={styles.termsHighlight}>Terms of Service</Text> and{' '}
+                        <Text style={styles.termsHighlight}>Privacy Policy</Text>.
+                    </Text>
+                </TouchableOpacity>
+
+                {/* Create Account Primary Button */}
+                <TouchableOpacity
+                    style={styles.createAccountBtn}
+                    onPress={handleRegister}
+                    activeOpacity={0.85}
+                >
+                    <Text style={styles.createAccountBtnText}>Create Account</Text>
+                </TouchableOpacity>
+
+                {/* Already have an account link */}
+                <View style={styles.loginRow}>
+                    <Text style={styles.alreadyText}>Already have an account? </Text>
+                    <TouchableOpacity onPress={onNavigateToLogin}>
+                        <Text style={styles.loginText}>Log In</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Footer */}
+                <View style={styles.footerContainer}>
+                    <Text style={styles.copyrightText}>
+                        © 2024 BoardingHub. All rights reserved.
+                    </Text>
+                </View>
+            </ScrollView>
+        </SafeAreaView>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#F8FAFC',
+    },
+    scrollContent: {
+        flexGrow: 1,
+        justifyContent: 'center',
+        paddingHorizontal: 22,
+        paddingVertical: 24,
+    },
+
+    /* Header Logo & Title */
+    logoContainer: {
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    logoImage: {
+        width: 90,
+        height: 65,
+    },
+    title: {
+        fontSize: 22,
+        fontWeight: '800',
+        color: '#0F172A',
+        textAlign: 'center',
+        marginBottom: 4,
+    },
+    subtitle: {
+        fontSize: 13,
+        color: '#64748B',
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+
+    /* Role Switcher */
+    roleContainer: {
+        flexDirection: 'row',
+        backgroundColor: '#F1F5F9',
+        borderRadius: 10,
+        padding: 3,
+        marginBottom: 20,
+    },
+    roleTab: {
+        flex: 1,
+        paddingVertical: 9,
+        alignItems: 'center',
+        borderRadius: 7,
+    },
+    roleTabActive: {
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+        elevation: 2,
+    },
+    roleText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#64748B',
+    },
+    roleTextActive: {
+        color: '#1B4D3E',
+        fontWeight: '800',
+    },
+
+    /* Form Controls */
+    formGroup: {
+        marginBottom: 14,
+    },
+    label: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#1E293B',
+        marginBottom: 6,
+    },
+    input: {
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
+        borderRadius: 10,
+        paddingHorizontal: 14,
+        height: 48,
+        fontSize: 14,
+        color: '#0F172A',
+    },
+
+    /* Password Wrapper */
+    passwordWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
+        borderRadius: 10,
+        paddingHorizontal: 14,
+        height: 48,
+    },
+    passwordInput: {
+        flex: 1,
+        fontSize: 14,
+        color: '#0F172A',
+    },
+    eyeBtn: {
+        padding: 6,
+    },
+    eyeIcon: {
+        fontSize: 16,
+    },
+
+    /* Gender Dropdown */
+    dropdownBtn: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
+        borderRadius: 10,
+        paddingHorizontal: 14,
+        height: 48,
+    },
+    dropdownText: {
+        fontSize: 14,
+        color: '#0F172A',
+        fontWeight: '500',
+    },
+    dropdownArrow: {
+        fontSize: 12,
+        color: '#64748B',
+    },
+    genderOptionsContainer: {
+        backgroundColor: '#FFF',
+        borderRadius: 10,
+        marginTop: 4,
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
+        overflow: 'hidden',
+    },
+    genderOption: {
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    genderOptionSelected: {
+        backgroundColor: '#E6F0EC',
+    },
+    genderOptionText: {
+        fontSize: 14,
+        color: '#334155',
+    },
+    genderOptionTextSelected: {
+        color: '#1B4D3E',
+        fontWeight: '700',
+    },
+
+    /* Terms Checkbox */
+    termsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 16,
+    },
+    checkbox: {
+        width: 18,
+        height: 18,
+        borderRadius: 5,
+        borderWidth: 1.5,
+        borderColor: '#CBD5E1',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
+        backgroundColor: '#FFF',
+    },
+    checkboxChecked: {
+        backgroundColor: '#1B4D3E',
+        borderColor: '#1B4D3E',
+    },
+    checkmark: {
+        color: '#FFD700',
+        fontSize: 11,
+        fontWeight: '900',
+    },
+    termsText: {
+        flex: 1,
+        fontSize: 12,
+        color: '#475569',
+        lineHeight: 18,
+    },
+    termsHighlight: {
+        fontWeight: '700',
+        color: '#1B4D3E',
+    },
+
+    /* Primary Button */
+    createAccountBtn: {
+        backgroundColor: '#1B4D3E',
+        borderRadius: 10,
+        height: 48,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#1B4D3E',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        elevation: 2,
+        marginBottom: 20,
+    },
+    createAccountBtnText: {
+        color: '#FFD700',
+        fontSize: 16,
+        fontWeight: '800',
+        letterSpacing: 0.3,
+    },
+
+    /* Login Link */
+    loginRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    alreadyText: {
+        fontSize: 13,
+        color: '#64748B',
+    },
+    loginText: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: '#1B4D3E',
+    },
+
+    /* Footer */
+    footerContainer: {
+        marginTop: 20,
+        alignItems: 'center',
+    },
+    copyrightText: {
+        fontSize: 12,
+        color: '#94A3B8',
+    },
+});

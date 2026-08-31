@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, SafeAreaView, StatusBar, Image } from 'react-native';
 import BoardingCard from '../components/BoardingCard';
 import { MOCK_BOARDINGS } from '../data/mockBoardings';
 
@@ -20,9 +20,16 @@ export default function HomeScreen({ onSelectBoarding }) {
 
             {/* Header */}
             <View style={styles.header}>
-                <View>
-                    <Text style={styles.greeting}>Find your stay 🏠</Text>
-                    <Text style={styles.title}>BoardingHub</Text>
+                <View style={styles.headerBrandRow}>
+                    <Image
+                        source={require('../../assets/logo.png')}
+                        style={styles.headerLogoImage}
+                        resizeMode="contain"
+                    />
+                    <View style={styles.headerTitleGroup}>
+                        <Text style={styles.greeting}>Find your stay 🏠</Text>
+                        <Text style={styles.title}>BoardingHub</Text>
+                    </View>
                 </View>
                 <TouchableOpacity style={styles.profileBtn}>
                     <Text style={styles.profileInitial}>S</Text>
@@ -87,6 +94,18 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingTop: 16,
         paddingBottom: 12,
+    },
+    headerBrandRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    headerLogoImage: {
+        width: 44,
+        height: 34,
+        marginRight: 10,
+    },
+    headerTitleGroup: {
+        justifyContent: 'center',
     },
     greeting: {
         fontSize: 13,
