@@ -1,0 +1,50 @@
+export const MOCK_BOARDINGS = [
+  {
+    id: "1",
+    title: "Luxury Single Room for University Students",
+    location: "Katubedda, Moratuwa",
+    distance: "500m to UoM Campus",
+    price: 18000,
+    pricePeriod: "month",
+    genderPreference: "BOYS ONLY",
+    rating: 4.8,
+    reviewsCount: 12,
+    imageUrl: "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80",
+    amenities: ["Wi-Fi", "Attached Bathroom", "Study Desk", "Water Filter", "Parking"],
+    description: "Quiet and safe boarding environment for University of Moratuwa students. Fully furnished with high-speed internet and 24/7 security.",
+    ownerName: "Nimal Perera",
+    ownerPhone: "+94 77 123 4567"
+  },
+  {
+    id: "2",
+    title: "Spacious Shared Room for Working Girls",
+    location: "Bambalapitiya, Colombo 04",
+    distance: "2 mins to Galle Road",
+    price: 22000,
+    pricePeriod: "month",
+    genderPreference: "GIRLS ONLY",
+    rating: 4.9,
+    reviewsCount: 19,
+    imageUrl: "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80",
+    amenities: ["AC Available", "Kitchen Access", "Washing Machine", "Security Cam", "Balcony"],
+    description: "Premium boarding place in Colombo 04 close to IT companies and bus stops. Clean, spacious rooms with cooking facilities.",
+    ownerName: "Sunethra Silva",
+    ownerPhone: "+94 71 987 6543"
+  },
+  {
+    id: "3",
+    title: "Modern Executive Annex with Private Kitchen",
+    location: "Rajagiriya",
+    distance: "1km to Parliament Road",
+    price: 35000,
+    pricePeriod: "month",
+    genderPreference: "ANY",
+    rating: 4.7,
+    reviewsCount: 8,
+    imageUrl: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80",
+    amenities: ["Hot Water", "Private Entrance", "Fully Furnished", "Car Parking"],
+    description: "Independent annex suitable for university graduates or young professionals. Includes modern pantry and balcony view.",
+    ownerName: "Kamal Fernando",
+    ownerPhone: "+94 75 444 3322"
+  }
+];

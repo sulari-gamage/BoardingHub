@@ -1,0 +1,3 @@
+@echo off
+echo Starting BoardingHub Spring Boot Backend...
+.\mvnw.cmd spring-boot:run
