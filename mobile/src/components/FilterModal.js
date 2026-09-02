@@ -230,6 +230,9 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.12,
         shadowRadius: 12,
         elevation: 10,
+        maxWidth: 600,
+        width: '100%',
+        alignSelf: 'center',
     },
     handleContainer: {
         alignItems: 'center',

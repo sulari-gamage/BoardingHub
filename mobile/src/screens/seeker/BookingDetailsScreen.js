@@ -1,0 +1,521 @@
+import React from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    SafeAreaView,
+    StatusBar,
+    ScrollView,
+    Image,
+    Alert,
+    Platform
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+
+export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBooking }) {
+    const title = booking.title || 'Green Valley Boarding';
+    const location = booking.location || 'Moratuwa, Sri Lanka';
+    const date = booking.date || 'Sep 10, 2026';
+    const roomType = booking.roomType || 'Shared Room';
+    const price = booking.price ? booking.price.toLocaleString() : '15,000';
+    const status = booking.status || 'PENDING';
+    const imageUrl = booking.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80';
+    const ownerName = booking.ownerName || 'Sunethra Silva';
+    const ownerPhone = booking.ownerPhone || '+94 77 123 4567';
+
+    // Status Timeline steps
+    const timelineSteps = [
+        { label: 'Booking Submitted', date: 'Aug 30, 2026', done: true },
+        { label: 'Owner Review', date: status === 'PENDING' ? 'In Progress' : 'Completed', done: status !== 'PENDING' },
+        { label: 'Payment & Confirmation', date: status === 'ACCEPTED' ? 'Pending Action' : 'Upcoming', done: status === 'ACCEPTED' },
+        { label: 'Move-in Ready', date: date, done: false }
+    ];
+
+    const handleCallHost = () => {
+        Alert.alert('Contact Host', `Calling ${ownerName} at ${ownerPhone}...`);
+    };
+
+    const handleCancelPress = () => {
+        Alert.alert(
+            'Cancel Booking',
+            'Are you sure you want to cancel this booking request?',
+            [
+                { text: 'Keep Request', style: 'cancel' },
+                {
+                    text: 'Cancel Booking',
+                    style: 'destructive',
+                    onPress: () => {
+                        if (onCancelBooking) onCancelBooking(booking.id);
+                        onBack();
+                    }
+                }
+            ]
+        );
+    };
+
+    return (
+        <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+            {/* Header */}
+            <View style={styles.header}>
+                <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
+                    <Ionicons name="arrow-back" size={20} color="#0F172A" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Booking Details</Text>
+                <TouchableOpacity style={styles.shareBtn} activeOpacity={0.8}>
+                    <Ionicons name="share-social-outline" size={20} color="#1B4D3E" />
+                </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+                {/* Property Card Header */}
+                <View style={styles.propertyCard}>
+                    <Image source={{ uri: imageUrl }} style={styles.cardImage} resizeMode="cover" />
+
+                    <View style={styles.cardInfo}>
+                        <View style={styles.statusBadgeRow}>
+                            <View
+                                style={[
+                                    styles.statusBadge,
+                                    status === 'PENDING'
+                                        ? styles.pendingBadge
+                                        : status === 'ACCEPTED'
+                                            ? styles.acceptedBadge
+                                            : styles.pastBadge
+                                ]}
+                            >
+                                <Ionicons
+                                    name={status === 'PENDING' ? 'time' : status === 'ACCEPTED' ? 'checkmark-circle' : 'archive'}
+                                    size={12}
+                                    color="#FFFFFF"
+                                    style={{ marginRight: 4 }}
+                                />
+                                <Text style={styles.statusBadgeText}>{status}</Text>
+                            </View>
+
+                            <Text style={styles.priceVal}>Rs. {price} <Text style={styles.pricePeriod}>/ mo</Text></Text>
+                        </View>
+
+                        <Text style={styles.titleText}>{title}</Text>
+                        <View style={styles.locationRow}>
+                            <Ionicons name="location-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
+                            <Text style={styles.locationText}>{location}</Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Progress Status Timeline */}
+                <Text style={styles.sectionHeading}>Request Progress</Text>
+                <View style={styles.timelineCard}>
+                    {timelineSteps.map((step, idx) => (
+                        <View key={idx} style={styles.timelineItem}>
+                            <View style={styles.timelineIconCol}>
+                                <View style={[styles.timelineNode, step.done && styles.timelineNodeDone]}>
+                                    <Ionicons
+                                        name={step.done ? 'checkmark' : 'ellipse-outline'}
+                                        size={12}
+                                        color={step.done ? '#FFFFFF' : '#94A3B8'}
+                                    />
+                                </View>
+                                {idx < timelineSteps.length - 1 && (
+                                    <View style={[styles.timelineLine, step.done && styles.timelineLineDone]} />
+                                )}
+                            </View>
+
+                            <View style={styles.timelineContent}>
+                                <Text style={[styles.stepLabel, step.done && styles.stepLabelDone]}>
+                                    {step.label}
+                                </Text>
+                                <Text style={styles.stepDate}>{step.date}</Text>
+                            </View>
+                        </View>
+                    ))}
+                </View>
+
+                {/* Booking Summary Specifications */}
+                <Text style={styles.sectionHeading}>Booking Summary</Text>
+                <View style={styles.summaryCard}>
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Move-in Date</Text>
+                        <Text style={styles.summaryVal}>{date}</Text>
+                    </View>
+
+                    <View style={styles.summaryDivider} />
+
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Room Type</Text>
+                        <Text style={styles.summaryVal}>{roomType}</Text>
+                    </View>
+
+                    <View style={styles.summaryDivider} />
+
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Occupants</Text>
+                        <Text style={styles.summaryVal}>1 Person</Text>
+                    </View>
+
+                    <View style={styles.summaryDivider} />
+
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Security Deposit</Text>
+                        <Text style={styles.summaryValGold}>Rs. {price}</Text>
+                    </View>
+                </View>
+
+                {/* Property Owner Info & Call CTA */}
+                <Text style={styles.sectionHeading}>Property Owner</Text>
+                <View style={styles.ownerCard}>
+                    <View style={styles.ownerAvatar}>
+                        <Ionicons name="person" size={24} color="#1B4D3E" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.ownerName}>{ownerName}</Text>
+                        <Text style={styles.ownerPhone}>{ownerPhone}</Text>
+                    </View>
+
+                    <TouchableOpacity style={styles.callHostBtn} onPress={handleCallHost} activeOpacity={0.85}>
+                        <Ionicons name="call" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                        <Text style={styles.callHostText}>Call Host</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Move-in Rules & Guidelines */}
+                <Text style={styles.sectionHeading}>Move-in Guidelines</Text>
+                <View style={styles.rulesCard}>
+                    <View style={styles.ruleItem}>
+                        <Ionicons name="shield-checkmark-outline" size={16} color="#1B4D3E" style={{ marginRight: 8 }} />
+                        <Text style={styles.ruleText}>ID verification required at check-in</Text>
+                    </View>
+                    <View style={styles.ruleItem}>
+                        <Ionicons name="key-outline" size={16} color="#1B4D3E" style={{ marginRight: 8 }} />
+                        <Text style={styles.ruleText}>Key collection will be coordinated by host</Text>
+                    </View>
+                    <View style={styles.ruleItem}>
+                        <Ionicons name="time-outline" size={16} color="#1B4D3E" style={{ marginRight: 8 }} />
+                        <Text style={styles.ruleText}>Standard move-in hours: 9:00 AM - 6:00 PM</Text>
+                    </View>
+                </View>
+
+                {/* Cancel Booking Action Button */}
+                {status === 'PENDING' && (
+                    <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelPress} activeOpacity={0.85}>
+                        <Ionicons name="close-circle-outline" size={18} color="#DC2626" style={{ marginRight: 6 }} />
+                        <Text style={styles.cancelBtnText}>Cancel Booking Request</Text>
+                    </TouchableOpacity>
+                )}
+            </ScrollView>
+        </SafeAreaView>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#F8FAFC',
+        paddingTop: Platform.OS === 'android' ? 20 : 0,
+    },
+
+    /* Header */
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E2E8F0',
+    },
+    backBtn: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: '#F1F5F9',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+    shareBtn: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: '#E6F0EC',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    /* Scroll */
+    scrollContent: {
+        paddingHorizontal: 20,
+        paddingTop: 18,
+        paddingBottom: 30,
+        maxWidth: 600,
+        width: '100%',
+        alignSelf: 'center',
+    },
+
+    /* Property Card */
+    propertyCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 18,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        marginBottom: 20,
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    cardImage: {
+        width: '100%',
+        height: 140,
+        backgroundColor: '#CBD5E1',
+    },
+    cardInfo: {
+        padding: 16,
+    },
+    statusBadgeRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    statusBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    pendingBadge: {
+        backgroundColor: '#78350F',
+    },
+    acceptedBadge: {
+        backgroundColor: '#1B4D3E',
+    },
+    pastBadge: {
+        backgroundColor: '#64748B',
+    },
+    statusBadgeText: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#FFFFFF',
+    },
+    priceVal: {
+        fontSize: 17,
+        fontWeight: '900',
+        color: '#1B4D3E',
+    },
+    pricePeriod: {
+        fontSize: 12,
+        color: '#64748B',
+        fontWeight: '500',
+    },
+    titleText: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#0F172A',
+        marginBottom: 4,
+    },
+    locationRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    locationText: {
+        fontSize: 13,
+        color: '#64748B',
+    },
+
+    /* Section Headings */
+    sectionHeading: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#0F172A',
+        marginBottom: 10,
+        marginTop: 4,
+    },
+
+    /* Timeline */
+    timelineCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 18,
+        padding: 18,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        marginBottom: 20,
+    },
+    timelineItem: {
+        flexDirection: 'row',
+        marginBottom: 14,
+    },
+    timelineIconCol: {
+        alignItems: 'center',
+        marginRight: 14,
+        width: 24,
+    },
+    timelineNode: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: '#F1F5F9',
+        borderWidth: 1.5,
+        borderColor: '#CBD5E1',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    timelineNodeDone: {
+        backgroundColor: '#1B4D3E',
+        borderColor: '#1B4D3E',
+    },
+    timelineLine: {
+        width: 2,
+        flex: 1,
+        backgroundColor: '#E2E8F0',
+        marginVertical: 4,
+    },
+    timelineLineDone: {
+        backgroundColor: '#1B4D3E',
+    },
+    timelineContent: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    stepLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#64748B',
+    },
+    stepLabelDone: {
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+    stepDate: {
+        fontSize: 12,
+        color: '#94A3B8',
+        marginTop: 1,
+    },
+
+    /* Summary Card */
+    summaryCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 18,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        marginBottom: 20,
+    },
+    summaryRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
+    summaryLabel: {
+        fontSize: 13,
+        color: '#64748B',
+        fontWeight: '600',
+    },
+    summaryVal: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+    summaryValGold: {
+        fontSize: 14,
+        fontWeight: '900',
+        color: '#D97706',
+    },
+    summaryDivider: {
+        height: 1,
+        backgroundColor: '#F1F5F9',
+        marginVertical: 10,
+    },
+
+    /* Owner Card */
+    ownerCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        marginBottom: 20,
+    },
+    ownerAvatar: {
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        backgroundColor: '#E6F0EC',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    ownerName: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+    ownerPhone: {
+        fontSize: 12,
+        color: '#64748B',
+    },
+    callHostBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#1B4D3E',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 10,
+    },
+    callHostText: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: '#FFFFFF',
+    },
+
+    /* Rules */
+    rulesCard: {
+        backgroundColor: '#F0FDF4',
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#DCFCE7',
+        marginBottom: 24,
+        gap: 10,
+    },
+    ruleItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    ruleText: {
+        fontSize: 13,
+        color: '#166534',
+        fontWeight: '600',
+    },
+
+    /* Cancel Button */
+    cancelBtn: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#FEE2E2',
+        height: 48,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#FCA5A5',
+    },
+    cancelBtnText: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#DC2626',
+    },
+});

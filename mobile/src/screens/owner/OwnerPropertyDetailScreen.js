@@ -1,0 +1,334 @@
+import React from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    SafeAreaView,
+    StatusBar,
+    ScrollView,
+    Image,
+    Platform
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+
+export default function OwnerPropertyDetailScreen({
+    property,
+    onBack,
+    onOpenRooms,
+    onOpenGallery,
+    onEditProperty,
+    onOpenBookings
+}) {
+    const currentProperty = property || {
+        id: 'p1',
+        title: 'Green Valley Boarding',
+        location: 'Moratuwa',
+        price: 15000,
+        status: 'ACTIVE',
+        isApproved: true,
+        imageUrl: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
+        totalRooms: 4,
+        availableRooms: 2
+    };
+
+    return (
+        <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+            {/* Top Navigation Header */}
+            <View style={styles.header}>
+                <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
+                    <Ionicons name="arrow-back" size={20} color="#133E32" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle} numberOfLines={1}>{currentProperty.title}</Text>
+                <View style={{ width: 36 }} />
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+                {/* Cover Image & Approved Status Badge */}
+                <View style={styles.coverWrapper}>
+                    <Image source={{ uri: currentProperty.imageUrl }} style={styles.coverImage} resizeMode="cover" />
+
+                    <View style={styles.approvedBadge}>
+                        <Ionicons name="checkmark-circle" size={16} color="#10B981" style={{ marginRight: 4 }} />
+                        <Text style={styles.approvedText}>Approved</Text>
+                    </View>
+                </View>
+
+                {/* Quick Actions Title */}
+                <Text style={styles.sectionTitle}>Quick Actions</Text>
+                <View style={styles.quickGrid}>
+                    {/* Rooms Card */}
+                    <TouchableOpacity style={styles.actionCard} onPress={onOpenRooms} activeOpacity={0.85}>
+                        <View style={styles.iconCircle}>
+                            <Ionicons name="door-open-outline" size={24} color="#133E32" />
+                        </View>
+                        <Text style={styles.actionCardTitle}>Rooms</Text>
+                    </TouchableOpacity>
+
+                    {/* Images Card */}
+                    <TouchableOpacity style={styles.actionCard} onPress={onOpenGallery} activeOpacity={0.85}>
+                        <View style={styles.iconCircle}>
+                            <Ionicons name="images-outline" size={24} color="#133E32" />
+                        </View>
+                        <Text style={styles.actionCardTitle}>Images</Text>
+                    </TouchableOpacity>
+
+                    {/* Edit Card */}
+                    <TouchableOpacity style={styles.actionCard} onPress={onEditProperty} activeOpacity={0.85}>
+                        <View style={styles.iconCircle}>
+                            <Ionicons name="pencil-outline" size={24} color="#133E32" />
+                        </View>
+                        <Text style={styles.actionCardTitle}>Edit</Text>
+                    </TouchableOpacity>
+
+                    {/* Booking Card */}
+                    <TouchableOpacity style={styles.actionCard} onPress={onOpenBookings} activeOpacity={0.85}>
+                        <View style={styles.iconCircle}>
+                            <Ionicons name="calendar-outline" size={24} color="#133E32" />
+                        </View>
+                        <Text style={styles.actionCardTitle}>Booking</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Property Information */}
+                <Text style={styles.sectionTitle}>Property Information</Text>
+                <View style={styles.infoCard}>
+                    {/* Location Row */}
+                    <View style={styles.infoRow}>
+                        <View style={styles.infoIconWrapper}>
+                            <Ionicons name="location-outline" size={20} color="#133E32" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.infoLabel}>LOCATION</Text>
+                            <Text style={styles.infoValue}>{currentProperty.location}</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.divider} />
+
+                    {/* Pricing Row */}
+                    <View style={styles.infoRow}>
+                        <View style={styles.infoIconWrapper}>
+                            <Ionicons name="pricetag-outline" size={20} color="#133E32" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.infoLabel}>PRICING</Text>
+                            <Text style={styles.infoValue}>Starting Rs.{(currentProperty.price || 15000).toLocaleString()}</Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Map View Box */}
+                <View style={styles.mapCard}>
+                    <Image
+                        source={{ uri: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80' }}
+                        style={styles.mapImage}
+                        resizeMode="cover"
+                    />
+                    <View style={styles.mapPinContainer}>
+                        <View style={styles.pinCircle}>
+                            <Ionicons name="location" size={22} color="#133E32" />
+                        </View>
+                    </View>
+                </View>
+            </ScrollView>
+        </SafeAreaView>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#F8FAFC',
+        paddingTop: Platform.OS === 'android' ? 35 : 0,
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E2E8F0',
+    },
+    backBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        backgroundColor: '#E6F0EC',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: '900',
+        color: '#0F172A',
+        maxWidth: 220,
+    },
+
+    scrollContent: {
+        paddingHorizontal: 20,
+        paddingTop: 18,
+        paddingBottom: 30,
+        maxWidth: 600,
+        width: '100%',
+        alignSelf: 'center',
+    },
+
+    /* Cover Image */
+    coverWrapper: {
+        position: 'relative',
+        height: 200,
+        borderRadius: 18,
+        overflow: 'hidden',
+        marginBottom: 20,
+        backgroundColor: '#E2E8F0',
+    },
+    coverImage: {
+        width: '100%',
+        height: '100%',
+    },
+    approvedBadge: {
+        position: 'absolute',
+        top: 14,
+        right: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    approvedText: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+
+    sectionTitle: {
+        fontSize: 17,
+        fontWeight: '900',
+        color: '#0F172A',
+        marginBottom: 12,
+    },
+
+    /* Quick Grid */
+    quickGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        marginBottom: 22,
+    },
+    actionCard: {
+        width: '48%',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        paddingVertical: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    iconCircle: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#E6F0EC',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    actionCardTitle: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+
+    /* Info Card */
+    infoCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 18,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        marginBottom: 20,
+    },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 6,
+    },
+    infoIconWrapper: {
+        width: 38,
+        height: 38,
+        borderRadius: 10,
+        backgroundColor: '#E6F0EC',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    infoLabel: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#64748B',
+        letterSpacing: 0.5,
+        marginBottom: 2,
+    },
+    infoValue: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#F1F5F9',
+        marginVertical: 10,
+    },
+
+    /* Map Card */
+    mapCard: {
+        position: 'relative',
+        height: 180,
+        borderRadius: 18,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    mapImage: {
+        width: '100%',
+        height: '100%',
+    },
+    mapPinContainer: {
+        position: 'absolute',
+        top: '38%',
+        left: '46%',
+    },
+    pinCircle: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#133E32',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+});

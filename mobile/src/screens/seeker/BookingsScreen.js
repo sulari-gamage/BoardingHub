@@ -5,14 +5,14 @@ import {
     StyleSheet,
     TouchableOpacity,
     SafeAreaView,
-    StatusBar,
     ScrollView,
-    Image
+    Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import BottomNavBar from '../components/BottomNavBar';
+import BottomNavBar from '../../components/BottomNavBar';
+import HeaderBar from '../../components/HeaderBar';
 
-export default function BookingsScreen({ bookings = [], onSelectBoarding, onNavigateTab }) {
+export default function BookingsScreen({ bookings = [], onSelectBoarding, onViewBookingDetails, onNavigateTab, onOpenNotifications }) {
     const [activeTabFilter, setActiveTabFilter] = useState('Pending');
     const [activeNavTab, setActiveNavTab] = useState('BOOKINGS');
 
@@ -70,9 +70,19 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onNavi
 
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+            {/* Standard Dark Emerald Header Bar */}
+            <HeaderBar
+                title="BoardingHub"
+                onOpenNotifications={() => {
+                    if (onOpenNotifications) onOpenNotifications();
+                    else if (onNavigateTab) onNavigateTab('NOTIFICATIONS');
+                }}
+                onOpenProfile={() => {
+                    if (onNavigateTab) onNavigateTab('PROFILE');
+                }}
+            />
 
-            {/* Screen Title */}
+            {/* Screen Sub-Title */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>My Bookings</Text>
             </View>
@@ -159,7 +169,10 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onNavi
                                 {/* Action Button: View Details */}
                                 <TouchableOpacity
                                     style={styles.viewDetailsBtn}
-                                    onPress={() => onSelectBoarding && onSelectBoarding(item)}
+                                    onPress={() => {
+                                        if (onViewBookingDetails) onViewBookingDetails(item);
+                                        else if (onSelectBoarding) onSelectBoarding(item);
+                                    }}
                                     activeOpacity={0.85}
                                 >
                                     <Text style={styles.viewDetailsBtnText}>View Details</Text>
@@ -197,13 +210,13 @@ const styles = StyleSheet.create({
     },
     header: {
         paddingHorizontal: 20,
-        paddingTop: 18,
+        paddingTop: 16,
         paddingBottom: 10,
     },
     headerTitle: {
-        fontSize: 26,
+        fontSize: 22,
         fontWeight: '900',
-        color: '#1B4D3E',
+        color: '#133E32',
         letterSpacing: -0.4,
     },
 
@@ -222,7 +235,7 @@ const styles = StyleSheet.create({
         borderBottomColor: 'transparent',
     },
     activeTabBtn: {
-        borderBottomColor: '#1B4D3E',
+        borderBottomColor: '#133E32',
     },
     tabText: {
         fontSize: 15,
@@ -230,7 +243,7 @@ const styles = StyleSheet.create({
         color: '#64748B',
     },
     activeTabText: {
-        color: '#1B4D3E',
+        color: '#133E32',
         fontWeight: '800',
     },
 
@@ -239,6 +252,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingTop: 20,
         paddingBottom: 24,
+        maxWidth: 600,
+        width: '100%',
+        alignSelf: 'center',
     },
 
     /* Booking Card */
@@ -279,7 +295,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#78350F',
     },
     acceptedBadge: {
-        backgroundColor: '#1B4D3E',
+        backgroundColor: '#133E32',
     },
     pastBadge: {
         backgroundColor: '#64748B',
@@ -321,7 +337,7 @@ const styles = StyleSheet.create({
         height: 46,
         borderRadius: 12,
         borderWidth: 1.5,
-        borderColor: '#1B4D3E',
+        borderColor: '#133E32',
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
@@ -329,7 +345,7 @@ const styles = StyleSheet.create({
     viewDetailsBtnText: {
         fontSize: 14,
         fontWeight: '800',
-        color: '#1B4D3E',
+        color: '#133E32',
     },
 
     /* Empty State */

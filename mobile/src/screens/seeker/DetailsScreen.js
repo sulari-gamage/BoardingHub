@@ -8,12 +8,13 @@ import {
     TouchableOpacity,
     SafeAreaView,
     StatusBar,
-    Alert
+    Alert,
+    Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import BookingRequestModal from '../components/BookingRequestModal';
+import BookingRequestModal from '../../components/BookingRequestModal';
 
-export default function DetailsScreen({ boarding = {}, onBack, onBookSuccess }) {
+export default function DetailsScreen({ boarding = {}, onBack, onBookSuccess, onOpenGallery, onOpenReviews, onOpenMap }) {
     const [isSaved, setIsSaved] = useState(false);
     const [selectedRoom, setSelectedRoom] = useState('shared');
     const [isBookingModalVisible, setIsBookingModalVisible] = useState(false);
@@ -38,7 +39,11 @@ export default function DetailsScreen({ boarding = {}, onBack, onBookSuccess }) 
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {/* Cover Hero Image & Floating Navigation Bar */}
-                <View style={styles.imageContainer}>
+                <TouchableOpacity
+                    style={styles.imageContainer}
+                    activeOpacity={0.95}
+                    onPress={() => onOpenGallery && onOpenGallery(boarding)}
+                >
                     <Image source={{ uri: imageUrl }} style={styles.heroImage} resizeMode="cover" />
 
                     {/* Top Action Overlay Bar */}
@@ -72,7 +77,7 @@ export default function DetailsScreen({ boarding = {}, onBack, onBookSuccess }) 
                         <View style={styles.dot} />
                         <View style={styles.dot} />
                     </View>
-                </View>
+                </TouchableOpacity>
 
                 {/* Content Details */}
                 <View style={styles.content}>
@@ -90,7 +95,7 @@ export default function DetailsScreen({ boarding = {}, onBack, onBookSuccess }) 
                         <View style={styles.ratingSubRow}>
                             <Ionicons name="star-outline" size={16} color="#D97706" style={{ marginRight: 4 }} />
                             <Text style={styles.ratingScore}>{rating}</Text>
-                            <TouchableOpacity>
+                            <TouchableOpacity onPress={() => onOpenReviews && onOpenReviews(boarding)}>
                                 <Text style={styles.reviewsLink}>(124 Reviews)</Text>
                             </TouchableOpacity>
                         </View>
@@ -187,7 +192,11 @@ export default function DetailsScreen({ boarding = {}, onBack, onBookSuccess }) 
 
                     {/* Location Map Section */}
                     <Text style={styles.sectionHeading}>Location</Text>
-                    <View style={styles.mapCard}>
+                    <TouchableOpacity
+                        style={styles.mapCard}
+                        onPress={() => onOpenMap && onOpenMap(boarding)}
+                        activeOpacity={0.9}
+                    >
                         <Image
                             source={{ uri: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80' }}
                             style={styles.mapImage}
@@ -196,10 +205,10 @@ export default function DetailsScreen({ boarding = {}, onBack, onBookSuccess }) 
                         <View style={styles.mapOverlayPin}>
                             <Ionicons name="location" size={24} color="#1B4D3E" />
                             <View style={styles.mapPinBadge}>
-                                <Text style={styles.mapPinText}>Moratuwa</Text>
+                                <Text style={styles.mapPinText}>Tap to Open Map</Text>
                             </View>
                         </View>
-                    </View>
+                    </TouchableOpacity>
                 </View>
             </ScrollView>
 
@@ -238,9 +247,13 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F8FAFC',
+        paddingTop: Platform.OS === 'android' ? 20 : 0,
     },
     scrollContent: {
         paddingBottom: 24,
+        maxWidth: 600,
+        width: '100%',
+        alignSelf: 'center',
     },
 
     /* Hero Image & Top Bar */
@@ -561,6 +574,9 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 8,
         elevation: 8,
+        maxWidth: 600,
+        width: '100%',
+        alignSelf: 'center',
     },
     bottomPriceVal: {
         fontSize: 20,

@@ -9,7 +9,8 @@ import {
     SafeAreaView,
     StatusBar,
     Alert,
-    Image
+    Image,
+    Platform
 } from 'react-native';
 
 export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
@@ -26,7 +27,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
         }
         Alert.alert('Success', `Signed in as ${selectedRole}`);
         if (onLoginSuccess) {
-            onLoginSuccess();
+            onLoginSuccess(selectedRole);
         }
     };
 
@@ -42,7 +43,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
                     {/* Official Logo */}
                     <View style={styles.logoContainer}>
                         <Image
-                            source={require('../../assets/logo.png')}
+                            source={require('../../../assets/logo.png')}
                             style={styles.logoImage}
                             resizeMode="contain"
                         />
@@ -162,6 +163,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F8FAFC',
+        paddingTop: Platform.OS === 'android' ? 20 : 0,
     },
     scrollContent: {
         flexGrow: 1,
@@ -174,6 +176,8 @@ const styles = StyleSheet.create({
     /* Card */
     card: {
         width: '100%',
+        maxWidth: 480,
+        alignSelf: 'center',
         backgroundColor: '#FFFFFF',
         borderRadius: 16,
         paddingHorizontal: 24,

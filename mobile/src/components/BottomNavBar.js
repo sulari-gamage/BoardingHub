@@ -6,6 +6,7 @@ export default function BottomNavBar({ activeTab, onTabChange }) {
     const tabs = [
         { id: 'HOME', label: 'Home', activeIcon: 'home', inactiveIcon: 'home-outline' },
         { id: 'SEARCH', label: 'Search', activeIcon: 'search', inactiveIcon: 'search-outline' },
+        { id: 'FAVORITES', label: 'Saved', activeIcon: 'heart', inactiveIcon: 'heart-outline' },
         { id: 'BOOKINGS', label: 'Bookings', activeIcon: 'journal', inactiveIcon: 'journal-outline' },
         { id: 'PROFILE', label: 'Profile', activeIcon: 'person', inactiveIcon: 'person-outline' },
     ];
@@ -39,7 +40,7 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
         backgroundColor: '#FFFFFF',
-        paddingVertical: 8,
+        paddingVertical: 10,
         paddingHorizontal: 12,
         borderTopWidth: 1,
         borderTopColor: '#E2E8F0',
@@ -50,6 +51,9 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.04,
         shadowRadius: 6,
         elevation: 8,
+        maxWidth: 600,
+        width: '100%',
+        alignSelf: 'center',
     },
     tabItem: {
         flex: 1,

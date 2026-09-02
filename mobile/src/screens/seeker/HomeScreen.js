@@ -6,17 +6,16 @@ import {
     TextInput,
     TouchableOpacity,
     SafeAreaView,
-    StatusBar,
     ScrollView,
-    Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import BoardingCard from '../components/BoardingCard';
-import NearLocationCard from '../components/NearLocationCard';
-import BottomNavBar from '../components/BottomNavBar';
-import { NEAR_LOCATION_BOARDINGS, POPULAR_BOARDINGS } from '../data/mockBoardings';
+import BoardingCard from '../../components/BoardingCard';
+import NearLocationCard from '../../components/NearLocationCard';
+import BottomNavBar from '../../components/BottomNavBar';
+import HeaderBar from '../../components/HeaderBar';
+import { NEAR_LOCATION_BOARDINGS, POPULAR_BOARDINGS } from '../../data/mockBoardings';
 
-export default function HomeScreen({ onSelectBoarding, onNavigateTab }) {
+export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('ALL');
     const [activeTab, setActiveTab] = useState('HOME');
@@ -40,34 +39,27 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab }) {
 
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+            {/* Standard Dark Emerald Header Bar with BoardingHub Logo */}
+            <HeaderBar
+                title="BoardingHub"
+                onOpenNotifications={() => {
+                    if (onOpenNotifications) onOpenNotifications();
+                    else if (onNavigateTab) onNavigateTab('NOTIFICATIONS');
+                }}
+                onOpenProfile={() => {
+                    if (onNavigateTab) onNavigateTab('PROFILE');
+                }}
+            />
 
             {/* Main Scrollable Screen Content */}
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
             >
-                {/* Top Header: Logo + Bell Notification Icon */}
-                <View style={styles.header}>
-                    <View style={styles.brandRow}>
-                        <Image
-                            source={require('../../assets/logo.png')}
-                            style={styles.logoImage}
-                            resizeMode="contain"
-                        />
-                        <Text style={styles.brandName}>BoardingHub</Text>
-                    </View>
-
-                    <TouchableOpacity style={styles.bellBtn} activeOpacity={0.8}>
-                        <Ionicons name="notifications-outline" size={20} color="#1E293B" />
-                        <View style={styles.bellDot} />
-                    </TouchableOpacity>
-                </View>
-
                 {/* Greeting Banner */}
                 <View style={styles.greetingSection}>
                     <Text style={styles.greetingText}>Hello, Sulari 👋</Text>
-                    <Text style={styles.subGreetingText}>Find your perfect home 🏠</Text>
+                    <Text style={styles.subGreetingText}>Find your perfect home</Text>
                 </View>
 
                 {/* Search Bar & Filter Action Button */}
@@ -176,64 +168,15 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingBottom: 24,
-    },
-
-    /* Header */
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 16,
-        paddingBottom: 12,
-    },
-    brandRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    logoImage: {
-        width: 36,
-        height: 28,
-        marginRight: 8,
-    },
-    brandName: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: '#1B4D3E',
-        letterSpacing: -0.3,
-    },
-    bellBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        justifyContent: 'center',
-        alignItems: 'center',
-        position: 'relative',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    bellDot: {
-        position: 'absolute',
-        top: 9,
-        right: 9,
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#EF4444',
-        borderWidth: 1.5,
-        borderColor: '#FFFFFF',
+        maxWidth: 600,
+        width: '100%',
+        alignSelf: 'center',
     },
 
     /* Greeting Section */
     greetingSection: {
         paddingHorizontal: 20,
-        marginTop: 8,
+        marginTop: 16,
         marginBottom: 16,
     },
     greetingText: {
@@ -279,10 +222,10 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 12,
-        backgroundColor: '#1B4D3E',
+        backgroundColor: '#133E32',
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#1B4D3E',
+        shadowColor: '#133E32',
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.2,
         shadowRadius: 6,
@@ -306,7 +249,7 @@ const styles = StyleSheet.create({
     seeAllText: {
         fontSize: 13,
         fontWeight: '700',
-        color: '#1B4D3E',
+        color: '#133E32',
     },
 
     /* Horizontal Scroll */
@@ -332,8 +275,8 @@ const styles = StyleSheet.create({
         borderColor: '#E2E8F0',
     },
     chipActive: {
-        backgroundColor: '#1B4D3E',
-        borderColor: '#1B4D3E',
+        backgroundColor: '#133E32',
+        borderColor: '#133E32',
     },
     chipText: {
         fontSize: 12,

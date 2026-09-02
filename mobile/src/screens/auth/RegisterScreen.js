@@ -9,8 +9,11 @@ import {
     SafeAreaView,
     StatusBar,
     Alert,
-    Image
+    Image,
+    Platform
 } from 'react-native';
+
+import { Ionicons } from '@expo/vector-icons';
 
 export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess }) {
     const [role, setRole] = useState('Seeker'); // Seeker | Owner
@@ -41,13 +44,25 @@ export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess })
 
         Alert.alert('Account Created!', `Welcome to BoardingHub, ${fullName}!`);
         if (onRegisterSuccess) {
-            onRegisterSuccess();
+            onRegisterSuccess(role);
         }
     };
 
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+
+            {/* Top Back Navigation Bar */}
+            <View style={styles.topNavHeader}>
+                <TouchableOpacity
+                    style={styles.backBtn}
+                    onPress={onNavigateToLogin}
+                    activeOpacity={0.8}
+                >
+                    <Ionicons name="arrow-back" size={20} color="#0F172A" />
+                </TouchableOpacity>
+            </View>
+
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
@@ -55,7 +70,7 @@ export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess })
                 {/* Header Logo & Title */}
                 <View style={styles.logoContainer}>
                     <Image
-                        source={require('../../assets/logo.png')}
+                        source={require('../../../assets/logo.png')}
                         style={styles.logoImage}
                         resizeMode="contain"
                     />
@@ -251,12 +266,29 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F8FAFC',
+        paddingTop: Platform.OS === 'android' ? 20 : 0,
+    },
+    topNavHeader: {
+        paddingHorizontal: 16,
+        paddingTop: 10,
+        paddingBottom: 4,
+    },
+    backBtn: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: '#E2E8F0',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     scrollContent: {
         flexGrow: 1,
         justifyContent: 'center',
         paddingHorizontal: 22,
-        paddingVertical: 24,
+        paddingVertical: 12,
+        maxWidth: 480,
+        width: '100%',
+        alignSelf: 'center',
     },
 
     /* Header Logo & Title */

@@ -6,16 +6,16 @@ import {
     TextInput,
     TouchableOpacity,
     SafeAreaView,
-    StatusBar,
     ScrollView,
-    Image
+    Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import BottomNavBar from '../components/BottomNavBar';
-import FilterModal from '../components/FilterModal';
-import { POPULAR_BOARDINGS } from '../data/mockBoardings';
+import BottomNavBar from '../../components/BottomNavBar';
+import FilterModal from '../../components/FilterModal';
+import HeaderBar from '../../components/HeaderBar';
+import { POPULAR_BOARDINGS } from '../../data/mockBoardings';
 
-export default function SearchScreen({ onSelectBoarding, onNavigateTab }) {
+export default function SearchScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilters, setActiveFilters] = useState(['Colombo', 'Under Rs. 20,000', 'Single Room']);
     const [activeTab, setActiveTab] = useState('SEARCH');
@@ -71,30 +71,21 @@ export default function SearchScreen({ onSelectBoarding, onNavigateTab }) {
 
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+            {/* Standard Dark Emerald Header Bar */}
+            <HeaderBar
+                title="BoardingHub"
+                onOpenNotifications={() => {
+                    if (onOpenNotifications) onOpenNotifications();
+                    else if (onNavigateTab) onNavigateTab('NOTIFICATIONS');
+                }}
+                onOpenProfile={() => {
+                    if (onNavigateTab) onNavigateTab('PROFILE');
+                }}
+            />
 
             {/* Main Scroll Content */}
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-                {/* Top Header Row */}
-                <View style={styles.header}>
-                    <View style={styles.brandRow}>
-                        <Image
-                            source={require('../../assets/logo.png')}
-                            style={styles.logoImage}
-                            resizeMode="contain"
-                        />
-                        <Text style={styles.brandName}>BoardingHub</Text>
-                    </View>
-                    <TouchableOpacity
-                        style={styles.settingsBtn}
-                        activeOpacity={0.8}
-                        onPress={() => setIsFilterModalVisible(true)}
-                    >
-                        <Ionicons name="options-outline" size={22} color="#1B4D3E" />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Screen Title */}
+                {/* Screen Sub-Title Section */}
                 <View style={styles.titleSection}>
                     <Text style={styles.title}>Search Boardings</Text>
                 </View>
@@ -122,7 +113,7 @@ export default function SearchScreen({ onSelectBoarding, onNavigateTab }) {
                         activeOpacity={0.85}
                         onPress={() => setIsFilterModalVisible(true)}
                     >
-                        <Ionicons name="options-outline" size={14} color="#1B4D3E" style={{ marginRight: 5 }} />
+                        <Ionicons name="options-outline" size={14} color="#133E32" style={{ marginRight: 5 }} />
                         <Text style={styles.filterMenuText}>Filters</Text>
                     </TouchableOpacity>
 
@@ -134,7 +125,7 @@ export default function SearchScreen({ onSelectBoarding, onNavigateTab }) {
                             activeOpacity={0.8}
                         >
                             <Text style={styles.activeFilterText}>{filter}</Text>
-                            <Ionicons name="close" size={14} color="#1B4D3E" style={{ marginLeft: 4 }} />
+                            <Ionicons name="close" size={14} color="#133E32" style={{ marginLeft: 4 }} />
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
@@ -154,7 +145,7 @@ export default function SearchScreen({ onSelectBoarding, onNavigateTab }) {
 
                                 {item.isVerified && (
                                     <View style={styles.verifiedBadge}>
-                                        <Ionicons name="checkmark-circle" size={12} color="#1B4D3E" style={{ marginRight: 3 }} />
+                                        <Ionicons name="checkmark-circle" size={12} color="#133E32" style={{ marginRight: 3 }} />
                                         <Text style={styles.verifiedText}>Verified</Text>
                                     </View>
                                 )}
@@ -240,46 +231,15 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingBottom: 24,
-    },
-
-    /* Header */
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 16,
-        paddingBottom: 10,
-    },
-    brandRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    logoImage: {
-        width: 34,
-        height: 26,
-        marginRight: 8,
-    },
-    brandName: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: '#1B4D3E',
-        letterSpacing: -0.3,
-    },
-    settingsBtn: {
-        width: 38,
-        height: 38,
-        borderRadius: 10,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        justifyContent: 'center',
-        alignItems: 'center',
+        maxWidth: 600,
+        width: '100%',
+        alignSelf: 'center',
     },
 
     /* Title Section */
     titleSection: {
         paddingHorizontal: 20,
+        marginTop: 16,
         marginBottom: 12,
     },
     title: {
@@ -345,7 +305,7 @@ const styles = StyleSheet.create({
     activeFilterText: {
         fontSize: 13,
         fontWeight: '700',
-        color: '#1B4D3E',
+        color: '#133E32',
     },
 
     /* Results List */
@@ -391,7 +351,7 @@ const styles = StyleSheet.create({
     verifiedText: {
         fontSize: 11,
         fontWeight: '800',
-        color: '#1B4D3E',
+        color: '#133E32',
     },
     heartBtn: {
         position: 'absolute',
@@ -471,7 +431,7 @@ const styles = StyleSheet.create({
     tagText: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#1B4D3E',
+        color: '#133E32',
     },
 
     /* Footer */
@@ -489,7 +449,7 @@ const styles = StyleSheet.create({
     priceVal: {
         fontSize: 17,
         fontWeight: '900',
-        color: '#1B4D3E',
+        color: '#133E32',
     },
     pricePeriod: {
         fontSize: 13,
@@ -499,6 +459,6 @@ const styles = StyleSheet.create({
     viewDetailsText: {
         fontSize: 13,
         fontWeight: '800',
-        color: '#1B4D3E',
+        color: '#133E32',
     },
 });
