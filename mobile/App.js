@@ -33,11 +33,13 @@ import BookingRequestDetailScreen from './src/screens/owner/BookingRequestDetail
 
 // Admin Screens
 import AdminDashboardScreen from './src/screens/admin/AdminDashboardScreen';
+import AdminPendingPropertiesScreen from './src/screens/admin/AdminPendingPropertiesScreen';
 import AdminPropertyReviewScreen from './src/screens/admin/AdminPropertyReviewScreen';
 import AdminUserManagementScreen from './src/screens/admin/AdminUserManagementScreen';
 import AdminUserDetailScreen from './src/screens/admin/AdminUserDetailScreen';
 import AdminBookingMonitoringScreen from './src/screens/admin/AdminBookingMonitoringScreen';
 import AdminAnalyticsScreen from './src/screens/admin/AdminAnalyticsScreen';
+import AdminMoreScreen from './src/screens/admin/AdminMoreScreen';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('LOGIN');
@@ -100,10 +102,12 @@ export default function App() {
   const handleNavigateTab = (tab) => {
     if (userRole === 'ADMIN') {
       if (tab === 'Dashboard' || tab === 'ADMIN_DASHBOARD') setCurrentScreen('ADMIN_DASHBOARD');
-      else if (tab === 'Listings' || tab === 'ADMIN_PROPERTY_REVIEW') setCurrentScreen('ADMIN_PROPERTY_REVIEW');
+      else if (tab === 'Listings' || tab === 'ADMIN_PENDING_PROPERTIES') setCurrentScreen('ADMIN_PENDING_PROPERTIES');
       else if (tab === 'Users' || tab === 'ADMIN_USER_MANAGEMENT') setCurrentScreen('ADMIN_USER_MANAGEMENT');
+      else if (tab === 'More' || tab === 'ADMIN_MORE') setCurrentScreen('ADMIN_MORE');
       else if (tab === 'Bookings' || tab === 'ADMIN_BOOKING_MONITORING') setCurrentScreen('ADMIN_BOOKING_MONITORING');
       else if (tab === 'Analytics' || tab === 'ADMIN_ANALYTICS') setCurrentScreen('ADMIN_ANALYTICS');
+      else if (tab === 'ADMIN_PROPERTY_REVIEW') setCurrentScreen('ADMIN_PROPERTY_REVIEW');
       return;
     }
 
@@ -246,13 +250,20 @@ export default function App() {
         <AdminDashboardScreen
           activeTab="Dashboard"
           onNavigateTab={handleNavigateTab}
-          onOpenPendingReview={() => setCurrentScreen('ADMIN_PROPERTY_REVIEW')}
+          onOpenPendingReview={() => setCurrentScreen('ADMIN_PENDING_PROPERTIES')}
+        />
+      ) : currentScreen === 'ADMIN_PENDING_PROPERTIES' ? (
+        <AdminPendingPropertiesScreen
+          activeTab="Listings"
+          onNavigateTab={handleNavigateTab}
+          onOpenNotifications={handleOpenNotifications}
+          onSelectProperty={() => setCurrentScreen('ADMIN_PROPERTY_REVIEW')}
         />
       ) : currentScreen === 'ADMIN_PROPERTY_REVIEW' ? (
         <AdminPropertyReviewScreen
-          onBack={() => setCurrentScreen('ADMIN_DASHBOARD')}
-          onApprove={() => setCurrentScreen('ADMIN_DASHBOARD')}
-          onReject={() => setCurrentScreen('ADMIN_DASHBOARD')}
+          onBack={() => setCurrentScreen('ADMIN_PENDING_PROPERTIES')}
+          onApprove={() => setCurrentScreen('ADMIN_PENDING_PROPERTIES')}
+          onReject={() => setCurrentScreen('ADMIN_PENDING_PROPERTIES')}
         />
       ) : currentScreen === 'ADMIN_USER_MANAGEMENT' ? (
         <AdminUserManagementScreen
@@ -270,14 +281,22 @@ export default function App() {
         />
       ) : currentScreen === 'ADMIN_BOOKING_MONITORING' ? (
         <AdminBookingMonitoringScreen
-          activeTab="Bookings"
+          activeTab="More"
           onNavigateTab={handleNavigateTab}
         />
       ) : currentScreen === 'ADMIN_ANALYTICS' ? (
         <AdminAnalyticsScreen
-          activeTab="Analytics"
+          activeTab="More"
           onNavigateTab={handleNavigateTab}
           onOpenNotifications={handleOpenNotifications}
+        />
+      ) : currentScreen === 'ADMIN_MORE' ? (
+        <AdminMoreScreen
+          activeTab="More"
+          onNavigateTab={handleNavigateTab}
+          onNavigateScreen={(scr) => setCurrentScreen(scr)}
+          onOpenNotifications={handleOpenNotifications}
+          onLogout={() => setCurrentScreen('LOGIN')}
         />
       ) : currentScreen === 'SEARCH' ? (
         <SearchScreen

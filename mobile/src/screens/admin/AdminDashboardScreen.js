@@ -100,14 +100,13 @@ export default function AdminDashboardScreen({
                 ))}
             </ScrollView>
 
-            {/* Bottom 5-Tab Admin Navigation */}
+            {/* Bottom 4-Tab Admin Navigation */}
             <View style={styles.bottomNav}>
                 {[
                     { id: 'Dashboard', label: 'Dashboard', icon: 'grid-outline', activeIcon: 'grid' },
-                    { id: 'Listings', label: 'Listings', icon: 'list-outline', activeIcon: 'list' },
+                    { id: 'Listings', label: 'Listings', icon: 'home-outline', activeIcon: 'home' },
                     { id: 'Users', label: 'Users', icon: 'people-outline', activeIcon: 'people' },
-                    { id: 'Bookings', label: 'Bookings', icon: 'calendar-outline', activeIcon: 'calendar' },
-                    { id: 'Analytics', label: 'Analytics', icon: 'stats-chart-outline', activeIcon: 'stats-chart' },
+                    { id: 'More', label: 'More', icon: 'options-outline', activeIcon: 'options' },
                 ].map((tab) => {
                     const isActive = activeTab === tab.id;
                     return (
