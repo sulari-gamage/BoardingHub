@@ -5,7 +5,8 @@ import {
     StyleSheet,
     TouchableOpacity,
     Image,
-    Platform
+    Platform,
+    StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -13,96 +14,149 @@ export default function AdminHeader({
     title = "BoardingHub Admin",
     showBack = false,
     onBack,
-    showProfileAvatar = false,
-    onOpenProfile
+    onOpenNotifications,
+    onOpenProfile,
+    userAvatar = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80'
 }) {
     return (
-        <View style={styles.headerContainer}>
-            <View style={styles.leftSection}>
-                {showBack ? (
-                    <TouchableOpacity style={styles.iconBtn} onPress={onBack} activeOpacity={0.8}>
-                        <Ionicons name="arrow-back" size={20} color="#133E32" />
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" backgroundColor="#133E32" />
+
+            <View style={styles.headerContent}>
+                {/* Left Section: Back Button or Logo Circle + Title */}
+                <View style={styles.headerLeft}>
+                    {showBack ? (
+                        <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
+                            <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+                        </TouchableOpacity>
+                    ) : (
+                        <View style={styles.logoBadgeContainer}>
+                            <View style={styles.logoCircle}>
+                                <Image
+                                    source={require('../../assets/logo.png')}
+                                    style={styles.logoImage}
+                                    resizeMode="contain"
+                                />
+                            </View>
+                            <Text style={styles.headerTitle}>{title}</Text>
+                        </View>
+                    )}
+                </View>
+
+                {/* Right Section: Notification Bell with Gold Dot + Profile Avatar */}
+                <View style={styles.headerRight}>
+                    <TouchableOpacity
+                        style={styles.notifBtn}
+                        onPress={onOpenNotifications}
+                        activeOpacity={0.8}
+                    >
+                        <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
+                        <View style={styles.notifBadgeDot} />
                     </TouchableOpacity>
-                ) : (
-                    <View style={styles.gridBox}>
-                        <Ionicons name="grid-outline" size={20} color="#133E32" />
-                    </View>
-                )}
 
-                <Text style={styles.titleText}>{title}</Text>
+                    <TouchableOpacity
+                        style={styles.profileAvatarWrapper}
+                        onPress={onOpenProfile}
+                        activeOpacity={0.85}
+                    >
+                        <Image
+                            source={{ uri: userAvatar }}
+                            style={styles.profileAvatar}
+                        />
+                    </TouchableOpacity>
+                </View>
             </View>
-
-            {showProfileAvatar ? (
-                <TouchableOpacity style={styles.avatarTouch} onPress={onOpenProfile} activeOpacity={0.8}>
-                    <Image
-                        source={{ uri: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=120&q=80' }}
-                        style={styles.avatar}
-                    />
-                </TouchableOpacity>
-            ) : (
-                <TouchableOpacity style={styles.menuBtn} activeOpacity={0.8}>
-                    <Ionicons name="menu-outline" size={22} color="#133E32" />
-                </TouchableOpacity>
-            )}
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    headerContainer: {
+    container: {
+        backgroundColor: '#133E32',
+        paddingTop: Platform.OS === 'android' ? 35 : 0,
+    },
+    headerContent: {
+        height: 60,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 14,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E2E8F0',
-        paddingTop: Platform.OS === 'android' ? 38 : 14,
+        paddingHorizontal: 16,
     },
-    leftSection: {
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    backBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
+    },
+    logoBadgeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    logoCircle: {
+        width: 34,
+        height: 34,
+        borderRadius: 10,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
+        padding: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    logoImage: {
+        width: '100%',
+        height: '100%',
+    },
+    headerTitle: {
+        fontSize: 19,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        letterSpacing: 0.3,
+    },
+
+    headerRight: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
     },
-    gridBox: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        backgroundColor: '#E6F0EC',
+    notifBtn: {
+        width: 38,
+        height: 38,
         justifyContent: 'center',
         alignItems: 'center',
+        position: 'relative',
     },
-    iconBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        backgroundColor: '#E6F0EC',
-        justifyContent: 'center',
-        alignItems: 'center',
+    notifBadgeDot: {
+        position: 'absolute',
+        top: 7,
+        right: 7,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#FFD700',
+        borderWidth: 1.5,
+        borderColor: '#133E32',
     },
-    titleText: {
-        fontSize: 18,
-        fontWeight: '900',
-        color: '#133E32',
-    },
-    menuBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        backgroundColor: '#F8FAFC',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    avatarTouch: {
+    profileAvatarWrapper: {
         width: 36,
         height: 36,
         borderRadius: 18,
         overflow: 'hidden',
         borderWidth: 1.5,
-        borderColor: '#133E32',
+        borderColor: '#C3DCD4',
     },
-    avatar: {
+    profileAvatar: {
         width: '100%',
         height: '100%',
     },
