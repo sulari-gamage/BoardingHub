@@ -24,7 +24,7 @@ export default function AdminMoreScreen({
         {
             id: 'bookings',
             title: 'Booking Monitoring',
-            desc: 'Monitor all guest reservations, statuses, and payment states',
+            desc: 'Monitor guest reservations, room capacities, and request statuses',
             icon: 'calendar-outline',
             badge: '39',
             screen: 'ADMIN_BOOKING_MONITORING',

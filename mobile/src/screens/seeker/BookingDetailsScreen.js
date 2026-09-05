@@ -9,7 +9,8 @@ import {
     ScrollView,
     Image,
     Alert,
-    Platform
+    Platform,
+    Linking
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -26,14 +27,26 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
 
     // Status Timeline steps
     const timelineSteps = [
-        { label: 'Booking Submitted', date: 'Aug 30, 2026', done: true },
+        { label: 'Booking Request Sent', date: 'Aug 30, 2026', done: true },
         { label: 'Owner Review', date: status === 'PENDING' ? 'In Progress' : 'Completed', done: status !== 'PENDING' },
-        { label: 'Payment & Confirmation', date: status === 'ACCEPTED' ? 'Pending Action' : 'Upcoming', done: status === 'ACCEPTED' },
+        { label: 'Owner Approval & Response', date: status === 'ACCEPTED' || status === 'APPROVED' ? 'Approved' : 'Pending Action', done: status === 'ACCEPTED' || status === 'APPROVED' },
         { label: 'Move-in Ready', date: date, done: false }
     ];
 
     const handleCallHost = () => {
-        Alert.alert('Contact Host', `Calling ${ownerName} at ${ownerPhone}...`);
+        Alert.alert('Contact Owner', `Calling ${ownerName} at ${ownerPhone}...`);
+    };
+
+    const handleWhatsAppChat = () => {
+        const cleanPhone = ownerPhone.replace(/[^0-9]/g, '');
+        const text = encodeURIComponent(`Hi ${ownerName}, regarding my booking request for "${title}" on BoardingHub.`);
+        const url = `whatsapp://send?phone=${cleanPhone}&text=${text}`;
+        Linking.canOpenURL(url)
+            .then(supported => {
+                if (supported) Linking.openURL(url);
+                else Alert.alert('WhatsApp Not Installed', `Call or message ${ownerName} at ${ownerPhone}`);
+            })
+            .catch(() => Alert.alert('Contact Host', `Call ${ownerName} at ${ownerPhone}`));
     };
 
     const handleCancelPress = () => {
@@ -175,9 +188,12 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
                         <Text style={styles.ownerPhone}>{ownerPhone}</Text>
                     </View>
 
+                    <TouchableOpacity style={styles.whatsappHostBtn} onPress={handleWhatsAppChat} activeOpacity={0.85}>
+                        <Ionicons name="logo-whatsapp" size={16} color="#FFFFFF" />
+                    </TouchableOpacity>
+
                     <TouchableOpacity style={styles.callHostBtn} onPress={handleCallHost} activeOpacity={0.85}>
-                        <Ionicons name="call" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-                        <Text style={styles.callHostText}>Call Host</Text>
+                        <Ionicons name="call" size={16} color="#FFFFFF" />
                     </TouchableOpacity>
                 </View>
 
@@ -468,18 +484,22 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#64748B',
     },
-    callHostBtn: {
-        flexDirection: 'row',
+    whatsappHostBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#25D366',
+        justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#1B4D3E',
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 10,
+        marginRight: 8,
     },
-    callHostText: {
-        fontSize: 13,
-        fontWeight: '800',
-        color: '#FFFFFF',
+    callHostBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#1B4D3E',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 
     /* Rules */

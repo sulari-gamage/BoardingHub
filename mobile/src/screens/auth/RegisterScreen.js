@@ -117,7 +117,7 @@ export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess })
                 </View>
 
                 <View style={styles.formGroup}>
-                    <Text style={styles.label}>Phone Number</Text>
+                    <Text style={styles.label}>Enter WhatsApp Number</Text>
                     <TextInput
                         style={styles.input}
                         placeholder="+94 77 000 0000"

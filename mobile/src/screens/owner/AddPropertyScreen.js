@@ -20,6 +20,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
 
     // Step 1 Form State (Property Info)
     const [propertyName, setPropertyName] = useState('Green Valley Boarding');
+    const [propertyNature, setPropertyNature] = useState('ROOM_BASED'); // ROOM_BASED or WHOLE_HOUSE
     const [description, setDescription] = useState('');
     const [genderPreference, setGenderPreference] = useState('Mixed');
     const [certifications, setCertifications] = useState(['LEED Certified']);
@@ -76,11 +77,12 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
             const newProperty = {
                 id: `p_${Date.now()}`,
                 title: propertyName,
+                propertyNature: propertyNature,
                 location: `${city}, Sri Lanka`,
-                price: 20000,
-                totalRooms: 4,
+                price: propertyNature === 'WHOLE_HOUSE' ? 45000 : 20000,
+                totalRooms: propertyNature === 'WHOLE_HOUSE' ? 1 : 4,
                 occupiedRooms: 0,
-                availableRooms: 4,
+                availableRooms: propertyNature === 'WHOLE_HOUSE' ? 1 : 4,
                 status: 'ACTIVE',
                 rating: 5.0,
                 imageUrl: coverImage,
@@ -209,6 +211,29 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                             value={propertyName}
                             onChangeText={setPropertyName}
                         />
+
+                        {/* Property Nature (Room-Based vs Whole House) */}
+                        <Text style={styles.fieldLabel}>Property Nature / Type</Text>
+                        <View style={styles.genderContainer}>
+                            {[
+                                { key: 'ROOM_BASED', label: 'Room-Based' },
+                                { key: 'WHOLE_HOUSE', label: 'Whole House / Annex' }
+                            ].map((nature) => {
+                                const isSelected = propertyNature === nature.key;
+                                return (
+                                    <TouchableOpacity
+                                        key={nature.key}
+                                        style={[styles.genderPill, isSelected && styles.genderPillActive]}
+                                        onPress={() => setPropertyNature(nature.key)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Text style={[styles.genderPillText, isSelected && styles.genderPillTextActive]}>
+                                            {nature.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
 
                         {/* Description */}
                         <Text style={styles.fieldLabel}>Description</Text>

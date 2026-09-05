@@ -9,7 +9,8 @@ import {
     ScrollView,
     Image,
     Alert,
-    Platform
+    Platform,
+    Linking
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -22,6 +23,18 @@ export default function BookingConfirmationScreen({ booking = {}, onGoToBookings
     const price = booking.price ? booking.price.toLocaleString() : '15,000';
     const ownerName = booking.ownerName || 'Sunethra Silva';
     const ownerPhone = booking.ownerPhone || '+94 77 123 4567';
+
+    const handleWhatsAppChat = () => {
+        const cleanPhone = ownerPhone.replace(/[^0-9]/g, '');
+        const text = encodeURIComponent(`Hi ${ownerName}, regarding my booking request (${bookingId}) for "${propertyTitle}" on BoardingHub.`);
+        const url = `whatsapp://send?phone=${cleanPhone}&text=${text}`;
+        Linking.canOpenURL(url)
+            .then(supported => {
+                if (supported) Linking.openURL(url);
+                else Alert.alert('WhatsApp Not Installed', `Call or message ${ownerName} at ${ownerPhone}`);
+            })
+            .catch(() => Alert.alert('Contact Host', `Call ${ownerName} at ${ownerPhone}`));
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -95,6 +108,14 @@ export default function BookingConfirmationScreen({ booking = {}, onGoToBookings
                         <Text style={styles.hostName}>{ownerName}</Text>
                         <Text style={styles.hostPhone}>{ownerPhone}</Text>
                     </View>
+
+                    <TouchableOpacity
+                        style={styles.whatsappBtn}
+                        onPress={handleWhatsAppChat}
+                        activeOpacity={0.8}
+                    >
+                        <Ionicons name="logo-whatsapp" size={18} color="#FFFFFF" />
+                    </TouchableOpacity>
 
                     <TouchableOpacity
                         style={styles.callBtn}
@@ -322,6 +343,15 @@ const styles = StyleSheet.create({
     hostPhone: {
         fontSize: 12,
         color: '#475569',
+    },
+    whatsappBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#25D366',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 8,
     },
     callBtn: {
         width: 40,

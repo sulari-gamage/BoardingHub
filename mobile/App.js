@@ -51,6 +51,32 @@ export default function App() {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [previousScreen, setPreviousScreen] = useState('HOME');
   const [userBookings, setUserBookings] = useState([]);
+  const [ownerRequests, setOwnerRequests] = useState([
+    {
+      id: 'req_1',
+      tenantName: 'Sulari Gamage',
+      tenantPhone: '+94 77 987 6543',
+      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
+      propertyTitle: 'Green Valley Boarding',
+      roomType: 'Shared Room',
+      moveInDate: 'Sep 10, 2026',
+      monthlyPrice: 15000,
+      status: 'PENDING',
+      dateRequested: 'Today, 09:30 AM'
+    },
+    {
+      id: 'req_2',
+      tenantName: 'Kamal Fernando',
+      tenantPhone: '+94 71 234 5678',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+      propertyTitle: 'Sunrise Student Annex',
+      roomType: 'Single Room',
+      moveInDate: 'Sep 15, 2026',
+      monthlyPrice: 18000,
+      status: 'APPROVED',
+      dateRequested: 'Yesterday'
+    }
+  ]);
 
   // Navigation Handlers
   const handleSelectBoarding = (boarding, origin = 'HOME') => {
@@ -67,7 +93,50 @@ export default function App() {
   const handleAddBooking = (newBooking) => {
     setUserBookings((prev) => [newBooking, ...prev]);
     setSelectedBooking(newBooking);
+
+    // Also add to owner requests list
+    const newOwnerRequest = {
+      id: `req_${Date.now()}`,
+      tenantName: 'Current Seeker',
+      tenantPhone: '+94 77 000 1122',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+      propertyTitle: newBooking.title || 'Green Valley Boarding',
+      roomType: newBooking.roomType || 'Shared Room',
+      moveInDate: newBooking.date || 'Sep 10, 2026',
+      monthlyPrice: newBooking.price || 15000,
+      status: 'PENDING',
+      dateRequested: 'Just now'
+    };
+    setOwnerRequests((prev) => [newOwnerRequest, ...prev]);
+
     setCurrentScreen('BOOKING_CONFIRMATION');
+  };
+
+  const handleApproveRequest = (requestId) => {
+    setOwnerRequests((prev) =>
+      prev.map((r) => {
+        if (r.id === requestId) {
+          const occupants = r.occupantsCount || 1;
+          const currentRemaining = r.remainingSpaces !== undefined ? r.remainingSpaces : 1;
+          const newRemaining = Math.max(0, currentRemaining - occupants);
+          return { ...r, status: 'APPROVED', remainingSpaces: newRemaining };
+        }
+        return r;
+      })
+    );
+    // Also update seeker booking status if matching
+    setUserBookings((prev) =>
+      prev.map((b) => (b.id === requestId || b.status === 'PENDING' ? { ...b, status: 'APPROVED' } : b))
+    );
+  };
+
+  const handleRejectRequest = (requestId) => {
+    setOwnerRequests((prev) =>
+      prev.map((r) => (r.id === requestId ? { ...r, status: 'REJECTED' } : r))
+    );
+    setUserBookings((prev) =>
+      prev.map((b) => (b.id === requestId ? { ...b, status: 'REJECTED' } : b))
+    );
   };
 
   const handleViewBookingDetails = (booking) => {
@@ -221,6 +290,9 @@ export default function App() {
       ) : currentScreen === 'OWNER_REQUESTS' ? (
         <OwnerRequestsScreen
           activeTab="Requests"
+          requestsList={ownerRequests}
+          onApproveRequest={handleApproveRequest}
+          onRejectRequest={handleRejectRequest}
           onNavigateTab={handleNavigateTab}
           onSelectRequest={(req) => {
             setSelectedOwnerRequest(req);
@@ -231,8 +303,14 @@ export default function App() {
         <BookingRequestDetailScreen
           request={selectedOwnerRequest}
           onBack={() => setCurrentScreen('OWNER_REQUESTS')}
-          onAccept={() => setCurrentScreen('OWNER_REQUESTS')}
-          onReject={() => setCurrentScreen('OWNER_REQUESTS')}
+          onAccept={(id) => {
+            handleApproveRequest(id || selectedOwnerRequest?.id);
+            setCurrentScreen('OWNER_REQUESTS');
+          }}
+          onReject={(id) => {
+            handleRejectRequest(id || selectedOwnerRequest?.id);
+            setCurrentScreen('OWNER_REQUESTS');
+          }}
         />
       ) : currentScreen === 'OWNER_PROFILE' ? (
         <OwnerProfileScreen

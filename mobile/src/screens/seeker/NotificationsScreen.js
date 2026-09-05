@@ -27,7 +27,7 @@ export default function NotificationsScreen({ onBack, onSelectNotification }) {
             id: 'n2',
             type: 'BOOKING',
             title: 'Booking Accepted! 🎉',
-            message: 'Sunrise Apartments owner Kamal Fernando accepted your request. Tap to complete payment.',
+            message: 'Sunrise Apartments owner Kamal Fernando accepted your request. Tap to contact owner via WhatsApp.',
             timestamp: '2 hours ago',
             isUnread: true,
             icon: 'checkmark-circle'

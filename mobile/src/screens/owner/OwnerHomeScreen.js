@@ -70,15 +70,15 @@ export default function OwnerHomeScreen({
                         <Text style={styles.statValue}>8</Text>
                     </View>
 
-                    {/* Stat Card 4: Earnings (Dark Emerald Accent Card) */}
+                    {/* Stat Card 4: Occupants (Dark Emerald Accent Card) */}
                     <View style={[styles.statCard, styles.earningsCard]}>
                         <View style={styles.iconCircleDark}>
-                            <Ionicons name="wallet-outline" size={22} color="#FFD700" />
+                            <Ionicons name="people-outline" size={22} color="#FFD700" />
                         </View>
-                        <Text style={styles.statLabelLight}>EARNINGS</Text>
-                        <Text style={styles.statValueLight}>Rs.50K</Text>
+                        <Text style={styles.statLabelLight}>OCCUPANTS</Text>
+                        <Text style={styles.statValueLight}>14</Text>
                         <View style={styles.watermarkBgIcon}>
-                            <Ionicons name="wallet-outline" size={70} color="rgba(255, 255, 255, 0.07)" />
+                            <Ionicons name="people-outline" size={70} color="rgba(255, 255, 255, 0.07)" />
                         </View>
                     </View>
                 </View>

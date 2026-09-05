@@ -70,12 +70,12 @@ export default function OwnerProfileScreen({
                     </TouchableOpacity>
                 </View>
 
-                {/* 2. Metrics Card (YTD Earnings & Avg Rating) */}
+                {/* 2. Metrics Card (Total Capacity & Avg Rating) */}
                 <View style={styles.metricsCard}>
                     <View style={styles.metricColumn}>
-                        <Ionicons name="wallet-outline" size={20} color="#133E32" style={{ marginBottom: 6 }} />
-                        <Text style={styles.metricLabel}>YTD Earnings</Text>
-                        <Text style={styles.metricValue}>Rs. 1,245,000</Text>
+                        <Ionicons name="bed-outline" size={20} color="#133E32" style={{ marginBottom: 6 }} />
+                        <Text style={styles.metricLabel}>Total Capacity</Text>
+                        <Text style={styles.metricValue}>15 Spaces</Text>
                     </View>
 
                     <View style={styles.metricDivider} />
@@ -97,10 +97,10 @@ export default function OwnerProfileScreen({
                             action: () => Alert.alert('Personal Details', 'Manage personal information.')
                         },
                         {
-                            title: 'Bank Information',
-                            subtitle: 'Manage payouts and earning accounts',
-                            icon: 'business-outline',
-                            action: () => Alert.alert('Bank Information', 'Manage payout accounts.')
+                            title: 'Contact Settings',
+                            subtitle: 'Manage phone and WhatsApp numbers for seekers',
+                            icon: 'call-outline',
+                            action: () => Alert.alert('Contact Settings', 'Manage phone & WhatsApp settings.')
                         },
                         {
                             title: 'Notification Preferences',

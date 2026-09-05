@@ -9,7 +9,8 @@ import {
     ScrollView,
     Image,
     Alert,
-    Platform
+    Platform,
+    Linking
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -21,14 +22,40 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
         avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
         isVerified: true,
         propertyTitle: 'Green Valley Boarding',
-        roomType: 'Shared Room',
+        roomType: 'Shared Room (Room 101)',
+        occupantsCount: 2,
+        remainingSpaces: 2,
         moveInDate: 'September 10, 2026',
-        occupants: '1 Person',
-        message: 'I am highly interested in securing the shared room at Green Valley Boarding. I appreciate the property\'s commitment to sustainable living and eco-friendly practices. I am a quiet, responsible professional relocating for work and believe this environment would be perfect for my lifestyle.',
+        occupants: '2 Persons',
+        message: 'I am highly interested in securing the shared room at Green Valley Boarding. I appreciate the property\'s commitment to sustainable living and eco-friendly practices.',
         tags: ['New Applicant', 'Eco-conscious']
     };
 
+    const remaining = currentRequest.remainingSpaces !== undefined ? currentRequest.remainingSpaces : 1;
+    const isFilled = remaining <= 0;
+    const requestedOccupants = currentRequest.occupantsCount || 1;
+
+    const handleWhatsAppApplicant = () => {
+        const cleanPhone = (currentRequest.tenantPhone || '').replace(/[^0-9]/g, '');
+        const url = `https://wa.me/${cleanPhone}`;
+        Linking.openURL(url).catch(() => Alert.alert('WhatsApp Error', 'Could not launch WhatsApp.'));
+    };
+
+    const handleCallApplicant = () => {
+        const cleanPhone = (currentRequest.tenantPhone || '').replace(/[^0-9+]/g, '');
+        const url = `tel:${cleanPhone}`;
+        Linking.openURL(url).catch(() => Alert.alert('Phone Error', 'Could not open phone dialer.'));
+    };
+
     const handleAcceptClick = () => {
+        if (isFilled) {
+            Alert.alert('Already Filled ❌', 'There are no spaces available for this room or house. You cannot approve this request.');
+            return;
+        }
+        if (requestedOccupants > remaining) {
+            Alert.alert('Insufficient Spaces ❌', `Only ${remaining} space(s) available, but applicant requested ${requestedOccupants} occupant space(s).`);
+            return;
+        }
         if (onAccept) onAccept(currentRequest.id);
         else Alert.alert('Request Accepted 🎉', `Booking request for ${currentRequest.tenantName} has been approved.`);
     };
@@ -56,26 +83,51 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
                 <View style={styles.profileCard}>
                     <Image source={{ uri: currentRequest.avatar }} style={styles.avatar} />
                     <Text style={styles.tenantName}>{currentRequest.tenantName}</Text>
+                    <Text style={{ fontSize: 13, color: '#64748B', marginBottom: 6 }}>{currentRequest.tenantPhone}</Text>
+
+                    {/* Direct Contact Buttons for Applicant */}
+                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 8, marginBottom: 12, width: '100%' }}>
+                        <TouchableOpacity
+                            style={{ flex: 1, height: 40, borderRadius: 10, backgroundColor: '#25D366', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+                            onPress={handleWhatsAppApplicant}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="logo-whatsapp" size={16} color="#FFF" style={{ marginRight: 6 }} />
+                            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 13 }}>WhatsApp</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={{ flex: 1, height: 40, borderRadius: 10, backgroundColor: '#E6F0EC', borderWidth: 1, borderColor: '#C3DCD4', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+                            onPress={handleCallApplicant}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="call" size={16} color="#133E32" style={{ marginRight: 6 }} />
+                            <Text style={{ color: '#133E32', fontWeight: '800', fontSize: 13 }}>Call Applicant</Text>
+                        </TouchableOpacity>
+                    </View>
 
                     {/* Verified Profile Row */}
                     <View style={styles.verifiedRow}>
                         <Ionicons name="shield-checkmark-outline" size={14} color="#475569" style={{ marginRight: 4 }} />
                         <Text style={styles.verifiedText}>Verified Profile</Text>
                     </View>
-
-                    {/* Applicant Badges */}
-                    <View style={styles.tagsRow}>
-                        <View style={styles.tagGreen}>
-                            <Text style={styles.tagGreenText}>New Applicant</Text>
-                        </View>
-                        <View style={styles.tagGrey}>
-                            <Text style={styles.tagGreyText}>Eco-conscious</Text>
-                        </View>
-                    </View>
                 </View>
 
                 {/* 2. Request Details */}
                 <Text style={styles.sectionTitle}>Request Details</Text>
+
+                {/* Remaining Spaces Box */}
+                <View style={[styles.detailCard, { backgroundColor: isFilled ? '#FEF2F2' : '#F0FDF4', borderColor: isFilled ? '#FECACA' : '#BBF7D0' }]}>
+                    <View style={[styles.detailIconBox, { backgroundColor: isFilled ? '#FEE2E2' : '#DCFCE7' }]}>
+                        <Ionicons name={isFilled ? "alert-circle" : "checkmark-circle"} size={20} color={isFilled ? "#DC2626" : "#166534"} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.detailLabel, { color: isFilled ? '#991B1B' : '#166534' }]}>AVAILABILITY STATUS</Text>
+                        <Text style={[styles.detailValue, { color: isFilled ? '#DC2626' : '#166534' }]}>
+                            {isFilled ? 'Already Filled (0 Spaces Remaining)' : `${remaining} Space(s) Remaining`}
+                        </Text>
+                    </View>
+                </View>
 
                 {/* Property Detail Box */}
                 <View style={styles.detailCard}>
@@ -94,7 +146,7 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
                         <Ionicons name="bed-outline" size={18} color="#133E32" />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.detailLabel}>ROOM TYPE</Text>
+                        <Text style={styles.detailLabel}>ROOM TYPE / NATURE</Text>
                         <Text style={styles.detailValue}>{currentRequest.roomType}</Text>
                     </View>
                 </View>
@@ -113,11 +165,11 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
                 {/* Occupants Box */}
                 <View style={styles.detailCard}>
                     <View style={styles.detailIconBox}>
-                        <Ionicons name="person-outline" size={18} color="#133E32" />
+                        <Ionicons name="people-outline" size={18} color="#133E32" />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.detailLabel}>OCCUPANTS</Text>
-                        <Text style={styles.detailValue}>{currentRequest.occupants || '1 Person'}</Text>
+                        <Text style={styles.detailLabel}>REQUESTED OCCUPANTS</Text>
+                        <Text style={styles.detailValue}>{currentRequest.occupantsCount || 1} Occupant(s)</Text>
                     </View>
                 </View>
 
@@ -138,8 +190,12 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
                     <Text style={styles.rejectBtnText}>Reject</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.acceptBtn} onPress={handleAcceptClick} activeOpacity={0.85}>
-                    <Text style={styles.acceptBtnText}>Accept Request</Text>
+                <TouchableOpacity
+                    style={[styles.acceptBtn, isFilled && { backgroundColor: '#94A3B8' }]}
+                    onPress={handleAcceptClick}
+                    activeOpacity={isFilled ? 1 : 0.85}
+                >
+                    <Text style={styles.acceptBtnText}>{isFilled ? 'Already Filled' : 'Accept Request'}</Text>
                 </TouchableOpacity>
             </View>
         </SafeAreaView>
