@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import HeaderBar from '../../components/HeaderBar';
+import api from '../../services/api';
 
 export default function OwnerPropertiesScreen({
     onNavigateTab,
@@ -19,51 +20,44 @@ export default function OwnerPropertiesScreen({
     activeTab = 'Properties'
 }) {
     const [filterStatus, setFilterStatus] = useState('ALL');
-    const [properties, setProperties] = useState([
-        {
-            id: 'p1',
-            title: 'Green Valley Boarding',
-            location: 'Moratuwa, Sri Lanka',
-            price: 15000,
-            type: 'Shared & Single Rooms',
-            totalRooms: 6,
-            occupiedRooms: 4,
-            availableRooms: 2,
-            status: 'ACTIVE',
-            rating: 4.8,
-            imageUrl: 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=800&q=80'
-        },
-        {
-            id: 'p2',
-            title: 'Sunrise Student Annex',
-            location: 'Katubedda, Moratuwa',
-            price: 18000,
-            type: 'Single Rooms',
-            totalRooms: 4,
-            occupiedRooms: 3,
-            availableRooms: 1,
-            status: 'ACTIVE',
-            rating: 4.9,
-            imageUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80'
-        },
-        {
-            id: 'p3',
-            title: 'Royal Villa Boarding',
-            location: 'Rawatawatta, Moratuwa',
-            price: 22000,
-            type: 'Luxury Suite',
-            totalRooms: 5,
-            occupiedRooms: 0,
-            availableRooms: 5,
-            status: 'DRAFT',
-            rating: 4.7,
-            imageUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80'
+    const [apiProperties, setApiProperties] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        loadOwnerProperties();
+    }, []);
+
+    const loadOwnerProperties = async () => {
+        try {
+            setLoading(true);
+            const data = await api.properties.getMyProperties();
+            if (data) {
+                setApiProperties(data);
+            }
+        } catch (error) {
+            console.log('Error loading owner properties:', error);
+        } finally {
+            setLoading(false);
         }
-    ]);
+    };
+
+    const properties = apiProperties.map(p => ({
+        id: p.id.toString(),
+        title: p.title,
+        location: (p.city || '') + (p.address ? ' • ' + p.address : ''),
+        price: p.monthlyRent || 0,
+        type: p.rooms && p.rooms.length > 0 ? `${p.rooms.length} Room(s)` : 'Boarding',
+        totalRooms: p.rooms ? p.rooms.reduce((acc, r) => acc + (r.totalCapacity || r.totalSpaces || 0), 0) : 0,
+        occupiedRooms: p.rooms ? p.rooms.reduce((acc, r) => acc + ((r.totalCapacity || r.totalSpaces || 0) - (r.remainingSpaces || 0)), 0) : 0,
+        availableRooms: p.rooms ? p.rooms.reduce((acc, r) => acc + (r.remainingSpaces || 0), 0) : 0,
+        status: p.status || 'APPROVED',
+        rating: p.rating || 4.8,
+        imageUrl: p.imageUrls && p.imageUrls.length > 0 ? p.imageUrls[0] : 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=800&q=80'
+    }));
 
     const filteredProperties = properties.filter((p) => {
-        if (filterStatus === 'ACTIVE') return p.status === 'ACTIVE';
-        if (filterStatus === 'DRAFT') return p.status === 'DRAFT';
+        if (filterStatus === 'ACTIVE') return p.status === 'APPROVED' || p.status === 'ACTIVE';
+        if (filterStatus === 'DRAFT') return p.status === 'PENDING' || p.status === 'DRAFT';
         return true;
     });
 

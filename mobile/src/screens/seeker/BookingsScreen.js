@@ -85,17 +85,17 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
         id: b.id.toString(),
         title: b.propertyTitle || 'Boarding Request',
         location: b.roomType ? `${b.roomType} Room` : 'Property Room',
-        date: b.moveInDate ? new Date(b.moveInDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Sep 10, 2026',
+        date: b.moveInDate ? new Date(b.moveInDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
         roomType: b.roomType || 'Room Request',
         status: b.status === 'APPROVED' ? 'ACCEPTED' : b.status,
-        price: b.monthlyPrice || 25000,
+        price: b.monthlyPrice || 0,
         imageUrl: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80",
         description: b.notes || 'Booking Request',
-        ownerName: b.seekerName || 'Owner',
-        ownerPhone: b.seekerPhone || ''
+        ownerName: 'Owner',
+        ownerPhone: ''
     }));
 
-    const allBookings = mappedApiBookings.length > 0 ? mappedApiBookings : (bookings.length > 0 ? bookings : defaultBookings);
+    const allBookings = mappedApiBookings.length > 0 ? mappedApiBookings : bookings;
 
     const filteredBookings = allBookings.filter((b) => {
         if (activeTabFilter === 'Pending') return b.status === 'PENDING';

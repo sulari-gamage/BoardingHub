@@ -17,7 +17,7 @@ import HeaderBar from '../../components/HeaderBar';
 import { NEAR_LOCATION_BOARDINGS, POPULAR_BOARDINGS } from '../../data/mockBoardings';
 import api from '../../services/api';
 
-export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications }) {
+export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications, currentUser }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('ALL');
     const [activeTab, setActiveTab] = useState('HOME');
@@ -42,7 +42,7 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
                 setProperties([]);
             }
         } catch (error) {
-            console.log('Error loading properties from API, using fallback data:', error);
+            console.log('Error loading properties from API:', error);
             setProperties([]);
         } finally {
             setLoading(false);
@@ -52,7 +52,7 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
     const displayBoardings = properties.length > 0 ? properties.map(p => ({
         id: p.id,
         title: p.title,
-        location: p.city + ' • ' + p.address,
+        location: (p.city || '') + (p.address ? ' • ' + p.address : ''),
         rent: `Rs. ${p.monthlyRent?.toLocaleString() || '25,000'}/mo`,
         rating: p.rating || 4.8,
         reviewsCount: p.reviewsCount || 12,
@@ -76,6 +76,8 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
         }
     };
 
+    const userName = currentUser?.name ? currentUser.name.split(' ')[0] : 'User';
+
     return (
         <SafeAreaView style={styles.container}>
             {/* Standard Dark Emerald Header Bar with BoardingHub Logo */}
@@ -97,7 +99,7 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
             >
                 {/* Greeting Banner */}
                 <View style={styles.greetingSection}>
-                    <Text style={styles.greetingText}>Hello, Sulari 👋</Text>
+                    <Text style={styles.greetingText}>Hello, {userName} 👋</Text>
                     <Text style={styles.subGreetingText}>Find your perfect home</Text>
                 </View>
 

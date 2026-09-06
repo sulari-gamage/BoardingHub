@@ -256,6 +256,21 @@ export const api = {
             return await request(`/properties/${propertyId}/reviews`, { method: 'GET' });
         },
     },
+
+    // Admin Services
+    admin: {
+        getPendingProperties: async () => {
+            return await request('/admin/properties/pending', { method: 'GET' });
+        },
+
+        approveProperty: async (id) => {
+            return await request(`/admin/properties/${id}/approve`, { method: 'PATCH' });
+        },
+
+        rejectProperty: async (id) => {
+            return await request(`/admin/properties/${id}/reject`, { method: 'PATCH' });
+        },
+    },
 };
 
 export default api;

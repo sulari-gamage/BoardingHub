@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -15,6 +15,9 @@ import {
 } from 'react-native';
 import api from '../../services/api';
 
+const REMEMBER_EMAIL_KEY = '@boardinghub_remember_email';
+const REMEMBER_ROLE_KEY = '@boardinghub_remember_role';
+
 export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
     const [selectedRole, setSelectedRole] = useState('Seekers'); // Seekers | Owners | Admins
     const [email, setEmail] = useState('');
@@ -23,6 +26,28 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
     const [rememberMe, setRememberMe] = useState(false);
     const [loading, setLoading] = useState(false);
 
+    useEffect(() => {
+        loadRememberedCredentials();
+    }, []);
+
+    const loadRememberedCredentials = async () => {
+        try {
+            if (typeof window !== 'undefined' && window.localStorage) {
+                const savedEmail = window.localStorage.getItem(REMEMBER_EMAIL_KEY);
+                const savedRole = window.localStorage.getItem(REMEMBER_ROLE_KEY);
+                if (savedEmail) {
+                    setEmail(savedEmail);
+                    setRememberMe(true);
+                }
+                if (savedRole) {
+                    setSelectedRole(savedRole);
+                }
+            }
+        } catch (err) {
+            console.log('Error loading remembered credentials:', err);
+        }
+    };
+
     const handleSignIn = async () => {
         if (!email || !password) {
             Alert.alert('Required Fields', 'Please enter your email and password.');
@@ -30,6 +55,18 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
         }
         try {
             setLoading(true);
+
+            // Handle Remember Me persistence
+            if (typeof window !== 'undefined' && window.localStorage) {
+                if (rememberMe) {
+                    window.localStorage.setItem(REMEMBER_EMAIL_KEY, email.trim());
+                    window.localStorage.setItem(REMEMBER_ROLE_KEY, selectedRole);
+                } else {
+                    window.localStorage.removeItem(REMEMBER_EMAIL_KEY);
+                    window.localStorage.removeItem(REMEMBER_ROLE_KEY);
+                }
+            }
+
             const response = await api.auth.login(email.trim(), password);
             Alert.alert('Success', `Welcome back, ${response.name || 'User'}!`);
             if (onLoginSuccess) {

@@ -18,8 +18,12 @@ export default function OwnerProfileScreen({
     onSwitchToSeeker,
     onLogout,
     onOpenNotifications,
-    activeTab = 'Profile'
+    activeTab = 'Profile',
+    currentUser
 }) {
+    const name = currentUser?.name || 'Property Owner';
+    const email = currentUser?.email || 'owner@boardinghub.lk';
+
     return (
         <SafeAreaView style={styles.container}>
             {/* Standardized HeaderBar */}
@@ -43,9 +47,9 @@ export default function OwnerProfileScreen({
                         </View>
                     </View>
 
-                    {/* Name & Join Date */}
-                    <Text style={styles.userName}>Sunethra Silva</Text>
-                    <Text style={styles.joinDate}>Joined October 2021</Text>
+                    {/* Name & Email */}
+                    <Text style={styles.userName}>{name}</Text>
+                    <Text style={styles.joinDate}>{email}</Text>
 
                     {/* Property & Verification Badges */}
                     <View style={styles.badgeRow}>

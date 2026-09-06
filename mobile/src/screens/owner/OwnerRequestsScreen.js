@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -9,9 +9,11 @@ import {
     Image,
     Alert,
     Linking,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import HeaderBar from '../../components/HeaderBar';
+import api from '../../services/api';
 
 export default function OwnerRequestsScreen({
     onNavigateTab,
@@ -24,52 +26,43 @@ export default function OwnerRequestsScreen({
     activeTab = 'Requests'
 }) {
     const [filterCategory, setFilterCategory] = useState('ALL');
-    const [localRequests, setLocalRequests] = useState([
-        {
-            id: 'req_1',
-            tenantName: 'Sulari Gamage',
-            tenantPhone: '+94 77 987 6543',
-            avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
-            propertyTitle: 'Green Valley Boarding',
-            roomType: 'Shared Room (Room 101)',
-            occupantsCount: 2,
-            remainingSpaces: 2,
-            moveInDate: 'Sep 10, 2026',
-            monthlyPrice: 15000,
-            status: 'PENDING',
-            dateRequested: 'Today, 09:30 AM'
-        },
-        {
-            id: 'req_2',
-            tenantName: 'Kamal Fernando',
-            tenantPhone: '+94 71 234 5678',
-            avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
-            propertyTitle: 'Sunrise Student Annex',
-            roomType: 'Single Room (Room 204)',
-            occupantsCount: 1,
-            remainingSpaces: 0, // Already Filled
-            moveInDate: 'Sep 15, 2026',
-            monthlyPrice: 18000,
-            status: 'PENDING',
-            dateRequested: 'Yesterday'
-        },
-        {
-            id: 'req_3',
-            tenantName: 'Anjali Perera',
-            tenantPhone: '+94 76 555 4321',
-            avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80',
-            propertyTitle: 'Royal Villa Boarding',
-            roomType: 'Whole House / Annex',
-            occupantsCount: 3,
-            remainingSpaces: 1,
-            moveInDate: 'Oct 01, 2026',
-            monthlyPrice: 45000,
-            status: 'PENDING',
-            dateRequested: '3 days ago'
-        }
-    ]);
+    const [apiRequests, setApiRequests] = useState([]);
+    const [loading, setLoading] = useState(false);
 
-    const displayRequests = requestsList && requestsList.length > 0 ? requestsList : localRequests;
+    useEffect(() => {
+        loadOwnerRequests();
+    }, []);
+
+    const loadOwnerRequests = async () => {
+        try {
+            setLoading(true);
+            const data = await api.bookings.getOwnerRequests();
+            if (data) {
+                setApiRequests(data);
+            }
+        } catch (error) {
+            console.log('Error loading owner booking requests:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const mappedRequests = apiRequests.map(r => ({
+        id: r.id.toString(),
+        tenantName: r.seekerName || 'Applicant',
+        tenantPhone: r.seekerPhone || '+94 77 000 0000',
+        avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
+        propertyTitle: r.propertyTitle || 'Property',
+        roomType: r.roomType ? `${r.roomType} Room` : 'Room Request',
+        occupantsCount: r.occupantsCount || 1,
+        remainingSpaces: r.remainingSpaces !== undefined ? r.remainingSpaces : 1,
+        moveInDate: r.moveInDate ? new Date(r.moveInDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Flexible',
+        monthlyPrice: r.monthlyPrice || 0,
+        status: r.status,
+        dateRequested: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'Recently'
+    }));
+
+    const displayRequests = mappedRequests.length > 0 ? mappedRequests : (requestsList || []);
 
     const handleWhatsAppApplicant = (phone) => {
         const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
@@ -83,7 +76,7 @@ export default function OwnerRequestsScreen({
         Linking.openURL(url).catch(() => Alert.alert('Phone Error', 'Could not open phone dialer.'));
     };
 
-    const handleAccept = (item) => {
+    const handleAccept = async (item) => {
         const remaining = item.remainingSpaces !== undefined ? item.remainingSpaces : 1;
         const requestedOccupants = item.occupantsCount || 1;
 
@@ -97,27 +90,27 @@ export default function OwnerRequestsScreen({
             return;
         }
 
-        if (onApproveRequest) {
-            onApproveRequest(item.id || item);
-        } else {
-            setLocalRequests(localRequests.map(r => {
-                if (r.id === item.id) {
-                    const newRemaining = Math.max(0, remaining - requestedOccupants);
-                    return { ...r, status: 'APPROVED', remainingSpaces: newRemaining };
-                }
-                return r;
-            }));
+        try {
+            await api.bookings.updateStatus(item.id, 'APPROVED');
+            Alert.alert('Request Approved 🎉', `Approved request for ${item.tenantName}!`);
+            loadOwnerRequests();
+            if (onApproveRequest) onApproveRequest(item.id);
+        } catch (error) {
+            console.log('Error approving request:', error);
+            Alert.alert('Approval Failed', error.message || 'Could not approve request.');
         }
-        Alert.alert('Request Approved 🎉', `Approved ${requestedOccupants} space(s)! Remaining spaces automatically updated.`);
     };
 
-    const handleReject = (id) => {
-        if (onRejectRequest) {
-            onRejectRequest(id);
-        } else {
-            setLocalRequests(localRequests.map(r => r.id === id ? { ...r, status: 'REJECTED' } : r));
+    const handleReject = async (id) => {
+        try {
+            await api.bookings.updateStatus(id, 'REJECTED');
+            Alert.alert('Request Declined', 'Booking request was declined.');
+            loadOwnerRequests();
+            if (onRejectRequest) onRejectRequest(id);
+        } catch (error) {
+            console.log('Error declining request:', error);
+            Alert.alert('Action Failed', error.message || 'Could not decline request.');
         }
-        Alert.alert('Request Declined', 'Booking request declined.');
     };
 
     // Filter & Sort by highest number of requested occupants first (descending)

@@ -44,39 +44,13 @@ import AdminMoreScreen from './src/screens/admin/AdminMoreScreen';
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('LOGIN');
   const [userRole, setUserRole] = useState('SEEKER'); // 'SEEKER' | 'OWNER' | 'ADMIN'
+  const [currentUser, setCurrentUser] = useState(null); // populated from API on login/register
   const [selectedBoarding, setSelectedBoarding] = useState(null);
   const [selectedOwnerProperty, setSelectedOwnerProperty] = useState(null);
   const [selectedOwnerRequest, setSelectedOwnerRequest] = useState(null);
   const [selectedAdminUser, setSelectedAdminUser] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [previousScreen, setPreviousScreen] = useState('HOME');
-  const [userBookings, setUserBookings] = useState([]);
-  const [ownerRequests, setOwnerRequests] = useState([
-    {
-      id: 'req_1',
-      tenantName: 'Sulari Gamage',
-      tenantPhone: '+94 77 987 6543',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
-      propertyTitle: 'Green Valley Boarding',
-      roomType: 'Shared Room',
-      moveInDate: 'Sep 10, 2026',
-      monthlyPrice: 15000,
-      status: 'PENDING',
-      dateRequested: 'Today, 09:30 AM'
-    },
-    {
-      id: 'req_2',
-      tenantName: 'Kamal Fernando',
-      tenantPhone: '+94 71 234 5678',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
-      propertyTitle: 'Sunrise Student Annex',
-      roomType: 'Single Room',
-      moveInDate: 'Sep 15, 2026',
-      monthlyPrice: 18000,
-      status: 'APPROVED',
-      dateRequested: 'Yesterday'
-    }
-  ]);
 
   // Navigation Handlers
   const handleSelectBoarding = (boarding, origin = 'HOME') => {
@@ -90,53 +64,10 @@ export default function App() {
     setCurrentScreen('OWNER_PROPERTY_DETAIL');
   };
 
-  const handleAddBooking = (newBooking) => {
-    setUserBookings((prev) => [newBooking, ...prev]);
-    setSelectedBooking(newBooking);
-
-    // Also add to owner requests list
-    const newOwnerRequest = {
-      id: `req_${Date.now()}`,
-      tenantName: 'Current Seeker',
-      tenantPhone: '+94 77 000 1122',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
-      propertyTitle: newBooking.title || 'Green Valley Boarding',
-      roomType: newBooking.roomType || 'Shared Room',
-      moveInDate: newBooking.date || 'Sep 10, 2026',
-      monthlyPrice: newBooking.price || 15000,
-      status: 'PENDING',
-      dateRequested: 'Just now'
-    };
-    setOwnerRequests((prev) => [newOwnerRequest, ...prev]);
-
+  // After a booking is placed, navigate to confirmation screen
+  const handleAddBooking = (booking) => {
+    setSelectedBooking(booking);
     setCurrentScreen('BOOKING_CONFIRMATION');
-  };
-
-  const handleApproveRequest = (requestId) => {
-    setOwnerRequests((prev) =>
-      prev.map((r) => {
-        if (r.id === requestId) {
-          const occupants = r.occupantsCount || 1;
-          const currentRemaining = r.remainingSpaces !== undefined ? r.remainingSpaces : 1;
-          const newRemaining = Math.max(0, currentRemaining - occupants);
-          return { ...r, status: 'APPROVED', remainingSpaces: newRemaining };
-        }
-        return r;
-      })
-    );
-    // Also update seeker booking status if matching
-    setUserBookings((prev) =>
-      prev.map((b) => (b.id === requestId || b.status === 'PENDING' ? { ...b, status: 'APPROVED' } : b))
-    );
-  };
-
-  const handleRejectRequest = (requestId) => {
-    setOwnerRequests((prev) =>
-      prev.map((r) => (r.id === requestId ? { ...r, status: 'REJECTED' } : r))
-    );
-    setUserBookings((prev) =>
-      prev.map((b) => (b.id === requestId ? { ...b, status: 'REJECTED' } : b))
-    );
   };
 
   const handleViewBookingDetails = (booking) => {
@@ -210,6 +141,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    setCurrentUser(null);
     setUserRole('SEEKER');
     setCurrentScreen('LOGIN');
   };
@@ -222,7 +154,8 @@ export default function App() {
       {currentScreen === 'REGISTER' ? (
         <RegisterScreen
           onNavigateToLogin={() => setCurrentScreen('LOGIN')}
-          onRegisterSuccess={(role) => {
+          onRegisterSuccess={(role, userData) => {
+            setCurrentUser(userData);
             if (role === 'Admins' || role === 'Admin') {
               setUserRole('ADMIN');
               setCurrentScreen('ADMIN_DASHBOARD');
@@ -237,7 +170,8 @@ export default function App() {
         />
       ) : currentScreen === 'LOGIN' ? (
         <LoginScreen
-          onLoginSuccess={(role) => {
+          onLoginSuccess={(role, userData) => {
+            setCurrentUser(userData);
             if (role === 'Admins' || role === 'Admin') {
               setUserRole('ADMIN');
               setCurrentScreen('ADMIN_DASHBOARD');
@@ -254,6 +188,7 @@ export default function App() {
       ) : currentScreen === 'OWNER_HOME' ? (
         <OwnerHomeScreen
           activeTab="Dashboard"
+          currentUser={currentUser}
           onNavigateTab={handleNavigateTab}
           onOpenNotifications={handleOpenNotifications}
           onViewAllRequests={() => setCurrentScreen('OWNER_REQUESTS')}
@@ -315,6 +250,7 @@ export default function App() {
       ) : currentScreen === 'OWNER_PROFILE' ? (
         <OwnerProfileScreen
           activeTab="Profile"
+          currentUser={currentUser}
           onNavigateTab={handleNavigateTab}
           onSwitchToSeeker={handleSwitchToSeeker}
           onLogout={handleLogout}
@@ -395,6 +331,7 @@ export default function App() {
         />
       ) : currentScreen === 'PROFILE' ? (
         <ProfileScreen
+          currentUser={currentUser}
           onLogout={handleLogout}
           onNavigateTab={handleNavigateTab}
           onOpenNotifications={handleOpenNotifications}

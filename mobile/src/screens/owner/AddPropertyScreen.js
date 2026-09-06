@@ -10,28 +10,79 @@ import {
     TextInput,
     Image,
     Alert,
-    Platform
+    Platform,
+    Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import api from '../../services/api';
 
 export default function AddPropertyScreen({ onBack, onSaveProperty }) {
     // Current active wizard step: 1 (Info), 2 (Location), 3 (Amenities), 4 (Photos)
     const [currentStep, setCurrentStep] = useState(1);
 
-    // Step 1 Form State (Property Info)
-    const [propertyName, setPropertyName] = useState('Green Valley Boarding');
+    // Step 1 Form State (Property Info & Certificate Gallery Modal)
+    const CERTIFICATE_GALLERY_ITEMS = [
+        { id: 'gal_1', name: 'LEED_Eco_Building_Certificate_2024.jpg', title: 'LEED Eco Building Pass', uri: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=600&q=80', size: '2.4 MB' },
+        { id: 'gal_2', name: 'Solar_Power_Permit_Moratuwa.png', title: 'Solar Energy Grid Permit', uri: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=600&q=80', size: '1.8 MB' },
+        { id: 'gal_3', name: 'Fire_Safety_Inspection_Passed.pdf', title: 'Municipal Fire Safety Pass', uri: 'https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?auto=format&fit=crop&w=600&q=80', size: '3.1 MB' },
+        { id: 'gal_4', name: 'Water_Quality_Audit_2024.jpg', title: 'Water Quality & Safety Audit', uri: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=600&q=80', size: '1.2 MB' },
+        { id: 'gal_5', name: 'Waste_Recycling_Eco_Badge.png', title: 'Zero Waste & Recycling Badge', uri: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=600&q=80', size: '950 KB' },
+    ];
+
+    const [propertyName, setPropertyName] = useState('');
     const [propertyNature, setPropertyNature] = useState('ROOM_BASED'); // ROOM_BASED or WHOLE_HOUSE
     const [description, setDescription] = useState('');
     const [genderPreference, setGenderPreference] = useState('Mixed');
-    const [certifications, setCertifications] = useState(['LEED Certified']);
+    const [certifications, setCertifications] = useState([]);
+    const [uploadedCertPhotos, setUploadedCertPhotos] = useState([]);
     const [newCertText, setNewCertText] = useState('');
     const [isCertModalVisible, setIsCertModalVisible] = useState(false);
+    const [isGalleryModalVisible, setIsGalleryModalVisible] = useState(false);
+    const [selectedGalleryItemIds, setSelectedGalleryItemIds] = useState(['gal_1']);
 
-    // Step 2 Form State (Location)
-    const [searchAddress, setSearchAddress] = useState('');
+    // Step 2 Form State (Location & Dynamic Map Geocoding)
+    const LOCATION_PRESETS = [
+        { label: 'Moratuwa (Katubedda)', city: 'Moratuwa', address: '123 Katubedda Road, Moratuwa', postalCode: '10400', lat: 6.7730, lng: 79.8816, image: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80' },
+        { label: 'Colombo 07 (Cinnamon Gardens)', city: 'Colombo', address: '45 Ward Place, Colombo 07', postalCode: '00700', lat: 6.9147, lng: 79.8647, image: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80' },
+        { label: 'Peradeniya (Kandy)', city: 'Kandy', address: '88 Galaha Road, Peradeniya', postalCode: '20400', lat: 7.2606, lng: 80.5976, image: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80' },
+        { label: 'Kelaniya (Dalugama)', city: 'Kelaniya', address: '12 Kandy Road, Dalugama, Kelaniya', postalCode: '11600', lat: 6.9553, lng: 79.9174, image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80' },
+        { label: 'Malabe (SLIIT Campus)', city: 'Malabe', address: '99 Kaduwela Road, Malabe', postalCode: '10115', lat: 6.9061, lng: 79.9696, image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80' },
+        { label: 'Nugegoda (USJ Area)', city: 'Nugegoda', address: '55 High Level Road, Nugegoda', postalCode: '10250', lat: 6.8719, lng: 79.8885, image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80' },
+    ];
+
+    const [searchAddress, setSearchAddress] = useState('123 Katubedda Road, Moratuwa');
     const [city, setCity] = useState('Moratuwa');
     const [postalCode, setPostalCode] = useState('10400');
+    const [mapCoords, setMapCoords] = useState({ lat: 6.7730, lng: 79.8816 });
+    const [mapImage, setMapImage] = useState('https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80');
     const [isPrimaryHub, setIsPrimaryHub] = useState(true);
+
+    const handleSelectPreset = (preset) => {
+        setSearchAddress(preset.address);
+        setCity(preset.city);
+        setPostalCode(preset.postalCode);
+        setMapCoords({ lat: preset.lat, lng: preset.lng });
+        setMapImage(preset.image);
+    };
+
+    const handleSearchChange = (text) => {
+        setSearchAddress(text);
+        const textLower = text.toLowerCase();
+        const matched = LOCATION_PRESETS.find(p =>
+            p.city.toLowerCase().includes(textLower) ||
+            p.label.toLowerCase().includes(textLower) ||
+            p.address.toLowerCase().includes(textLower)
+        );
+        if (matched) {
+            setCity(matched.city);
+            setPostalCode(matched.postalCode);
+            setMapCoords({ lat: matched.lat, lng: matched.lng });
+            setMapImage(matched.image);
+        } else if (text.trim()) {
+            setCity(text.split(',')[0] || text);
+        }
+    };
 
     // Step 3 Form State (Amenities Selection)
     const [selectedAmenities, setSelectedAmenities] = useState({
@@ -65,7 +116,136 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
         setCertifications(certifications.filter((c) => c !== cert));
     };
 
-    const handleNext = () => {
+    const openDeviceGalleryPicker = async (onFileSelected, acceptType = 'image/*') => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Needed', 'Please allow access to your device photo gallery to pick photos and certificates.');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: false,
+                quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                const asset = result.assets[0];
+                const fileName = asset.fileName || asset.uri.split('/').pop() || `photo_${Date.now()}.jpg`;
+                onFileSelected({
+                    name: fileName,
+                    size: asset.fileSize || 0,
+                    type: asset.mimeType || 'image/jpeg',
+                    uri: asset.uri,
+                });
+            }
+        } catch (err) {
+            console.log('Error launching native phone gallery:', err);
+            if (typeof document !== 'undefined') {
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = acceptType;
+                fileInput.onchange = (event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            onFileSelected({
+                                name: file.name,
+                                size: file.size,
+                                type: file.type,
+                                uri: e.target?.result || URL.createObjectURL(file),
+                            });
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                };
+                fileInput.click();
+            }
+        }
+    };
+
+    const toggleGalleryItemSelection = (id) => {
+        if (selectedGalleryItemIds.includes(id)) {
+            setSelectedGalleryItemIds(selectedGalleryItemIds.filter(i => i !== id));
+        } else {
+            setSelectedGalleryItemIds([...selectedGalleryItemIds, id]);
+        }
+    };
+
+    const handleConfirmGallerySelection = () => {
+        const selectedItems = CERTIFICATE_GALLERY_ITEMS.filter(item => selectedGalleryItemIds.includes(item.id));
+        if (selectedItems.length === 0) {
+            Alert.alert('No Selection', 'Please select at least one certificate from the gallery.');
+            return;
+        }
+        const newUploadedCerts = selectedItems.map(item => ({
+            id: `cert_${Date.now()}_${item.id}`,
+            name: item.name,
+            title: item.title,
+            uri: item.uri,
+            size: item.size
+        }));
+
+        const existingNames = uploadedCertPhotos.map(c => c.name);
+        const filteredNew = newUploadedCerts.filter(c => !existingNames.includes(c.name));
+
+        setUploadedCertPhotos(prev => [...prev, ...filteredNew]);
+        setIsGalleryModalVisible(false);
+        Alert.alert('Certificates Selected 🎉', `Added ${selectedItems.length} certificate(s) from device gallery.`);
+    };
+
+    const handleBrowseCustomDeviceFile = () => {
+        openDeviceGalleryPicker((file) => {
+            const certItem = {
+                id: `cert_${Date.now()}`,
+                name: file.name || 'Custom_Device_Certificate.jpg',
+                uri: file.uri,
+                size: 'Device File'
+            };
+            setUploadedCertPhotos((prev) => [...prev, certItem]);
+            setIsGalleryModalVisible(false);
+            Alert.alert('Device File Uploaded 📄', `Loaded "${certItem.name}" directly from device storage.`);
+        }, 'image/*,.pdf');
+    };
+
+    const handlePickCertPhoto = () => {
+        openDeviceGalleryPicker((file) => {
+            const certItem = {
+                id: `cert_${Date.now()}`,
+                name: file.name || `Certificate_${Date.now()}.jpg`,
+                title: file.name ? file.name.replace(/\.[^/.]+$/, "") : 'Phone Gallery Document',
+                uri: file.uri,
+                size: file.size ? `${(file.size / 1024).toFixed(1)} KB` : 'Real Photo'
+            };
+            setUploadedCertPhotos((prev) => [...prev, certItem]);
+        }, 'image/*,.pdf');
+    };
+
+    const handlePickCoverPhoto = () => {
+        openDeviceGalleryPicker((file) => {
+            setCoverImage(file.uri);
+        }, 'image/*');
+    };
+
+    const handlePickAdditionalPhoto = () => {
+        openDeviceGalleryPicker((file) => {
+            const newPhoto = {
+                id: `photo_${Date.now()}`,
+                name: file.name || 'Gallery_Photo.jpg',
+                uri: file.uri,
+                isUploading: false,
+            };
+            setAdditionalPhotos((prev) => [...prev, newPhoto]);
+        }, 'image/*');
+    };
+
+    const handleRemoveCertPhoto = (id) => {
+        setUploadedCertPhotos(uploadedCertPhotos.filter((item) => item.id !== id));
+    };
+
+    const handleNext = async () => {
         if (currentStep === 1 && !propertyName.trim()) {
             Alert.alert('Required Field', 'Please enter a property name.');
             return;
@@ -74,24 +254,58 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
             setCurrentStep(currentStep + 1);
         } else {
             // Step 4: Publish Property
-            const newProperty = {
-                id: `p_${Date.now()}`,
-                title: propertyName,
-                propertyNature: propertyNature,
-                location: `${city}, Sri Lanka`,
-                price: propertyNature === 'WHOLE_HOUSE' ? 45000 : 20000,
-                totalRooms: propertyNature === 'WHOLE_HOUSE' ? 1 : 4,
-                occupiedRooms: 0,
-                availableRooms: propertyNature === 'WHOLE_HOUSE' ? 1 : 4,
-                status: 'ACTIVE',
-                rating: 5.0,
-                imageUrl: coverImage,
-                genderPreference,
-                amenities: Object.keys(selectedAmenities).filter((k) => selectedAmenities[k]),
-            };
+            try {
+                // 1. Map GenderPreference to backend Enum (ANY, MALE_ONLY, FEMALE_ONLY)
+                let mappedGender = 'ANY';
+                if (genderPreference === 'Female Only') mappedGender = 'FEMALE_ONLY';
+                else if (genderPreference === 'Male Only') mappedGender = 'MALE_ONLY';
+                else if (genderPreference === 'Mixed') mappedGender = 'ANY';
 
-            if (onSaveProperty) onSaveProperty(newProperty);
-            else Alert.alert('Success 🎉', 'New property listed successfully!');
+                // 2. Geocode city location coordinates from dynamic map selection
+                const lat = mapCoords.lat || 6.773;
+                const lng = mapCoords.lng || 79.8816;
+
+                // 3. Prepare Image URLs list
+                const imagesList = [coverImage];
+                additionalPhotos.forEach(p => {
+                    if (p.uri && !imagesList.includes(p.uri)) {
+                        imagesList.push(p.uri);
+                    }
+                });
+
+                // 4. Construct RoomRequest DTO (roomType, monthlyPrice, totalCapacity, remainingSpaces)
+                const rentVal = propertyNature === 'WHOLE_HOUSE' ? 45000 : 20000;
+                const capacity = propertyNature === 'WHOLE_HOUSE' ? 1 : 4;
+                const roomTypeLabel = propertyNature === 'WHOLE_HOUSE' ? 'Whole House / Annex' : 'Shared Room';
+
+                const propertyPayload = {
+                    title: propertyName,
+                    description: description || 'Eco-friendly student boarding house with modern amenities.',
+                    address: searchAddress || '123 University Road',
+                    city: city || 'Moratuwa',
+                    genderPreference: mappedGender,
+                    monthlyRent: parseFloat(rentVal),
+                    latitude: lat,
+                    longitude: lng,
+                    imageUrls: imagesList,
+                    rooms: [
+                        {
+                            roomType: roomTypeLabel,
+                            monthlyPrice: parseFloat(rentVal),
+                            totalCapacity: parseInt(capacity),
+                            remainingSpaces: parseInt(capacity),
+                        }
+                    ]
+                };
+
+                const savedProperty = await api.properties.create(propertyPayload);
+                Alert.alert('Success 🎉', 'New property submitted successfully for admin review!');
+                if (onSaveProperty) onSaveProperty(savedProperty);
+                else if (onBack) onBack();
+            } catch (err) {
+                console.log('Error creating property:', err);
+                Alert.alert('Submission Error', err.message || 'Could not submit property.');
+            }
         }
     };
 
@@ -268,8 +482,41 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                             })}
                         </View>
 
-                        {/* Eco-Certifications / Optional Tags */}
-                        <Text style={styles.fieldLabel}>Eco-Certifications (Optional)</Text>
+                        {/* Eco-Certifications / Optional Tags & Gallery Upload */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+                            <Text style={[styles.fieldLabel, { marginTop: 0 }]}>Eco-Certifications & Documents</Text>
+                            <TouchableOpacity
+                                onPress={handlePickCertPhoto}
+                                style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#CBD5E1' }}
+                                activeOpacity={0.8}
+                            >
+                                <Ionicons name="images-outline" size={15} color="#133E32" style={{ marginRight: 4 }} />
+                                <Text style={{ color: '#133E32', fontSize: 12, fontWeight: '700' }}>Upload from Gallery</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Uploaded Device Gallery Certification Documents */}
+                        {uploadedCertPhotos.length > 0 && (
+                            <View style={{ marginVertical: 8, gap: 8 }}>
+                                {uploadedCertPhotos.map((certItem) => (
+                                    <View key={certItem.id} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', padding: 8, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                                        <Image source={{ uri: certItem.uri }} style={{ width: 38, height: 38, borderRadius: 6, marginRight: 10 }} />
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }} numberOfLines={1}>
+                                                📄 {certItem.name}
+                                            </Text>
+                                            <Text style={{ fontSize: 10, color: '#133E32', fontWeight: '600' }}>
+                                                Device Gallery • Verified Document
+                                            </Text>
+                                        </View>
+                                        <TouchableOpacity onPress={() => handleRemoveCertPhoto(certItem.id)} style={{ padding: 4 }}>
+                                            <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+
                         <View style={styles.tagsContainer}>
                             {certifications.map((cert) => (
                                 <View key={cert} style={styles.certChip}>
@@ -286,7 +533,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                                 activeOpacity={0.8}
                             >
                                 <Ionicons name="add" size={16} color="#133E32" style={{ marginRight: 4 }} />
-                                <Text style={styles.addCertText}>Add Certification</Text>
+                                <Text style={styles.addCertText}>Add Certification Tag</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -311,10 +558,33 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                 {/* STEP 2: LOCATION */}
                 {currentStep === 2 && (
                     <View style={styles.stepTwoContainer}>
+                        {/* Quick Preset Location Chips */}
+                        <Text style={[styles.fieldLabel, { marginTop: 0, marginBottom: 6 }]}>Popular University / City Hubs</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+                            <View style={{ flexDirection: 'row', gap: 8 }}>
+                                {LOCATION_PRESETS.map((preset) => {
+                                    const isSel = city.toLowerCase() === preset.city.toLowerCase();
+                                    return (
+                                        <TouchableOpacity
+                                            key={preset.label}
+                                            style={[styles.certChip, isSel && { backgroundColor: '#133E32', borderColor: '#133E32' }]}
+                                            onPress={() => handleSelectPreset(preset)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Ionicons name="location" size={14} color={isSel ? '#FFD700' : '#133E32'} style={{ marginRight: 4 }} />
+                                            <Text style={[styles.certChipText, isSel && { color: '#FFFFFF', fontWeight: '800' }]}>
+                                                {preset.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </ScrollView>
+
                         {/* Map View Box with Floating Address Search Overlay */}
                         <View style={styles.mapCard}>
                             <Image
-                                source={{ uri: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80' }}
+                                source={{ uri: mapImage }}
                                 style={styles.mapImage}
                                 resizeMode="cover"
                             />
@@ -324,17 +594,24 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                                 <Ionicons name="search" size={18} color="#133E32" style={{ marginRight: 8 }} />
                                 <TextInput
                                     style={styles.mapSearchInput}
-                                    placeholder="Search address..."
+                                    placeholder="Search location, university, or city..."
                                     placeholderTextColor="#94A3B8"
                                     value={searchAddress}
-                                    onChangeText={setSearchAddress}
+                                    onChangeText={handleSearchChange}
                                 />
                             </View>
 
-                            {/* Center Map Pin */}
+                            {/* Center Map Pin with Dynamic Location Info Badge */}
                             <View style={styles.mapPinContainer}>
-                                <View style={styles.pinCircle}>
-                                    <Ionicons name="location" size={24} color="#133E32" />
+                                <View style={{ alignItems: 'center' }}>
+                                    <View style={{ backgroundColor: '#133E32', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, marginBottom: 4 }}>
+                                        <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '800' }}>
+                                            📍 {city || 'Selected Location'} ({mapCoords.lat.toFixed(3)}° N, {mapCoords.lng.toFixed(3)}° E)
+                                        </Text>
+                                    </View>
+                                    <View style={styles.pinCircle}>
+                                        <Ionicons name="location" size={24} color="#133E32" />
+                                    </View>
                                 </View>
                             </View>
                         </View>
@@ -494,17 +771,25 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                     <View style={styles.stepFourContainer}>
                         {/* Cover Image Box */}
                         <View style={styles.photoCard}>
-                            <Text style={styles.photoCardTitle}>Cover Image</Text>
-                            <Text style={styles.photoCardSubtitle}>Required. Ideal aspect ratio 16:9. Max size 5MB.</Text>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <View>
+                                    <Text style={styles.photoCardTitle}>Cover Image</Text>
+                                    <Text style={styles.photoCardSubtitle}>Required. Selected from your device gallery.</Text>
+                                </View>
+                                <TouchableOpacity
+                                    onPress={handlePickCoverPhoto}
+                                    style={{ backgroundColor: '#133E32', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={{ color: '#FFD700', fontSize: 12, fontWeight: '800' }}>Select Photo</Text>
+                                </TouchableOpacity>
+                            </View>
 
-                            <View style={styles.coverImagePreviewWrapper}>
+                            <View style={[styles.coverImagePreviewWrapper, { marginTop: 12 }]}>
                                 <Image source={{ uri: coverImage }} style={styles.coverImagePreview} resizeMode="cover" />
                                 <View style={styles.coverActionButtons}>
-                                    <TouchableOpacity style={styles.actionBtnCircle} activeOpacity={0.8}>
+                                    <TouchableOpacity style={styles.actionBtnCircle} onPress={handlePickCoverPhoto} activeOpacity={0.8}>
                                         <Ionicons name="pencil" size={16} color="#133E32" />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={[styles.actionBtnCircle, styles.deleteBtnCircle]} activeOpacity={0.8}>
-                                        <Ionicons name="trash" size={16} color="#FFFFFF" />
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -513,37 +798,30 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                         {/* Additional Photos Box */}
                         <View style={styles.photoCard}>
                             <View style={styles.photoCardHeaderRow}>
-                                <Text style={styles.photoCardTitle}>Additional Photos</Text>
-                                <View style={styles.limitBadge}>
-                                    <Text style={styles.limitBadgeText}>2 / 10 limit</Text>
-                                </View>
+                                <Text style={styles.photoCardTitle}>Additional Photos ({additionalPhotos.length})</Text>
+                                <TouchableOpacity onPress={handlePickAdditionalPhoto} style={styles.limitBadge} activeOpacity={0.8}>
+                                    <Text style={styles.limitBadgeText}>+ Upload from Device</Text>
+                                </TouchableOpacity>
                             </View>
-                            <Text style={styles.photoCardSubtitle}>Upload interior spaces, amenities, and technical facilities.</Text>
+                            <Text style={styles.photoCardSubtitle}>Upload interior spaces, rooms, and facilities directly from your device gallery.</Text>
 
                             <View style={styles.additionalGrid}>
-                                {/* Image 1 Thumbnail */}
-                                <View style={styles.thumbWrapper}>
-                                    <Image
-                                        source={{ uri: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80' }}
-                                        style={styles.thumbImage}
-                                        resizeMode="cover"
-                                    />
-                                </View>
-
-                                {/* File Uploading Progress Card */}
-                                <View style={styles.uploadingCard}>
-                                    <Ionicons name="image-outline" size={24} color="#133E32" style={{ marginBottom: 6 }} />
-                                    <Text style={styles.uploadingFileName} numberOfLines={1}>DSC_9912.jpg</Text>
-                                    <View style={styles.uploadingTrack}>
-                                        <View style={[styles.uploadingFill, { width: '75%' }]} />
+                                {additionalPhotos.map((photo) => (
+                                    <View key={photo.id} style={styles.thumbWrapper}>
+                                        <Image source={{ uri: photo.uri }} style={styles.thumbImage} resizeMode="cover" />
+                                        <TouchableOpacity
+                                            onPress={() => setAdditionalPhotos(additionalPhotos.filter(p => p.id !== photo.id))}
+                                            style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(239,68,68,0.9)', borderRadius: 12, padding: 3 }}
+                                        >
+                                            <Ionicons name="trash" size={12} color="#FFF" />
+                                        </TouchableOpacity>
                                     </View>
-                                    <Text style={styles.uploadingPercentText}>75%</Text>
-                                </View>
+                                ))}
 
                                 {/* Add Photo Button Card */}
-                                <TouchableOpacity style={styles.addPhotoCard} activeOpacity={0.8}>
-                                    <Ionicons name="add-circle-outline" size={30} color="#133E32" />
-                                    <Text style={styles.addPhotoCardText}>Add Photo</Text>
+                                <TouchableOpacity style={styles.addPhotoCard} onPress={handlePickAdditionalPhoto} activeOpacity={0.8}>
+                                    <Ionicons name="images-outline" size={28} color="#133E32" />
+                                    <Text style={styles.addPhotoCardText}>Gallery Upload</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>

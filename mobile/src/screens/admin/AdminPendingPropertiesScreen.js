@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -8,10 +8,13 @@ import {
     ScrollView,
     Image,
     TextInput,
-    StatusBar
+    StatusBar,
+    ActivityIndicator,
+    Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AdminHeader from '../../components/AdminHeader';
+import api from '../../services/api';
 
 export default function AdminPendingPropertiesScreen({
     onNavigateTab,
@@ -21,53 +24,60 @@ export default function AdminPendingPropertiesScreen({
 }) {
     const [selectedFilter, setSelectedFilter] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
+    const [apiProperties, setApiProperties] = useState([]);
+    const [loading, setLoading] = useState(false);
 
-    const pendingProperties = [
-        {
-            id: 'prop_1',
-            title: 'Green Valley Boarding',
-            location: 'Moratuwa, Western Province',
-            price: 'Rs. 15,000 / mo',
-            owner: 'John Silva',
-            submittedTime: '2 hours ago',
-            priority: 'High Priority',
-            image: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=600&q=80',
-            rooms: '5 Units',
-        },
-        {
-            id: 'prop_2',
-            title: 'Sunrise Student Hostel',
-            location: 'Peradeniya, Kandy',
-            price: 'Rs. 12,500 / mo',
-            owner: 'Kamal Perera',
-            submittedTime: '4 hours ago',
-            priority: 'Submitted Today',
-            image: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=600&q=80',
-            rooms: '8 Units',
-        },
-        {
-            id: 'prop_3',
-            title: 'Ocean View Annex',
-            location: 'Mount Lavinia',
-            price: 'Rs. 22,000 / mo',
-            owner: 'Nimali Fernando',
-            submittedTime: 'Submitted Today',
-            priority: 'Submitted Today',
-            image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=600&q=80',
-            rooms: '3 Units',
-        },
-        {
-            id: 'prop_4',
-            title: 'Central Campus Lodge',
-            location: 'Kelaniya, Gampaha',
-            price: 'Rs. 14,000 / mo',
-            owner: 'Saman Jayasinghe',
-            submittedTime: '1 day ago',
-            priority: 'High Priority',
-            image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=600&q=80',
-            rooms: '6 Units',
+    useEffect(() => {
+        loadPendingProperties();
+    }, []);
+
+    const loadPendingProperties = async () => {
+        try {
+            setLoading(true);
+            const data = await api.admin.getPendingProperties();
+            if (data) {
+                setApiProperties(data);
+            }
+        } catch (error) {
+            console.log('Error loading pending properties for admin:', error);
+        } finally {
+            setLoading(false);
         }
-    ];
+    };
+
+    const handleApprove = async (id, title) => {
+        try {
+            await api.admin.approveProperty(id);
+            Alert.alert('Approved 🎉', `Property "${title}" has been approved and listed!`);
+            loadPendingProperties();
+        } catch (error) {
+            console.log('Error approving property:', error);
+            Alert.alert('Action Failed', error.message || 'Could not approve property.');
+        }
+    };
+
+    const handleReject = async (id, title) => {
+        try {
+            await api.admin.rejectProperty(id);
+            Alert.alert('Rejected ❌', `Property "${title}" was rejected.`);
+            loadPendingProperties();
+        } catch (error) {
+            console.log('Error rejecting property:', error);
+            Alert.alert('Action Failed', error.message || 'Could not reject property.');
+        }
+    };
+
+    const pendingProperties = apiProperties.map(p => ({
+        id: p.id.toString(),
+        title: p.title,
+        location: (p.city || '') + (p.address ? ' • ' + p.address : ''),
+        price: `Rs. ${(p.monthlyRent || 0).toLocaleString()} / mo`,
+        owner: p.ownerName || 'Property Owner',
+        submittedTime: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Recently',
+        priority: 'Submitted Today',
+        image: p.imageUrls && p.imageUrls.length > 0 ? p.imageUrls[0] : 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=600&q=80',
+        rooms: p.rooms ? `${p.rooms.length} Units` : '1 Unit',
+    }));
 
     const filtered = pendingProperties.filter(p => {
         const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -157,14 +167,22 @@ export default function AdminPendingPropertiesScreen({
                                     <Text style={styles.ownerText}>Owner: {item.owner}</Text>
                                 </View>
 
-                                <TouchableOpacity
-                                    style={styles.reviewBtn}
-                                    onPress={() => onSelectProperty && onSelectProperty(item)}
-                                    activeOpacity={0.8}
-                                >
-                                    <Text style={styles.reviewBtnText}>Review Listing</Text>
-                                    <Ionicons name="arrow-forward" size={14} color="#133E32" style={{ marginLeft: 4 }} />
-                                </TouchableOpacity>
+                                <View style={{ flexDirection: 'row', gap: 6 }}>
+                                    <TouchableOpacity
+                                        style={[styles.reviewBtn, { backgroundColor: '#FEE2E2' }]}
+                                        onPress={() => handleReject(item.id, item.title)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Text style={[styles.reviewBtnText, { color: '#991B1B' }]}>Reject</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.reviewBtn, { backgroundColor: '#133E32' }]}
+                                        onPress={() => handleApprove(item.id, item.title)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Text style={[styles.reviewBtnText, { color: '#FFD700' }]}>Approve</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
                         </View>
                     </TouchableOpacity>

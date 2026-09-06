@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -6,10 +6,11 @@ import {
     TouchableOpacity,
     SafeAreaView,
     ScrollView,
-    Image,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import HeaderBar from '../../components/HeaderBar';
+import api from '../../services/api';
 
 export default function OwnerHomeScreen({
     onNavigateTab,
@@ -17,8 +18,45 @@ export default function OwnerHomeScreen({
     onViewAllRequests,
     onReviewRequest,
     onViewPropertyDetails,
-    activeTab = 'Dashboard'
+    activeTab = 'Dashboard',
+    currentUser
 }) {
+    const [properties, setProperties] = useState([]);
+    const [requests, setRequests] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        loadOwnerDashboardData();
+    }, []);
+
+    const loadOwnerDashboardData = async () => {
+        try {
+            setLoading(true);
+            const [propsData, reqsData] = await Promise.all([
+                api.properties.getMyProperties().catch(() => []),
+                api.bookings.getOwnerRequests().catch(() => [])
+            ]);
+            if (propsData) setProperties(propsData);
+            if (reqsData) setRequests(reqsData);
+        } catch (error) {
+            console.log('Error loading owner dashboard data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const ownerName = currentUser?.name ? currentUser.name.split(' ')[0] : 'Owner';
+    const totalProperties = properties.length;
+    const pendingRequestsCount = requests.filter(r => r.status === 'PENDING').length;
+    const availableSpaces = properties.reduce((acc, p) => {
+        return acc + (p.rooms ? p.rooms.reduce((rAcc, r) => rAcc + (r.remainingSpaces || 0), 0) : 0);
+    }, 0);
+    const totalOccupants = properties.reduce((acc, p) => {
+        return acc + (p.rooms ? p.rooms.reduce((rAcc, r) => rAcc + ((r.totalSpaces || 0) - (r.remainingSpaces || 0)), 0) : 0);
+    }, 0);
+
+    const recentRequests = requests.slice(0, 3);
+
     return (
         <SafeAreaView style={styles.container}>
             {/* Standard Dark Emerald Header Bar with Logo */}
@@ -35,7 +73,7 @@ export default function OwnerHomeScreen({
             >
                 {/* Greeting Section */}
                 <View style={styles.greetingSection}>
-                    <Text style={styles.greetingTitle}>Good Morning 👋</Text>
+                    <Text style={styles.greetingTitle}>Good Day, {ownerName} 👋</Text>
                     <Text style={styles.greetingSubtitle}>
                         Here's an overview of your property operations today.
                     </Text>
@@ -49,7 +87,7 @@ export default function OwnerHomeScreen({
                             <Ionicons name="home-outline" size={22} color="#133E32" />
                         </View>
                         <Text style={styles.statLabel}>PROPERTIES</Text>
-                        <Text style={styles.statValue}>3</Text>
+                        <Text style={styles.statValue}>{totalProperties}</Text>
                     </View>
 
                     {/* Stat Card 2: Requests */}
@@ -57,8 +95,8 @@ export default function OwnerHomeScreen({
                         <View style={styles.iconCircleLight}>
                             <Ionicons name="clipboard-outline" size={22} color="#133E32" />
                         </View>
-                        <Text style={styles.statLabel}>REQUESTS</Text>
-                        <Text style={styles.statValue}>12</Text>
+                        <Text style={styles.statLabel}>PENDING REQS</Text>
+                        <Text style={styles.statValue}>{pendingRequestsCount}</Text>
                     </View>
 
                     {/* Stat Card 3: Available */}
@@ -67,16 +105,16 @@ export default function OwnerHomeScreen({
                             <Ionicons name="checkmark-circle-outline" size={22} color="#133E32" />
                         </View>
                         <Text style={styles.statLabel}>AVAILABLE</Text>
-                        <Text style={styles.statValue}>8</Text>
+                        <Text style={styles.statValue}>{availableSpaces}</Text>
                     </View>
 
-                    {/* Stat Card 4: Occupants (Dark Emerald Accent Card) */}
+                    {/* Stat Card 4: Occupants */}
                     <View style={[styles.statCard, styles.earningsCard]}>
                         <View style={styles.iconCircleDark}>
                             <Ionicons name="people-outline" size={22} color="#FFD700" />
                         </View>
                         <Text style={styles.statLabelLight}>OCCUPANTS</Text>
-                        <Text style={styles.statValueLight}>14</Text>
+                        <Text style={styles.statValueLight}>{totalOccupants}</Text>
                         <View style={styles.watermarkBgIcon}>
                             <Ionicons name="people-outline" size={70} color="rgba(255, 255, 255, 0.07)" />
                         </View>
@@ -95,65 +133,52 @@ export default function OwnerHomeScreen({
 
                     <View style={styles.divider} />
 
-                    {/* Request Item 1 */}
-                    <View style={styles.requestItemRow}>
-                        <View style={styles.avatarCircle}>
-                            <Text style={styles.avatarInitial}>S</Text>
-                        </View>
+                    {loading ? (
+                        <ActivityIndicator color="#133E32" style={{ marginVertical: 20 }} />
+                    ) : recentRequests.length > 0 ? (
+                        recentRequests.map((req, idx) => {
+                            const name = req.seekerName || 'Applicant';
+                            const initial = name.charAt(0).toUpperCase();
+                            return (
+                                <React.Fragment key={req.id || idx}>
+                                    <View style={styles.requestItemRow}>
+                                        <View style={styles.avatarCircle}>
+                                            <Text style={styles.avatarInitial}>{initial}</Text>
+                                        </View>
 
-                        <View style={styles.requestMainInfo}>
-                            <Text style={styles.tenantName}>Sulari</Text>
-                            <View style={styles.roomTypeRow}>
-                                <Ionicons name="business-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
-                                <Text style={styles.roomTypeText}>Shared Room</Text>
-                            </View>
-                        </View>
-                    </View>
-                    <View style={styles.requestActionsRow}>
-                        <View style={styles.pendingBadge}>
-                            <View style={styles.yellowDot} />
-                            <Text style={styles.pendingBadgeText}>Pending</Text>
-                        </View>
+                                        <View style={styles.requestMainInfo}>
+                                            <Text style={styles.tenantName}>{name}</Text>
+                                            <View style={styles.roomTypeRow}>
+                                                <Ionicons name="business-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
+                                                <Text style={styles.roomTypeText}>{req.propertyTitle || 'Property'}</Text>
+                                            </View>
+                                        </View>
+                                    </View>
+                                    <View style={styles.requestActionsRow}>
+                                        <View style={req.status === 'PENDING' ? styles.pendingBadge : styles.reviewedBadge}>
+                                            <View style={req.status === 'PENDING' ? styles.yellowDot : styles.greyDot} />
+                                            <Text style={req.status === 'PENDING' ? styles.pendingBadgeText : styles.reviewedBadgeText}>
+                                                {req.status}
+                                            </Text>
+                                        </View>
 
-                        <TouchableOpacity
-                            style={styles.reviewReqBtn}
-                            onPress={() => onReviewRequest && onReviewRequest('req_1')}
-                            activeOpacity={0.85}
-                        >
-                            <Text style={styles.reviewReqBtnText}>Review Request</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.itemSeparator} />
-
-                    {/* Request Item 2 */}
-                    <View style={styles.requestItemRow}>
-                        <View style={styles.avatarCircle}>
-                            <Text style={styles.avatarInitial}>K</Text>
+                                        <TouchableOpacity
+                                            style={styles.reviewReqBtn}
+                                            onPress={() => onReviewRequest && onReviewRequest(req)}
+                                            activeOpacity={0.85}
+                                        >
+                                            <Text style={styles.reviewReqBtnText}>Review Request</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                    {idx < recentRequests.length - 1 && <View style={styles.itemSeparator} />}
+                                </React.Fragment>
+                            );
+                        })
+                    ) : (
+                        <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                            <Text style={{ fontSize: 13, color: '#64748B' }}>No booking requests received yet.</Text>
                         </View>
-
-                        <View style={styles.requestMainInfo}>
-                            <Text style={styles.tenantName}>Kamal</Text>
-                            <View style={styles.roomTypeRow}>
-                                <Ionicons name="business-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
-                                <Text style={styles.roomTypeText}>Single Room</Text>
-                            </View>
-                        </View>
-                    </View>
-                    <View style={styles.requestActionsRow}>
-                        <View style={styles.reviewedBadge}>
-                            <View style={styles.greyDot} />
-                            <Text style={styles.reviewedBadgeText}>Reviewed</Text>
-                        </View>
-
-                        <TouchableOpacity
-                            style={styles.viewDetailsBtn}
-                            onPress={() => onViewPropertyDetails && onViewPropertyDetails('req_2')}
-                            activeOpacity={0.85}
-                        >
-                            <Text style={styles.viewDetailsBtnText}>View Details</Text>
-                        </TouchableOpacity>
-                    </View>
+                    )}
                 </View>
             </ScrollView>
 

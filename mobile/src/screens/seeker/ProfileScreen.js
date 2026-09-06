@@ -13,13 +13,13 @@ import { Ionicons } from '@expo/vector-icons';
 import BottomNavBar from '../../components/BottomNavBar';
 import HeaderBar from '../../components/HeaderBar';
 
-export default function ProfileScreen({ onLogout, onNavigateTab, onOpenNotifications, onOpenReviews }) {
+export default function ProfileScreen({ onLogout, onNavigateTab, onOpenNotifications, onOpenReviews, currentUser }) {
     const user = {
-        name: 'Sulari Gamage',
-        email: 'seeker@email.com',
-        avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
+        name: currentUser?.name || 'User Renter',
+        email: currentUser?.email || 'seeker@email.com',
+        avatarUrl: currentUser?.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
         rating: 4.8,
-        pastStays: 3,
+        pastStays: 0,
         isVerified: true,
     };
 
