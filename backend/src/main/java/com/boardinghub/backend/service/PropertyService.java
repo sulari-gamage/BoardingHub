@@ -7,6 +7,7 @@ import com.boardinghub.backend.dto.response.RoomResponse;
 import com.boardinghub.backend.entity.*;
 import com.boardinghub.backend.enums.GenderPreference;
 import com.boardinghub.backend.enums.PropertyStatus;
+import com.boardinghub.backend.enums.Role;
 import com.boardinghub.backend.repository.AmenityRepository;
 import com.boardinghub.backend.repository.BoardingPropertyRepository;
 import com.boardinghub.backend.repository.UserRepository;
@@ -74,6 +75,62 @@ public class PropertyService {
 
         BoardingProperty savedProperty = propertyRepository.save(property);
         return mapToPropertyResponse(savedProperty);
+    }
+
+    @Transactional
+    public PropertyResponse updateProperty(Long id, PropertyRequest request, String userEmail) {
+        BoardingProperty property = propertyRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Property not found with ID: " + id));
+
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userEmail));
+
+        if (!property.getOwner().getId().equals(user.getId()) && user.getRole() != Role.ADMIN) {
+            throw new IllegalArgumentException("You are not authorized to update this property");
+        }
+
+        property.setTitle(request.getTitle());
+        property.setDescription(request.getDescription());
+        property.setAddress(request.getAddress());
+        property.setCity(request.getCity());
+        property.setGenderPreference(request.getGenderPreference());
+        property.setMonthlyRent(request.getMonthlyRent());
+        property.setLatitude(request.getLatitude());
+        property.setLongitude(request.getLongitude());
+
+        if (request.getAmenityIds() != null) {
+            List<Amenity> amenities = amenityRepository.findAllById(request.getAmenityIds());
+            property.setAmenities(amenities);
+        }
+
+        if (request.getImageUrls() != null) {
+            property.getImages().clear();
+            for (int i = 0; i < request.getImageUrls().size(); i++) {
+                property.getImages().add(PropertyImage.builder()
+                        .property(property)
+                        .imageUrl(request.getImageUrls().get(i))
+                        .isPrimary(i == 0)
+                        .build());
+            }
+        }
+
+        BoardingProperty updatedProperty = propertyRepository.save(property);
+        return mapToPropertyResponse(updatedProperty);
+    }
+
+    @Transactional
+    public void deleteProperty(Long id, String userEmail) {
+        BoardingProperty property = propertyRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Property not found with ID: " + id));
+
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userEmail));
+
+        if (!property.getOwner().getId().equals(user.getId()) && user.getRole() != Role.ADMIN) {
+            throw new IllegalArgumentException("You are not authorized to delete this property");
+        }
+
+        propertyRepository.delete(property);
     }
 
     public List<PropertyResponse> searchApprovedProperties(String city, Double maxRent, GenderPreference gender) {

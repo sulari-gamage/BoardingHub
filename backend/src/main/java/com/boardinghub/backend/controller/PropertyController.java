@@ -3,7 +3,6 @@ package com.boardinghub.backend.controller;
 import com.boardinghub.backend.dto.request.PropertyRequest;
 import com.boardinghub.backend.dto.response.PropertyResponse;
 import com.boardinghub.backend.enums.GenderPreference;
-import com.boardinghub.backend.enums.PropertyStatus;
 import com.boardinghub.backend.service.PropertyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +33,27 @@ public class PropertyController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
+    public ResponseEntity<PropertyResponse> updateProperty(
+            @PathVariable Long id,
+            @Valid @RequestBody PropertyRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        PropertyResponse response = propertyService.updateProperty(id, request, userDetails.getUsername());
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
+    public ResponseEntity<Void> deleteProperty(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        propertyService.deleteProperty(id, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping
     public ResponseEntity<List<PropertyResponse>> searchProperties(
             @RequestParam(required = false) String city,
@@ -57,26 +77,5 @@ public class PropertyController {
     ) {
         List<PropertyResponse> properties = propertyService.getOwnerProperties(userDetails.getUsername());
         return ResponseEntity.ok(properties);
-    }
-
-    @GetMapping("/admin/pending")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<PropertyResponse>> getPendingProperties() {
-        List<PropertyResponse> properties = propertyService.getPendingProperties();
-        return ResponseEntity.ok(properties);
-    }
-
-    @PatchMapping("/admin/{id}/approve")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<PropertyResponse> approveProperty(@PathVariable Long id) {
-        PropertyResponse response = propertyService.updatePropertyStatus(id, PropertyStatus.APPROVED);
-        return ResponseEntity.ok(response);
-    }
-
-    @PatchMapping("/admin/{id}/reject")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<PropertyResponse> rejectProperty(@PathVariable Long id) {
-        PropertyResponse response = propertyService.updatePropertyStatus(id, PropertyStatus.REJECTED);
-        return ResponseEntity.ok(response);
     }
 }
