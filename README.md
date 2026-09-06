@@ -1,8 +1,8 @@
-# 🏠 BoardingHub
+# 🏠 BoardingHub (Mobile)
 
-BoardingHub is a comprehensive full-stack boarding place management and booking platform designed to help seekers easily find suitable boarding places while empowering boarding owners to efficiently manage their properties and bookings.
+BoardingHub is a comprehensive mobile boarding place management and booking platform designed to help seekers easily find suitable boarding places while empowering boarding owners to efficiently manage their properties and direct tenant booking requests.
 
-Built with a robust enterprise tech stack featuring **Spring Boot**, **React.js**, and **PostgreSQL**.
+Built with a modern stack featuring **React Native (Expo)** for Mobile and **Spring Boot** with **PostgreSQL** for the backend REST API.
 
 ---
 
@@ -10,52 +10,51 @@ Built with a robust enterprise tech stack featuring **Spring Boot**, **React.js*
 
 Finding a suitable boarding place is often challenging due to fragmented information, outdated listings, and lack of reliable booking systems.
 
-**BoardingHub** provides a modern digital solution where:
-- **Boarding Seekers** can search, filter, compare, and book boarding places according to their preferences.
-- **Boarding Owners** can register properties, manage availability, review booking requests, and interact with tenants.
-- **System Administrators** can oversee platform activity, approve listings, and ensure system security.
+**BoardingHub Mobile** provides a modern digital solution where:
+- **Boarding Seekers** can search, filter, compare, and submit booking requests for boarding places according to their preferences with direct WhatsApp/Call contact options.
+- **Boarding Owners** can register properties, manage availability, review booking requests, and interact directly with applicants.
+- **System Administrators** can oversee platform activity, approve listings, manage users, and ensure system safety.
 
 ---
 
 ## ✨ Key Features
 
 ### 👤 Boarding Seeker
-- **User Authentication**: Secure Registration, Login, and JWT Token-based session management.
+- **User Authentication**: Secure Registration (with WhatsApp number), Login, and JWT session management.
 - **Search & Filters**: Search listings by location, price range, gender preference, and available amenities.
-- **Property Details**: View detailed boarding information, room types, photos, and owner contact details.
-- **Interactive Map**: View boarding locations integrated with map services.
+- **Property Details**: View detailed boarding information, room types, photos, reviews, and interactive map view.
+- **Direct Owner Contact**: Call or chat with owners directly via WhatsApp.
 - **Favorites & Bookmarks**: Save favorite boarding places for quick access.
-- **Booking Management**: Submit booking requests, view real-time booking status, and view booking history.
-- **Ratings & Reviews**: Share feedback and rate boarding places after stay.
+- **Booking Request Management**: Submit booking requests, track real-time request statuses, and view booking history.
+- **Ratings & Reviews**: Share feedback and rate boarding places.
 
 ### 🏠 Boarding Owner
-- **Property Listing Management**: Add, edit, or remove boarding property listings with details and pricing.
-- **Image Gallery**: Upload and manage property photos.
-- **Room & Availability Management**: Update available room counts, occupancy, and pricing tiers.
-- **Booking Request Control**: Accept or reject pending seeker booking requests with custom notes.
-- **Owner Dashboard**: Track active listings, pending requests, total earnings, and current tenants.
+- **Property Listing Management**: Add, edit, or remove boarding property listings with photos and details.
+- **Room & Availability Management**: Track room capacity, occupant counts, and remaining space indicators.
+- **Booking Request Control**: Accept or reject pending seeker booking requests with automatic room capacity deduction upon approval.
+- **Direct Seeker Contact**: Connect directly with applicants via WhatsApp or phone call.
+- **Owner Dashboard**: Track active listings, pending requests, and current occupancy.
 
 ### 🛡️ System Administrator
 - **Listing Moderation**: Verify and approve new property submissions.
-- **User Management**: Manage registered seeker and owner accounts.
-- **System Analytics**: View system metrics, total bookings, and user statistics.
+- **User Management**: Inspect and manage registered seeker and owner accounts.
+- **System Analytics & Monitoring**: Monitor active bookings and platform metrics.
 
 ---
 
 ## 🛠️ Tech Stack
 
-### 🎨 Frontend
-- **Framework**: React.js
-- **Routing**: React Router DOM
-- **State & HTTP Client**: Axios / React Context API
-- **Styling**: Modern Vanilla CSS / Tailwind CSS
-- **Build Tool**: Vite / Create React App
+### 📱 Mobile Frontend
+- **Framework**: React Native (Expo)
+- **Navigation**: Custom State / Screen Router & Navigation Bar
+- **Styling**: Modern React Native StyleSheet (Emerald `#1B4D3E` & Gold `#FFD700` palette)
+- **HTTP Client**: Axios / React Context API
 
 ### ⚙️ Backend
 - **Framework**: Java Spring Boot
 - **Security**: Spring Security & JWT (JSON Web Tokens)
 - **Data Access**: Spring Data JPA / Hibernate
-- **Build Tool**: Maven / Gradle
+- **Build Tool**: Maven
 - **API Protocol**: RESTful Web Services
 
 ### 🗄️ Database
@@ -63,42 +62,37 @@ Finding a suitable boarding place is often challenging due to fragmented informa
 - **SQL Dialect**: PostgreSQL SQL
 - **ORM / Persistence**: JPA / Hibernate
 
-### 🌐 Third-Party Services & Tools
-- **Image Storage**: Cloudinary / Firebase Storage
-- **Maps API**: Google Maps API / Leaflet
-- **API Testing & Documentation**: Postman / Swagger UI (Springdoc OpenAPI)
-
 ---
 
 ## 📂 Project Structure
 
 ```
 boardinghub/
+├── mobile/                   # React Native Mobile Application
+│   ├── src/
+│   │   ├── components/       # Reusable Mobile UI Components (HeaderBar, BottomNavBar, FilterModal, etc.)
+│   │   ├── data/             # Mock Data (mockBoardings.js)
+│   │   └── screens/          # Screen Views
+│   │       ├── admin/        # Admin Screens (Dashboard, PendingProperties, UserManagement, etc.)
+│   │       ├── auth/         # Login & Register Screens
+│   │       ├── owner/        # Owner Screens (OwnerHome, AddProperty, RoomManagement, OwnerRequests, etc.)
+│   │       └── seeker/       # Seeker Screens (Home, Search, Details, Bookings, MapView, Profile, etc.)
+│   ├── App.js                # Central Router & Main Application Setup
+│   ├── app.json / package.json
+│   └── start-mobile.bat      # Script to launch mobile app dev server
+│
 ├── backend/                  # Spring Boot REST API Service
 │   ├── src/
 │   │   ├── main/
 │   │   │   ├── java/com/boardinghub/
-│   │   │   │   ├── controller/   # REST Controllers / Endpoints
-│   │   │   │   ├── model/        # JPA Entities (User, Property, Booking, Review)
+│   │   │   │   ├── controller/   # REST Controllers
+│   │   │   │   ├── model/        # JPA Entities (User, Property, Room, BookingRequest, Review)
 │   │   │   │   ├── repository/   # Spring Data Repositories
 │   │   │   │   ├── service/      # Business Logic Services
-│   │   │   │   ├── security/     # JWT & Spring Security Config
-│   │   │   │   └── dto/          # Data Transfer Objects
+│   │   │   │   └── security/     # JWT & Spring Security Config
 │   │   │   └── resources/
-│   │   │       ├── application.yml / application.properties
-│   │   │       └── db/migration/ # Flyway / Liquibase SQL migrations
+│   │   │       └── application.properties
 │   └── pom.xml               # Maven dependencies
-│
-├── frontend/                 # React.js Web Application
-│   ├── src/
-│   │   ├── assets/           # Static images and styling assets
-│   │   ├── components/       # Reusable UI Components
-│   │   ├── pages/            # View Pages (Home, Search, Details, Dashboard)
-│   │   ├── services/         # Axios API Services
-│   │   ├── context/          # Auth Context & State Management
-│   │   └── App.jsx           # Main Application & Router setup
-│   ├── package.json
-│   └── vite.config.js
 │
 ├── docs/                     # SRS, Architecture & ER Diagrams
 └── README.md
@@ -110,13 +104,36 @@ boardinghub/
 
 ### Prerequisites
 Make sure you have the following installed on your machine:
-- **Java Development Kit (JDK 17 or higher)**
 - **Node.js (v18+)** & **npm**
+- **Expo Go App** (on iOS/Android) or Android Studio / iOS Simulator
+- **Java Development Kit (JDK 17 or higher)**
 - **PostgreSQL Database Server (v14+)**
 
 ---
 
-### 1. 🗄️ Database Configuration (PostgreSQL)
+### 1. 📱 Mobile Application Setup (React Native)
+
+1. Navigate to the mobile directory:
+   ```bash
+   cd mobile
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the mobile development server:
+   ```bash
+   npm start
+   ```
+   *or run the provided batch script:*
+   ```cmd
+   start-mobile.bat
+   ```
+4. Scan the QR code with **Expo Go** on your mobile device to open the application.
+
+---
+
+### 2. 🗄️ Database Configuration (PostgreSQL)
 
 Create a PostgreSQL database for the project:
 
@@ -124,7 +141,7 @@ Create a PostgreSQL database for the project:
 CREATE DATABASE boardinghub_db;
 ```
 
-Update your Spring Boot `application.properties` (or `application.yml`) located in `backend/src/main/resources/`:
+Update your Spring Boot `application.properties` located in `backend/src/main/resources/`:
 
 ```properties
 spring.datasource.url=jdbc:postgresql://localhost:5432/boardinghub_db
@@ -138,7 +155,7 @@ spring.jpa.show-sql=true
 
 ---
 
-### 2. ⚙️ Backend Setup (Spring Boot)
+### 3. ⚙️ Backend Setup (Spring Boot)
 
 1. Navigate to the backend directory:
    ```bash
@@ -148,29 +165,11 @@ spring.jpa.show-sql=true
    ```bash
    ./mvnw spring-boot:run
    ```
+   *or run the provided batch script:*
+   ```cmd
+   start-backend.bat
+   ```
 3. The REST API server will start on `http://localhost:8080`.
-
----
-
-### 3. � Frontend Setup (React.js)
-
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-2. Install npm dependencies:
-   ```bash
-   npm install
-   ```
-3. Configure environment variables in a `.env` file:
-   ```env
-   VITE_API_BASE_URL=http://localhost:8080/api
-   ```
-4. Start the React development server:
-   ```bash
-   npm run dev
-   ```
-5. Open your browser and visit `http://localhost:5173`.
 
 ---
 
@@ -178,36 +177,15 @@ spring.jpa.show-sql=true
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :---: |
-| `POST` | `/api/auth/register` | Register a new User / Owner | ❌ |
+| `POST` | `/api/auth/register` | Register a new Seeker / Owner | ❌ |
 | `POST` | `/api/auth/login` | Authenticate & get JWT Token | ❌ |
-| `GET` | `/api/boardings` | Get all published boarding places | ❌ |
+| `GET` | `/api/boardings` | Get published boarding places | ❌ |
 | `GET` | `/api/boardings/{id}` | Get boarding details by ID | ❌ |
 | `POST` | `/api/boardings` | Create a new boarding listing | Owner |
 | `PUT` | `/api/boardings/{id}` | Update boarding listing | Owner |
 | `POST` | `/api/bookings` | Create a booking request | Seeker |
 | `PATCH` | `/api/bookings/{id}/status` | Accept / Reject booking request | Owner |
 | `POST` | `/api/reviews` | Submit rating & review for property | Seeker |
-
----
-
-## 📖 Documentation
-
-Additional technical documentation is maintained in the `/docs` folder:
-- **Software Requirements Specification (SRS)**
-- **Entity Relationship Diagram (ERD)**
-- **System Architecture Diagram**
-- **REST API Endpoint Specification**
-
----
-
-## 🤝 Contributing
-
-Contributions, suggestions, and feedback are welcome!
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
 
 ---
 
