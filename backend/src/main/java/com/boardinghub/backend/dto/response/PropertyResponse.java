@@ -32,6 +32,7 @@ public class PropertyResponse {
 
     private List<String> amenities;
     private List<PropertyImageDTO> images;
+    private List<String> imageUrls;
     private List<RoomResponse> rooms;
 
     private LocalDateTime createdAt;

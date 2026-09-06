@@ -37,4 +37,7 @@ public class Room {
     @NotNull
     @Column(name = "remaining_spaces", nullable = false)
     private Integer remainingSpaces;
+
+    @Column(name = "rent_type")
+    private String rentType; // PER_PERSON or PER_ROOM
 }

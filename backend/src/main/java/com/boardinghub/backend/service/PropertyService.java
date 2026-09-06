@@ -69,6 +69,7 @@ public class PropertyService {
                     .monthlyPrice(roomReq.getMonthlyPrice())
                     .totalCapacity(roomReq.getTotalCapacity())
                     .remainingSpaces(roomReq.getRemainingSpaces() != null ? roomReq.getRemainingSpaces() : roomReq.getTotalCapacity())
+                    .rentType(roomReq.getRentType() != null ? roomReq.getRentType() : "PER_PERSON")
                     .build()).collect(Collectors.toList());
             property.setRooms(rooms);
         }
@@ -188,7 +189,11 @@ public class PropertyService {
                         .monthlyPrice(r.getMonthlyPrice())
                         .totalCapacity(r.getTotalCapacity())
                         .remainingSpaces(r.getRemainingSpaces())
+                        .rentType(r.getRentType() != null ? r.getRentType() : "PER_PERSON")
                         .build()).collect(Collectors.toList()) : new ArrayList<>();
+
+        List<String> imageUrlList = p.getImages() != null ?
+                p.getImages().stream().map(PropertyImage::getImageUrl).collect(Collectors.toList()) : new ArrayList<>();
 
         return PropertyResponse.builder()
                 .id(p.getId())
@@ -206,6 +211,7 @@ public class PropertyService {
                 .longitude(p.getLongitude())
                 .amenities(amenityNames)
                 .images(imageDTOs)
+                .imageUrls(imageUrlList)
                 .rooms(roomResponses)
                 .createdAt(p.getCreatedAt())
                 .build();

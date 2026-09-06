@@ -51,6 +51,20 @@ export default function App() {
   const [selectedAdminUser, setSelectedAdminUser] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [previousScreen, setPreviousScreen] = useState('HOME');
+  const [userBookings, setUserBookings] = useState([]);
+  const [ownerRequests, setOwnerRequests] = useState([]);
+
+  const handleApproveRequest = (id) => {
+    setOwnerRequests((prev) =>
+      prev.map((req) => (req.id === id ? { ...req, status: 'APPROVED' } : req))
+    );
+  };
+
+  const handleRejectRequest = (id) => {
+    setOwnerRequests((prev) =>
+      prev.map((req) => (req.id === id ? { ...req, status: 'REJECTED' } : req))
+    );
+  };
 
   // Navigation Handlers
   const handleSelectBoarding = (boarding, origin = 'HOME') => {

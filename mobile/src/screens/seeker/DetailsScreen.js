@@ -23,7 +23,11 @@ export default function DetailsScreen({ boarding = {}, onBack, onBookSuccess, on
     const location = boarding.location || 'Moratuwa, Sri Lanka';
     const price = boarding.price ? boarding.price.toLocaleString() : '15,000';
     const rating = boarding.rating || 4.8;
-    const imageUrl = boarding.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80';
+    const imageUrl = (boarding.images && boarding.images.length > 0)
+        ? (typeof boarding.images[0] === 'string' ? boarding.images[0] : boarding.images[0].imageUrl)
+        : (boarding.imageUrls && boarding.imageUrls.length > 0)
+            ? boarding.imageUrls[0]
+            : (boarding.imageUrl || (boarding.image ? (typeof boarding.image === 'string' ? boarding.image : boarding.image.uri) : 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80'));
 
     const handleBookNowPress = () => {
         setIsBookingModalVisible(true);
@@ -149,46 +153,81 @@ export default function DetailsScreen({ boarding = {}, onBack, onBookSuccess, on
 
                     {/* Available Rooms Section */}
                     <Text style={styles.sectionHeading}>Available Rooms</Text>
-                    <View style={styles.roomCard}>
-                        <View style={styles.roomHeaderRow}>
-                            <Text style={styles.roomTypeTitle}>Shared Room</Text>
-                            <View style={styles.roomCardBadge}>
-                                <Ionicons name="people-outline" size={13} color="#1B4D3E" style={{ marginRight: 4 }} />
-                                <Text style={styles.roomBadgeText}>2 Spaces Available</Text>
+                    {boarding.rooms && boarding.rooms.length > 0 ? (
+                        boarding.rooms.map((roomItem, index) => {
+                            const isSelected = selectedRoom === (roomItem.id || `room_${index}`);
+                            const rentBasisLabel = roomItem.rentType === 'PER_ROOM' ? '/ Room / Month' : '/ Person / Month';
+                            const roomPriceFormatted = (roomItem.monthlyPrice || price).toLocaleString();
+
+                            return (
+                                <View key={roomItem.id || index} style={[styles.roomCard, { marginBottom: 12 }]}>
+                                    <View style={styles.roomHeaderRow}>
+                                        <Text style={styles.roomTypeTitle}>{roomItem.roomType || `Room ${index + 1}`}</Text>
+                                        <View style={styles.roomCardBadge}>
+                                            <Ionicons name="people-outline" size={13} color="#1B4D3E" style={{ marginRight: 4 }} />
+                                            <Text style={styles.roomBadgeText}>
+                                                {roomItem.remainingSpaces != null ? `${roomItem.remainingSpaces} Spaces Left` : `Cap: ${roomItem.totalCapacity || 1}`}
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={styles.roomCardDivider} />
+
+                                    {/* Room Card Footer Row */}
+                                    <View style={styles.roomFooterRow}>
+                                        <View>
+                                            <Text style={styles.roomPriceText}>Rs.{roomPriceFormatted}</Text>
+                                            <Text style={styles.roomPricePeriod}>{rentBasisLabel}</Text>
+                                        </View>
+
+                                        <TouchableOpacity
+                                            style={styles.selectRoomBtn}
+                                            onPress={() => setSelectedRoom(roomItem.id || `room_${index}`)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Ionicons
+                                                name={isSelected ? 'radio-button-on' : 'radio-button-off'}
+                                                size={18}
+                                                color="#1B4D3E"
+                                                style={{ marginRight: 6 }}
+                                            />
+                                            <Text style={styles.selectRoomText}>{isSelected ? 'Selected' : 'Select Room'}</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            );
+                        })
+                    ) : (
+                        <View style={styles.roomCard}>
+                            <View style={styles.roomHeaderRow}>
+                                <Text style={styles.roomTypeTitle}>Entire Property / Shared Room</Text>
+                                <View style={styles.roomCardBadge}>
+                                    <Ionicons name="people-outline" size={13} color="#1B4D3E" style={{ marginRight: 4 }} />
+                                    <Text style={styles.roomBadgeText}>Available</Text>
+                                </View>
+                            </View>
+                            <View style={styles.roomCardDivider} />
+                            <View style={styles.roomFooterRow}>
+                                <View>
+                                    <Text style={styles.roomPriceText}>Rs.{price}</Text>
+                                    <Text style={styles.roomPricePeriod}>/ Month</Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={styles.selectRoomBtn}
+                                    onPress={() => setSelectedRoom('default')}
+                                    activeOpacity={0.8}
+                                >
+                                    <Ionicons
+                                        name={selectedRoom === 'default' ? 'radio-button-on' : 'radio-button-off'}
+                                        size={18}
+                                        color="#1B4D3E"
+                                        style={{ marginRight: 6 }}
+                                    />
+                                    <Text style={styles.selectRoomText}>Select Room</Text>
+                                </TouchableOpacity>
                             </View>
                         </View>
-
-                        {/* Room Features Bullet Points */}
-                        <View style={styles.bulletsContainer}>
-                            <Text style={styles.bulletItem}>• Attached Bathroom</Text>
-                            <Text style={styles.bulletItem}>• Study Desk Included</Text>
-                            <Text style={styles.bulletItem}>• Balcony Access</Text>
-                        </View>
-
-                        <View style={styles.roomCardDivider} />
-
-                        {/* Room Card Footer Row */}
-                        <View style={styles.roomFooterRow}>
-                            <View>
-                                <Text style={styles.roomPriceText}>Rs.{price}</Text>
-                                <Text style={styles.roomPricePeriod}>/ Month</Text>
-                            </View>
-
-                            <TouchableOpacity
-                                style={styles.selectRoomBtn}
-                                onPress={() => setSelectedRoom('shared')}
-                                activeOpacity={0.8}
-                            >
-                                <Ionicons
-                                    name={selectedRoom === 'shared' ? 'radio-button-on' : 'radio-button-off'}
-                                    size={18}
-                                    color="#1B4D3E"
-                                    style={{ marginRight: 6 }}
-                                />
-                                <Text style={styles.selectRoomText}>Select Room</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
+                    )}
 
                     {/* Location Map Section */}
                     <Text style={styles.sectionHeading}>Location</Text>

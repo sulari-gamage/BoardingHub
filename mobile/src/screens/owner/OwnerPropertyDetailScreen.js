@@ -48,7 +48,17 @@ export default function OwnerPropertyDetailScreen({
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {/* Cover Image & Approved Status Badge */}
                 <View style={styles.coverWrapper}>
-                    <Image source={{ uri: currentProperty.imageUrl }} style={styles.coverImage} resizeMode="cover" />
+                    <Image
+                        source={{
+                            uri: (currentProperty.imageUrls && currentProperty.imageUrls.length > 0)
+                                ? currentProperty.imageUrls[0]
+                                : (currentProperty.images && currentProperty.images.length > 0)
+                                    ? (typeof currentProperty.images[0] === 'string' ? currentProperty.images[0] : currentProperty.images[0].imageUrl)
+                                    : (currentProperty.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80')
+                        }}
+                        style={styles.coverImage}
+                        resizeMode="cover"
+                    />
 
                     <View style={styles.approvedBadge}>
                         <Ionicons name="checkmark-circle" size={16} color="#10B981" style={{ marginRight: 4 }} />
@@ -115,10 +125,34 @@ export default function OwnerPropertyDetailScreen({
                         </View>
                         <View style={{ flex: 1 }}>
                             <Text style={styles.infoLabel}>PRICING</Text>
-                            <Text style={styles.infoValue}>Starting Rs.{(currentProperty.price || 15000).toLocaleString()}</Text>
+                            <Text style={styles.infoValue}>Total LKR {(currentProperty.price || 0).toLocaleString()} / month</Text>
                         </View>
                     </View>
                 </View>
+
+                {/* Rooms Inventory Section if present */}
+                {currentProperty.rooms && currentProperty.rooms.length > 0 && (
+                    <>
+                        <Text style={styles.sectionTitle}>Rooms Breakdown ({currentProperty.rooms.length})</Text>
+                        <View style={{ gap: 10, marginBottom: 18 }}>
+                            {currentProperty.rooms.map((room, idx) => (
+                                <View key={room.id || idx} style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A' }}>{room.roomType || `Room ${idx + 1}`}</Text>
+                                        <View style={{ backgroundColor: '#E6F0EC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                                            <Text style={{ fontSize: 11, fontWeight: '800', color: '#133E32' }}>
+                                                LKR {(room.monthlyPrice || 0).toLocaleString()} {room.rentType === 'PER_ROOM' ? '/ room / mo' : '/ person / mo'}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>
+                                        Remaining Spaces: <Text style={{ fontWeight: '700', color: '#133E32' }}>{room.remainingSpaces != null ? room.remainingSpaces : room.totalCapacity} / {room.totalCapacity}</Text>
+                                    </Text>
+                                </View>
+                            ))}
+                        </View>
+                    </>
+                )}
 
                 {/* Map View Box */}
                 <View style={styles.mapCard}>

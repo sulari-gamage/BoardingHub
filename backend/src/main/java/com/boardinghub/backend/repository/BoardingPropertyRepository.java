@@ -20,7 +20,7 @@ public interface BoardingPropertyRepository extends JpaRepository<BoardingProper
     List<BoardingProperty> findByCityIgnoreCaseAndStatus(String city, PropertyStatus status);
 
     @Query("SELECT p FROM BoardingProperty p WHERE p.status = :status " +
-           "AND (:city IS NULL OR LOWER(p.city) LIKE LOWER(CONCAT('%', :city, '%'))) " +
+           "AND (CAST(:city AS string) IS NULL OR LOWER(p.city) LIKE LOWER(CONCAT('%', CAST(:city AS string), '%'))) " +
            "AND (:maxRent IS NULL OR p.monthlyRent <= :maxRent) " +
            "AND (:gender IS NULL OR p.genderPreference = :gender OR p.genderPreference = com.boardinghub.backend.enums.GenderPreference.ANY)")
     List<BoardingProperty> searchProperties(

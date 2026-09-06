@@ -21,16 +21,10 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
     // Current active wizard step: 1 (Info), 2 (Location), 3 (Amenities), 4 (Photos)
     const [currentStep, setCurrentStep] = useState(1);
 
-    // Step 1 Form State (Property Info & Certificate Gallery Modal)
-    const CERTIFICATE_GALLERY_ITEMS = [
-        { id: 'gal_1', name: 'LEED_Eco_Building_Certificate_2024.jpg', title: 'LEED Eco Building Pass', uri: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=600&q=80', size: '2.4 MB' },
-        { id: 'gal_2', name: 'Solar_Power_Permit_Moratuwa.png', title: 'Solar Energy Grid Permit', uri: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=600&q=80', size: '1.8 MB' },
-        { id: 'gal_3', name: 'Fire_Safety_Inspection_Passed.pdf', title: 'Municipal Fire Safety Pass', uri: 'https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?auto=format&fit=crop&w=600&q=80', size: '3.1 MB' },
-        { id: 'gal_4', name: 'Water_Quality_Audit_2024.jpg', title: 'Water Quality & Safety Audit', uri: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=600&q=80', size: '1.2 MB' },
-        { id: 'gal_5', name: 'Waste_Recycling_Eco_Badge.png', title: 'Zero Waste & Recycling Badge', uri: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=600&q=80', size: '950 KB' },
-    ];
-
+    // Step 1 Form State (Property Info & Dynamic Room Inventory)
     const [propertyName, setPropertyName] = useState('');
+    const [monthlyRent, setMonthlyRent] = useState('');
+    const [totalCapacity, setTotalCapacity] = useState('1');
     const [propertyNature, setPropertyNature] = useState('ROOM_BASED'); // ROOM_BASED or WHOLE_HOUSE
     const [description, setDescription] = useState('');
     const [genderPreference, setGenderPreference] = useState('Mixed');
@@ -38,67 +32,254 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
     const [uploadedCertPhotos, setUploadedCertPhotos] = useState([]);
     const [newCertText, setNewCertText] = useState('');
     const [isCertModalVisible, setIsCertModalVisible] = useState(false);
-    const [isGalleryModalVisible, setIsGalleryModalVisible] = useState(false);
-    const [selectedGalleryItemIds, setSelectedGalleryItemIds] = useState(['gal_1']);
+
+    // Dynamic Room Inventory State (for ROOM_BASED properties)
+    const [rooms, setRooms] = useState([]);
+    const [isRoomModalVisible, setIsRoomModalVisible] = useState(false);
+    const [currentRoom, setCurrentRoom] = useState({
+        id: null,
+        name: '',
+        rent: '',
+        capacity: '1',
+        genderPreference: 'Mixed',
+        photos: [],
+    });
+
+    const handleOpenAddRoomModal = () => {
+        setCurrentRoom({
+            id: `room_${Date.now()}`,
+            name: `Room ${rooms.length + 1}`,
+            rent: '',
+            capacity: '1',
+            genderPreference: 'Mixed',
+            rentType: 'PER_PERSON',
+            photos: [],
+        });
+        setIsRoomModalVisible(true);
+    };
+
+    const handleOpenEditRoomModal = (room) => {
+        setCurrentRoom({
+            ...room,
+            rentType: room.rentType || 'PER_PERSON',
+            photos: room.photos || []
+        });
+        setIsRoomModalVisible(true);
+    };
+
+    const calcAggregateRent = (roomList) => {
+        return roomList.reduce((sum, r) => {
+            const rentVal = parseFloat(r.rent) || 0;
+            const capVal = parseInt(r.capacity) || 1;
+            return sum + (r.rentType === 'PER_ROOM' ? rentVal : rentVal * capVal);
+        }, 0);
+    };
+
+    const handleSaveRoom = () => {
+        if (!currentRoom.name.trim()) {
+            Alert.alert('Required Field', 'Please enter a name or identifier for the room (e.g. Room 101).');
+            return;
+        }
+        if (!currentRoom.rent.trim() || isNaN(parseFloat(currentRoom.rent)) || parseFloat(currentRoom.rent) <= 0) {
+            Alert.alert('Required Field', 'Please enter a valid monthly rent for this room.');
+            return;
+        }
+        if (!currentRoom.capacity.trim() || isNaN(parseInt(currentRoom.capacity)) || parseInt(currentRoom.capacity) <= 0) {
+            Alert.alert('Required Field', 'Please enter a valid capacity (occupants) for this room.');
+            return;
+        }
+
+        const existingIndex = rooms.findIndex((r) => r.id === currentRoom.id);
+        let updatedRooms = [];
+        if (existingIndex >= 0) {
+            updatedRooms = [...rooms];
+            updatedRooms[existingIndex] = currentRoom;
+        } else {
+            updatedRooms = [...rooms, currentRoom];
+        }
+
+        setRooms(updatedRooms);
+        setIsRoomModalVisible(false);
+
+        // Auto-aggregate total rent and capacity for room-based property
+        const aggRent = calcAggregateRent(updatedRooms);
+        const aggCap = updatedRooms.reduce((sum, r) => sum + (parseInt(r.capacity) || 0), 0);
+        setMonthlyRent(aggRent.toString());
+        setTotalCapacity(aggCap.toString());
+    };
+
+    const handleDeleteRoom = (roomId) => {
+        const updatedRooms = rooms.filter((r) => r.id !== roomId);
+        setRooms(updatedRooms);
+        if (updatedRooms.length > 0) {
+            const aggRent = calcAggregateRent(updatedRooms);
+            const aggCap = updatedRooms.reduce((sum, r) => sum + (parseInt(r.capacity) || 0), 0);
+            setMonthlyRent(aggRent.toString());
+            setTotalCapacity(aggCap.toString());
+        } else {
+            setMonthlyRent('');
+            setTotalCapacity('');
+        }
+    };
+
+    const handlePickRoomPhoto = () => {
+        openDeviceGalleryPicker((file) => {
+            const newPhoto = {
+                id: `room_photo_${Date.now()}`,
+                name: file.name || 'Room_Photo.jpg',
+                uri: file.uri,
+            };
+            setCurrentRoom((prev) => ({
+                ...prev,
+                photos: [...(prev.photos || []), newPhoto],
+            }));
+        }, 'image/*');
+    };
+
+    const handleRemoveRoomPhoto = (photoId) => {
+        setCurrentRoom((prev) => ({
+            ...prev,
+            photos: (prev.photos || []).filter((p) => p.id !== photoId),
+        }));
+    };
 
     // Step 2 Form State (Location & Dynamic Map Geocoding)
-    const LOCATION_PRESETS = [
-        { label: 'Moratuwa (Katubedda)', city: 'Moratuwa', address: '123 Katubedda Road, Moratuwa', postalCode: '10400', lat: 6.7730, lng: 79.8816, image: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80' },
-        { label: 'Colombo 07 (Cinnamon Gardens)', city: 'Colombo', address: '45 Ward Place, Colombo 07', postalCode: '00700', lat: 6.9147, lng: 79.8647, image: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80' },
-        { label: 'Peradeniya (Kandy)', city: 'Kandy', address: '88 Galaha Road, Peradeniya', postalCode: '20400', lat: 7.2606, lng: 80.5976, image: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80' },
-        { label: 'Kelaniya (Dalugama)', city: 'Kelaniya', address: '12 Kandy Road, Dalugama, Kelaniya', postalCode: '11600', lat: 6.9553, lng: 79.9174, image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80' },
-        { label: 'Malabe (SLIIT Campus)', city: 'Malabe', address: '99 Kaduwela Road, Malabe', postalCode: '10115', lat: 6.9061, lng: 79.9696, image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80' },
-        { label: 'Nugegoda (USJ Area)', city: 'Nugegoda', address: '55 High Level Road, Nugegoda', postalCode: '10250', lat: 6.8719, lng: 79.8885, image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80' },
-    ];
-
-    const [searchAddress, setSearchAddress] = useState('123 Katubedda Road, Moratuwa');
-    const [city, setCity] = useState('Moratuwa');
-    const [postalCode, setPostalCode] = useState('10400');
-    const [mapCoords, setMapCoords] = useState({ lat: 6.7730, lng: 79.8816 });
-    const [mapImage, setMapImage] = useState('https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80');
+    const [searchAddress, setSearchAddress] = useState('');
+    const [streetAddress, setStreetAddress] = useState('');
+    const [city, setCity] = useState('');
+    const [postalCode, setPostalCode] = useState('');
+    const [mapCoords, setMapCoords] = useState({ lat: 6.9271, lng: 79.8612 });
     const [isPrimaryHub, setIsPrimaryHub] = useState(true);
+    const [isMapModalVisible, setIsMapModalVisible] = useState(false);
+    const [tempMapCoords, setTempMapCoords] = useState({ lat: 6.9271, lng: 79.8612 });
+    const [tempAddressLabel, setTempAddressLabel] = useState('');
 
-    const handleSelectPreset = (preset) => {
-        setSearchAddress(preset.address);
-        setCity(preset.city);
-        setPostalCode(preset.postalCode);
-        setMapCoords({ lat: preset.lat, lng: preset.lng });
-        setMapImage(preset.image);
+    // Sri Lankan Known Cities & Regions Geocoding Table
+    const SRI_LANKA_CITIES = {
+        colombo: { lat: 6.9271, lng: 79.8612, city: 'Colombo' },
+        moratuwa: { lat: 6.7730, lng: 79.8816, city: 'Moratuwa' },
+        kandy: { lat: 7.2906, lng: 80.6337, city: 'Kandy' },
+        galle: { lat: 6.0535, lng: 80.2210, city: 'Galle' },
+        malabe: { lat: 6.9061, lng: 79.9647, city: 'Malabe' },
+        maharagama: { lat: 6.8480, lng: 79.9265, city: 'Maharagama' },
+        nugegoda: { lat: 6.8728, lng: 79.8879, city: 'Nugegoda' },
+        kelaniya: { lat: 6.9535, lng: 79.9174, city: 'Kelaniya' },
+        negombo: { lat: 7.2008, lng: 79.8737, city: 'Negombo' },
+        jaffna: { lat: 9.6615, lng: 80.0255, city: 'Jaffna' },
+        matara: { lat: 5.9549, lng: 80.5550, city: 'Matara' },
+        kurunegala: { lat: 7.4863, lng: 80.3647, city: 'Kurunegala' },
+        gampaha: { lat: 7.0840, lng: 79.9925, city: 'Gampaha' },
+        battaramulla: { lat: 6.8990, lng: 79.9213, city: 'Battaramulla' },
+        homagama: { lat: 6.8443, lng: 80.0024, city: 'Homagama' },
+        dehiwala: { lat: 6.8511, lng: 79.8660, city: 'Dehiwala' },
+        panadura: { lat: 6.7132, lng: 79.9074, city: 'Panadura' },
+        peradeniya: { lat: 7.2583, lng: 80.5960, city: 'Peradeniya' },
+        ratnapura: { lat: 6.6828, lng: 80.4014, city: 'Ratnapura' },
+        anuradhapura: { lat: 8.3114, lng: 80.4037, city: 'Anuradhapura' },
+        trincomalee: { lat: 8.5874, lng: 81.2152, city: 'Trincomalee' },
+        batticaloa: { lat: 7.7170, lng: 81.7000, city: 'Batticaloa' },
     };
 
     const handleSearchChange = (text) => {
         setSearchAddress(text);
-        const textLower = text.toLowerCase();
-        const matched = LOCATION_PRESETS.find(p =>
-            p.city.toLowerCase().includes(textLower) ||
-            p.label.toLowerCase().includes(textLower) ||
-            p.address.toLowerCase().includes(textLower)
-        );
-        if (matched) {
-            setCity(matched.city);
-            setPostalCode(matched.postalCode);
-            setMapCoords({ lat: matched.lat, lng: matched.lng });
-            setMapImage(matched.image);
-        } else if (text.trim()) {
-            setCity(text.split(',')[0] || text);
+        if (!text.trim()) {
+            setStreetAddress('');
+            setCity('');
+            return;
+        }
+
+        const lowerText = text.toLowerCase().trim();
+
+        // 1. Check if user typed a comma-separated address: e.g. "99 Kaduwela Road, Malabe"
+        if (text.includes(',')) {
+            const parts = text.split(',');
+            const extractedCity = parts[parts.length - 1].trim();
+            const extractedStreet = parts.slice(0, parts.length - 1).join(',').trim();
+            setStreetAddress(extractedStreet || text.trim());
+            setCity(extractedCity || text.trim());
+        } else {
+            // 2. No comma: check if last word or full string matches a known Sri Lankan city
+            const words = text.trim().split(/\s+/);
+            const lastWordLower = words[words.length - 1].toLowerCase();
+            const matchingCityKey = Object.keys(SRI_LANKA_CITIES).find(
+                (k) => lowerText.includes(k) || lastWordLower === k
+            );
+
+            if (matchingCityKey) {
+                const matchedObj = SRI_LANKA_CITIES[matchingCityKey];
+                setCity(matchedObj.city);
+
+                // Extract street address portion if more than city name was typed
+                if (words.length > 1) {
+                    const streetPart = text.replace(new RegExp(matchedObj.city, 'gi'), '').replace(/,\s*$/, '').trim();
+                    setStreetAddress(streetPart || text.trim());
+                } else {
+                    setStreetAddress(matchedObj.city);
+                }
+            } else {
+                setStreetAddress(text.trim());
+                // Set city to the last word if multi-word, or whole text
+                setCity(words.length > 1 ? words[words.length - 1] : text.trim());
+            }
+        }
+
+        // 3. Precise Sri Lankan Geocoding Coordinates Sync
+        const matchedCityKey = Object.keys(SRI_LANKA_CITIES).find((k) => lowerText.includes(k));
+        if (matchedCityKey) {
+            const coords = SRI_LANKA_CITIES[matchedCityKey];
+            setMapCoords({ lat: coords.lat, lng: coords.lng });
+        } else {
+            // Hash into valid Sri Lankan lat/lng range (Lat: 6.0 to 9.5 N, Lng: 79.8 to 81.5 E)
+            const hash = text.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const dynamicLat = parseFloat((6.7000 + ((hash % 250) / 100)).toFixed(4));
+            const dynamicLng = parseFloat((79.8500 + ((hash % 150) / 100)).toFixed(4));
+            setMapCoords({ lat: dynamicLat, lng: dynamicLng });
         }
     };
 
+    const handleStreetAddressChange = (text) => {
+        setStreetAddress(text);
+        setSearchAddress(text);
+        if (text.trim()) {
+            const parts = text.split(',');
+            if (parts.length > 1) {
+                setCity(parts[parts.length - 1].trim());
+            }
+        }
+    };
+
+    const handleOpenMapPicker = () => {
+        setTempMapCoords(mapCoords);
+        setTempAddressLabel(streetAddress || searchAddress || city || 'Selected Location');
+        setIsMapModalVisible(true);
+    };
+
+    const handleConfirmMapPicker = () => {
+        setMapCoords(tempMapCoords);
+        if (tempAddressLabel) {
+            setSearchAddress(tempAddressLabel);
+            setStreetAddress(tempAddressLabel);
+        }
+        setIsMapModalVisible(false);
+        Alert.alert('Location Updated 📍', `Pin placed at (${tempMapCoords.lat.toFixed(4)}° N, ${tempMapCoords.lng.toFixed(4)}° E)`);
+    };
+
+    const handleInteractiveMapTap = (evt) => {
+        const { locationX, locationY } = evt.nativeEvent;
+        const latOffset = ((150 - locationY) / 150) * 0.04;
+        const lngOffset = ((locationX - 150) / 150) * 0.04;
+        const newLat = parseFloat((tempMapCoords.lat + latOffset).toFixed(4));
+        const newLng = parseFloat((tempMapCoords.lng + lngOffset).toFixed(4));
+        setTempMapCoords({ lat: newLat, lng: newLng });
+        setTempAddressLabel(`${streetAddress || city || 'Picked Map Target'}`);
+    };
+
     // Step 3 Form State (Amenities Selection)
-    const [selectedAmenities, setSelectedAmenities] = useState({
-        wifi: true,
-        electricity: true,
-        parking: true,
-        fitness: true,
-        cctv: true,
-    });
+    const [selectedAmenities, setSelectedAmenities] = useState({});
 
     // Step 4 Form State (Photos)
-    const [coverImage, setCoverImage] = useState('https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80');
-    const [additionalPhotos, setAdditionalPhotos] = useState([
-        { id: '1', uri: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80', isUploading: false },
-        { id: '2', name: 'DSC_9912.jpg', progress: 75, isUploading: true },
-    ]);
+    const [coverImage, setCoverImage] = useState(null);
+    const [additionalPhotos, setAdditionalPhotos] = useState([]);
 
     const toggleAmenity = (key) => {
         setSelectedAmenities((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -166,50 +347,6 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
         }
     };
 
-    const toggleGalleryItemSelection = (id) => {
-        if (selectedGalleryItemIds.includes(id)) {
-            setSelectedGalleryItemIds(selectedGalleryItemIds.filter(i => i !== id));
-        } else {
-            setSelectedGalleryItemIds([...selectedGalleryItemIds, id]);
-        }
-    };
-
-    const handleConfirmGallerySelection = () => {
-        const selectedItems = CERTIFICATE_GALLERY_ITEMS.filter(item => selectedGalleryItemIds.includes(item.id));
-        if (selectedItems.length === 0) {
-            Alert.alert('No Selection', 'Please select at least one certificate from the gallery.');
-            return;
-        }
-        const newUploadedCerts = selectedItems.map(item => ({
-            id: `cert_${Date.now()}_${item.id}`,
-            name: item.name,
-            title: item.title,
-            uri: item.uri,
-            size: item.size
-        }));
-
-        const existingNames = uploadedCertPhotos.map(c => c.name);
-        const filteredNew = newUploadedCerts.filter(c => !existingNames.includes(c.name));
-
-        setUploadedCertPhotos(prev => [...prev, ...filteredNew]);
-        setIsGalleryModalVisible(false);
-        Alert.alert('Certificates Selected 🎉', `Added ${selectedItems.length} certificate(s) from device gallery.`);
-    };
-
-    const handleBrowseCustomDeviceFile = () => {
-        openDeviceGalleryPicker((file) => {
-            const certItem = {
-                id: `cert_${Date.now()}`,
-                name: file.name || 'Custom_Device_Certificate.jpg',
-                uri: file.uri,
-                size: 'Device File'
-            };
-            setUploadedCertPhotos((prev) => [...prev, certItem]);
-            setIsGalleryModalVisible(false);
-            Alert.alert('Device File Uploaded 📄', `Loaded "${certItem.name}" directly from device storage.`);
-        }, 'image/*,.pdf');
-    };
-
     const handlePickCertPhoto = () => {
         openDeviceGalleryPicker((file) => {
             const certItem = {
@@ -246,14 +383,41 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
     };
 
     const handleNext = async () => {
-        if (currentStep === 1 && !propertyName.trim()) {
-            Alert.alert('Required Field', 'Please enter a property name.');
-            return;
+        if (currentStep === 1) {
+            if (!propertyName.trim()) {
+                Alert.alert('Required Field', 'Please enter a property name.');
+                return;
+            }
+            if (propertyNature === 'ROOM_BASED') {
+                if (rooms.length === 0) {
+                    Alert.alert('Room Required', 'Please add at least one room to your room-based property inventory before continuing.');
+                    return;
+                }
+            } else {
+                if (!monthlyRent.trim() || isNaN(parseFloat(monthlyRent)) || parseFloat(monthlyRent) <= 0) {
+                    Alert.alert('Required Field', 'Please enter a valid monthly rent amount (e.g. 25000).');
+                    return;
+                }
+            }
+        }
+        if (currentStep === 2) {
+            if (!streetAddress.trim() && !searchAddress.trim()) {
+                Alert.alert('Required Field', 'Please enter a street address or search location.');
+                return;
+            }
+            if (!city.trim()) {
+                Alert.alert('Required Field', 'Please enter a city.');
+                return;
+            }
         }
         if (currentStep < 4) {
             setCurrentStep(currentStep + 1);
         } else {
             // Step 4: Publish Property
+            if (!coverImage) {
+                Alert.alert('Cover Photo Required', 'Please select a cover photo from your device gallery before publishing.');
+                return;
+            }
             try {
                 // 1. Map GenderPreference to backend Enum (ANY, MALE_ONLY, FEMALE_ONLY)
                 let mappedGender = 'ANY';
@@ -261,41 +425,61 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                 else if (genderPreference === 'Male Only') mappedGender = 'MALE_ONLY';
                 else if (genderPreference === 'Mixed') mappedGender = 'ANY';
 
-                // 2. Geocode city location coordinates from dynamic map selection
-                const lat = mapCoords.lat || 6.773;
-                const lng = mapCoords.lng || 79.8816;
+                // 2. Location coordinates from dynamic map selection
+                const lat = mapCoords.lat || 6.9271;
+                const lng = mapCoords.lng || 79.8612;
 
-                // 3. Prepare Image URLs list
+                // 3. Prepare Image URLs list (cover + additional + all room photos)
                 const imagesList = [coverImage];
                 additionalPhotos.forEach(p => {
                     if (p.uri && !imagesList.includes(p.uri)) {
                         imagesList.push(p.uri);
                     }
                 });
+                rooms.forEach(r => {
+                    (r.photos || []).forEach(p => {
+                        if (p.uri && !imagesList.includes(p.uri)) {
+                            imagesList.push(p.uri);
+                        }
+                    });
+                });
 
-                // 4. Construct RoomRequest DTO (roomType, monthlyPrice, totalCapacity, remainingSpaces)
-                const rentVal = propertyNature === 'WHOLE_HOUSE' ? 45000 : 20000;
-                const capacity = propertyNature === 'WHOLE_HOUSE' ? 1 : 4;
+                // 4. Construct RoomRequest DTO based on user room inventory or whole house settings
+                const parsedRent = parseFloat(monthlyRent) || 0;
+                const parsedCapacity = parseInt(totalCapacity || '1');
                 const roomTypeLabel = propertyNature === 'WHOLE_HOUSE' ? 'Whole House / Annex' : 'Shared Room';
+
+                const payloadRooms = (propertyNature === 'ROOM_BASED' && rooms.length > 0)
+                    ? rooms.map(r => ({
+                        roomType: r.name,
+                        monthlyPrice: parseFloat(r.rent) || 0,
+                        totalCapacity: parseInt(r.capacity) || 1,
+                        remainingSpaces: parseInt(r.capacity) || 1,
+                        rentType: r.rentType || 'PER_PERSON',
+                        genderPreference: r.genderPreference || mappedGender,
+                        imageUrls: (r.photos || []).map(p => p.uri)
+                    }))
+                    : [
+                        {
+                            roomType: roomTypeLabel,
+                            monthlyPrice: parsedRent,
+                            totalCapacity: parsedCapacity,
+                            remainingSpaces: parsedCapacity,
+                            rentType: 'PER_ROOM'
+                        }
+                    ];
 
                 const propertyPayload = {
                     title: propertyName,
-                    description: description || 'Eco-friendly student boarding house with modern amenities.',
-                    address: searchAddress || '123 University Road',
-                    city: city || 'Moratuwa',
+                    description: description || 'Boarding house property.',
+                    address: streetAddress || searchAddress,
+                    city: city,
                     genderPreference: mappedGender,
-                    monthlyRent: parseFloat(rentVal),
+                    monthlyRent: parsedRent,
                     latitude: lat,
                     longitude: lng,
                     imageUrls: imagesList,
-                    rooms: [
-                        {
-                            roomType: roomTypeLabel,
-                            monthlyPrice: parseFloat(rentVal),
-                            totalCapacity: parseInt(capacity),
-                            remainingSpaces: parseInt(capacity),
-                        }
-                    ]
+                    rooms: payloadRooms
                 };
 
                 const savedProperty = await api.properties.create(propertyPayload);
@@ -417,20 +601,20 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                 {currentStep === 1 && (
                     <View style={styles.cardContainer}>
                         {/* Property Name */}
-                        <Text style={styles.fieldLabel}>Property Name</Text>
+                        <Text style={styles.fieldLabel}>Property Name *</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="e.g. Green Valley Boarding"
+                            placeholder="e.g. Green Valley Boarding House"
                             placeholderTextColor="#94A3B8"
                             value={propertyName}
                             onChangeText={setPropertyName}
                         />
 
                         {/* Property Nature (Room-Based vs Whole House) */}
-                        <Text style={styles.fieldLabel}>Property Nature / Type</Text>
+                        <Text style={styles.fieldLabel}>Property Nature / Type *</Text>
                         <View style={styles.genderContainer}>
                             {[
-                                { key: 'ROOM_BASED', label: 'Room-Based' },
+                                { key: 'ROOM_BASED', label: 'Room-Based (Multiple Rooms)' },
                                 { key: 'WHOLE_HOUSE', label: 'Whole House / Annex' }
                             ].map((nature) => {
                                 const isSelected = propertyNature === nature.key;
@@ -448,6 +632,137 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                                 );
                             })}
                         </View>
+
+                        {/* If WHOLE_HOUSE selected: show single property rent & capacity inputs */}
+                        {propertyNature === 'WHOLE_HOUSE' ? (
+                            <>
+                                <Text style={styles.fieldLabel}>Monthly Rent (LKR) *</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="e.g. 45000"
+                                    placeholderTextColor="#94A3B8"
+                                    value={monthlyRent}
+                                    onChangeText={setMonthlyRent}
+                                    keyboardType="numeric"
+                                />
+
+                                <Text style={styles.fieldLabel}>Total Property Capacity / Occupants</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="e.g. 6"
+                                    placeholderTextColor="#94A3B8"
+                                    value={totalCapacity}
+                                    onChangeText={setTotalCapacity}
+                                    keyboardType="numeric"
+                                />
+                            </>
+                        ) : (
+                            /* If ROOM_BASED selected: render dynamic Room Inventory Management card */
+                            <View style={{ marginTop: 16, backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#CBD5E1' }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                    <Text style={{ fontSize: 15, fontWeight: '900', color: '#133E32' }}>
+                                        🛏️ Rooms Inventory ({rooms.length})
+                                    </Text>
+                                    <TouchableOpacity
+                                        onPress={handleOpenAddRoomModal}
+                                        style={{ backgroundColor: '#133E32', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+                                        activeOpacity={0.85}
+                                    >
+                                        <Ionicons name="add-circle" size={16} color="#FFD700" style={{ marginRight: 4 }} />
+                                        <Text style={{ color: '#FFD700', fontSize: 12, fontWeight: '800' }}>Add Room</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 12 }}>
+                                    Specify rent, capacity, and upload device photos separately for each room.
+                                </Text>
+
+                                {/* Total Aggregated Rent & Capacity Summary Badge */}
+                                {rooms.length > 0 && (
+                                    <View style={{ backgroundColor: '#E6F0EC', padding: 10, borderRadius: 10, flexDirection: 'row', justifyContent: 'space-around', marginBottom: 12, borderWidth: 1, borderColor: '#C3DCD4' }}>
+                                        <View style={{ alignItems: 'center' }}>
+                                            <Text style={{ fontSize: 10, color: '#133E32', fontWeight: '700' }}>TOTAL ROOMS</Text>
+                                            <Text style={{ fontSize: 14, fontWeight: '900', color: '#133E32' }}>{rooms.length}</Text>
+                                        </View>
+                                        <View style={{ width: 1, backgroundColor: '#CBD5E1' }} />
+                                        <View style={{ alignItems: 'center' }}>
+                                            <Text style={{ fontSize: 10, color: '#133E32', fontWeight: '700' }}>TOTAL RENT</Text>
+                                            <Text style={{ fontSize: 14, fontWeight: '900', color: '#133E32' }}>LKR {monthlyRent || '0'}</Text>
+                                        </View>
+                                        <View style={{ width: 1, backgroundColor: '#CBD5E1' }} />
+                                        <View style={{ alignItems: 'center' }}>
+                                            <Text style={{ fontSize: 10, color: '#133E32', fontWeight: '700' }}>TOTAL CAPACITY</Text>
+                                            <Text style={{ fontSize: 14, fontWeight: '900', color: '#133E32' }}>{totalCapacity || '0'} Beds</Text>
+                                        </View>
+                                    </View>
+                                )}
+
+                                {/* Room Cards List */}
+                                {rooms.length === 0 ? (
+                                    <TouchableOpacity
+                                        onPress={handleOpenAddRoomModal}
+                                        style={{ height: 110, borderWidth: 2, borderColor: '#CBD5E1', borderStyle: 'dashed', borderRadius: 12, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Ionicons name="bed-outline" size={32} color="#133E32" style={{ marginBottom: 4 }} />
+                                        <Text style={{ fontSize: 13, fontWeight: '800', color: '#133E32' }}>+ Tap to Add Your First Room</Text>
+                                        <Text style={{ fontSize: 11, color: '#94A3B8' }}>Set monthly rent, capacity, and room photos</Text>
+                                    </TouchableOpacity>
+                                ) : (
+                                    <View style={{ gap: 10 }}>
+                                        {rooms.map((room, index) => (
+                                            <View key={room.id} style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E2E8F0', elevation: 1 }}>
+                                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                        <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#133E32', justifyContent: 'center', alignItems: 'center', marginRight: 8 }}>
+                                                            <Text style={{ color: '#FFD700', fontSize: 12, fontWeight: '900' }}>{index + 1}</Text>
+                                                        </View>
+                                                        <View>
+                                                            <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A' }}>{room.name}</Text>
+                                                            <Text style={{ fontSize: 11, color: '#64748B' }}>
+                                                                Pref: <Text style={{ fontWeight: '700', color: '#133E32' }}>{room.genderPreference || 'Mixed'}</Text>
+                                                            </Text>
+                                                        </View>
+                                                    </View>
+                                                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                                                        <TouchableOpacity onPress={() => handleOpenEditRoomModal(room)} style={{ padding: 4 }}>
+                                                            <Ionicons name="pencil" size={18} color="#133E32" />
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity onPress={() => handleDeleteRoom(room.id)} style={{ padding: 4 }}>
+                                                            <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                </View>
+
+                                                {/* Room Specs Pills */}
+                                                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                                                    <View style={{ backgroundColor: '#E6F0EC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                                                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#133E32' }}>
+                                                            💰 LKR {parseFloat(room.rent).toLocaleString()} {room.rentType === 'PER_ROOM' ? '/ room / mo' : '/ person / mo'}
+                                                        </Text>
+                                                    </View>
+                                                    <View style={{ backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                                                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#334155' }}>
+                                                            👥 Max {room.capacity} Occupant(s)
+                                                        </Text>
+                                                    </View>
+                                                </View>
+
+                                                {/* Room Gallery Thumbnails */}
+                                                {room.photos && room.photos.length > 0 && (
+                                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                                                        <View style={{ flexDirection: 'row', gap: 6 }}>
+                                                            {room.photos.map((p) => (
+                                                                <Image key={p.id} source={{ uri: p.uri }} style={{ width: 50, height: 50, borderRadius: 8 }} />
+                                                            ))}
+                                                        </View>
+                                                    </ScrollView>
+                                                )}
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                            </View>
+                        )}
 
                         {/* Description */}
                         <Text style={styles.fieldLabel}>Description</Text>
@@ -558,55 +873,53 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                 {/* STEP 2: LOCATION */}
                 {currentStep === 2 && (
                     <View style={styles.stepTwoContainer}>
-                        {/* Quick Preset Location Chips */}
-                        <Text style={[styles.fieldLabel, { marginTop: 0, marginBottom: 6 }]}>Popular University / City Hubs</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
-                            <View style={{ flexDirection: 'row', gap: 8 }}>
-                                {LOCATION_PRESETS.map((preset) => {
-                                    const isSel = city.toLowerCase() === preset.city.toLowerCase();
-                                    return (
-                                        <TouchableOpacity
-                                            key={preset.label}
-                                            style={[styles.certChip, isSel && { backgroundColor: '#133E32', borderColor: '#133E32' }]}
-                                            onPress={() => handleSelectPreset(preset)}
-                                            activeOpacity={0.8}
-                                        >
-                                            <Ionicons name="location" size={14} color={isSel ? '#FFD700' : '#133E32'} style={{ marginRight: 4 }} />
-                                            <Text style={[styles.certChipText, isSel && { color: '#FFFFFF', fontWeight: '800' }]}>
-                                                {preset.label}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
+                        {/* Interactive Vector Map Canvas Box with Floating Address Search */}
+                        <TouchableOpacity
+                            style={styles.mapCard}
+                            onPress={handleOpenMapPicker}
+                            activeOpacity={0.9}
+                        >
+                            {/* Stylized Vector Grid Background */}
+                            <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: '#1E293B', justifyContent: 'center', alignItems: 'center' }}>
+                                {/* Grid lines background simulation */}
+                                <View style={{ position: 'absolute', width: '100%', height: 1, backgroundColor: 'rgba(255, 255, 255, 0.1)', top: '25%' }} />
+                                <View style={{ position: 'absolute', width: '100%', height: 1, backgroundColor: 'rgba(255, 255, 255, 0.1)', top: '50%' }} />
+                                <View style={{ position: 'absolute', width: '100%', height: 1, backgroundColor: 'rgba(255, 255, 255, 0.1)', top: '75%' }} />
+                                <View style={{ position: 'absolute', height: '100%', width: 1, backgroundColor: 'rgba(255, 255, 255, 0.1)', left: '33%' }} />
+                                <View style={{ position: 'absolute', height: '100%', width: 1, backgroundColor: 'rgba(255, 255, 255, 0.1)', left: '66%' }} />
                             </View>
-                        </ScrollView>
-
-                        {/* Map View Box with Floating Address Search Overlay */}
-                        <View style={styles.mapCard}>
-                            <Image
-                                source={{ uri: mapImage }}
-                                style={styles.mapImage}
-                                resizeMode="cover"
-                            />
 
                             {/* Floating Address Search Input */}
                             <View style={styles.mapSearchOverlay}>
                                 <Ionicons name="search" size={18} color="#133E32" style={{ marginRight: 8 }} />
                                 <TextInput
                                     style={styles.mapSearchInput}
-                                    placeholder="Search location, university, or city..."
+                                    placeholder="Search location, address, or city..."
                                     placeholderTextColor="#94A3B8"
                                     value={searchAddress}
                                     onChangeText={handleSearchChange}
                                 />
                             </View>
 
+                            {/* Map Action Badges (Zoom / Tap Indicator) */}
+                            <View style={{ position: 'absolute', right: 12, top: 60, gap: 6 }}>
+                                <View style={{ backgroundColor: '#133E32', padding: 6, borderRadius: 8, opacity: 0.9 }}>
+                                    <Ionicons name="compass" size={18} color="#FFD700" />
+                                </View>
+                                <View style={{ backgroundColor: '#133E32', padding: 6, borderRadius: 8, opacity: 0.9 }}>
+                                    <Ionicons name="scan-outline" size={18} color="#FFFFFF" />
+                                </View>
+                            </View>
+
                             {/* Center Map Pin with Dynamic Location Info Badge */}
                             <View style={styles.mapPinContainer}>
                                 <View style={{ alignItems: 'center' }}>
-                                    <View style={{ backgroundColor: '#133E32', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, marginBottom: 4 }}>
+                                    <View style={{ backgroundColor: '#133E32', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, marginBottom: 4, elevation: 4 }}>
                                         <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '800' }}>
-                                            📍 {city || 'Selected Location'} ({mapCoords.lat.toFixed(3)}° N, {mapCoords.lng.toFixed(3)}° E)
+                                            📍 {streetAddress || city || 'Selected Location'}
+                                        </Text>
+                                        <Text style={{ color: '#E2E8F0', fontSize: 9, fontWeight: '600', textAlign: 'center' }}>
+                                            ({mapCoords.lat.toFixed(4)}° N, {mapCoords.lng.toFixed(4)}° E) • Tap to adjust
                                         </Text>
                                     </View>
                                     <View style={styles.pinCircle}>
@@ -614,14 +927,30 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                                     </View>
                                 </View>
                             </View>
-                        </View>
 
-                        {/* City & Postal Code Inputs */}
+                            {/* Bottom Touch Map Prompt */}
+                            <View style={{ position: 'absolute', bottom: 10, alignSelf: 'center', backgroundColor: 'rgba(15, 23, 42, 0.85)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 }}>
+                                <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700' }}>
+                                    👇 Touch map to adjust pin position
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Address, City & Postal Code Inputs */}
                         <View style={styles.cardContainer}>
-                            <Text style={styles.fieldLabel}>City</Text>
+                            <Text style={styles.fieldLabel}>Street Address *</Text>
                             <TextInput
                                 style={styles.input}
-                                placeholder="Seattle / Moratuwa"
+                                placeholder="e.g. 99 Kaduwela Road, Malabe"
+                                placeholderTextColor="#94A3B8"
+                                value={streetAddress}
+                                onChangeText={handleStreetAddressChange}
+                            />
+
+                            <Text style={styles.fieldLabel}>City / Area *</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="e.g. Malabe / Moratuwa"
                                 placeholderTextColor="#94A3B8"
                                 value={city}
                                 onChangeText={setCity}
@@ -630,7 +959,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                             <Text style={styles.fieldLabel}>Postal Code</Text>
                             <TextInput
                                 style={styles.input}
-                                placeholder="98101 / 10400"
+                                placeholder="e.g. 10115 / 10400"
                                 placeholderTextColor="#94A3B8"
                                 value={postalCode}
                                 onChangeText={setPostalCode}
@@ -649,6 +978,90 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                                 <Text style={styles.checkboxLabel}>Set as primary management hub</Text>
                             </TouchableOpacity>
                         </View>
+
+                        {/* Interactive Full-Screen Map Location Picker Modal */}
+                        <Modal
+                            visible={isMapModalVisible}
+                            animationType="slide"
+                            transparent={false}
+                            onRequestClose={() => setIsMapModalVisible(false)}
+                        >
+                            <SafeAreaView style={{ flex: 1, backgroundColor: '#0F172A' }}>
+                                <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
+
+                                {/* Modal Header */}
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#133E32' }}>
+                                    <TouchableOpacity onPress={() => setIsMapModalVisible(false)} style={{ padding: 4 }}>
+                                        <Ionicons name="close" size={24} color="#FFFFFF" />
+                                    </TouchableOpacity>
+                                    <View style={{ alignItems: 'center' }}>
+                                        <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800' }}>Adjust Map Location</Text>
+                                        <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '600' }}>Tap map canvas to set precise pin target</Text>
+                                    </View>
+                                    <TouchableOpacity onPress={handleConfirmMapPicker} style={{ backgroundColor: '#FFD700', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}>
+                                        <Text style={{ color: '#133E32', fontSize: 12, fontWeight: '800' }}>Confirm</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                {/* Full Interactive Map View Box */}
+                                <TouchableOpacity
+                                    style={{ flex: 1, backgroundColor: '#1E293B', position: 'relative' }}
+                                    activeOpacity={1}
+                                    onPress={handleInteractiveMapTap}
+                                >
+                                    {/* Grid canvas background simulation */}
+                                    <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: '#0F172A' }}>
+                                        <View style={{ position: 'absolute', width: '100%', height: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)', top: '20%' }} />
+                                        <View style={{ position: 'absolute', width: '100%', height: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)', top: '40%' }} />
+                                        <View style={{ position: 'absolute', width: '100%', height: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)', top: '60%' }} />
+                                        <View style={{ position: 'absolute', width: '100%', height: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)', top: '80%' }} />
+                                        <View style={{ position: 'absolute', height: '100%', width: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)', left: '25%' }} />
+                                        <View style={{ position: 'absolute', height: '100%', width: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)', left: '50%' }} />
+                                        <View style={{ position: 'absolute', height: '100%', width: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)', left: '75%' }} />
+                                    </View>
+
+                                    {/* Crosshair Target overlay */}
+                                    <View style={{ position: 'absolute', top: '50%', left: '50%', transform: [{ translateX: -20 }, { translateY: -20 }], alignItems: 'center' }}>
+                                        <View style={{ backgroundColor: '#133E32', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, marginBottom: 4, elevation: 6 }}>
+                                            <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '800', textAlign: 'center' }}>
+                                                🎯 {tempAddressLabel}
+                                            </Text>
+                                            <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '600', textAlign: 'center' }}>
+                                                {tempMapCoords.lat.toFixed(4)}° N, {tempMapCoords.lng.toFixed(4)}° E
+                                            </Text>
+                                        </View>
+                                        <Ionicons name="location" size={36} color="#FFD700" />
+                                    </View>
+
+                                    {/* Map Controls Floating Column */}
+                                    <View style={{ position: 'absolute', right: 16, top: 16, backgroundColor: '#0F172A', borderRadius: 12, padding: 6, gap: 12 }}>
+                                        <TouchableOpacity style={{ padding: 4 }} onPress={() => setTempMapCoords(prev => ({ ...prev, lat: prev.lat + 0.005 }))}>
+                                            <Ionicons name="add-circle-outline" size={24} color="#FFFFFF" />
+                                        </TouchableOpacity>
+                                        <View style={{ height: 1, backgroundColor: '#334155' }} />
+                                        <TouchableOpacity style={{ padding: 4 }} onPress={() => setTempMapCoords(prev => ({ ...prev, lat: prev.lat - 0.005 }))}>
+                                            <Ionicons name="remove-circle-outline" size={24} color="#FFFFFF" />
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    {/* Bottom Info bar */}
+                                    <View style={{ position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: 'rgba(19, 62, 50, 0.95)', padding: 14, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <View style={{ flex: 1, marginRight: 10 }}>
+                                            <Text style={{ color: '#FFD700', fontSize: 13, fontWeight: '800' }}>Pinned Location</Text>
+                                            <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }} numberOfLines={1}>
+                                                {tempAddressLabel}
+                                            </Text>
+                                        </View>
+                                        <TouchableOpacity
+                                            style={{ backgroundColor: '#FFD700', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 }}
+                                            onPress={handleConfirmMapPicker}
+                                        >
+                                            <Text style={{ color: '#133E32', fontSize: 13, fontWeight: '900' }}>Confirm Pin 📍</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </TouchableOpacity>
+                            </SafeAreaView>
+                        </Modal>
                     </View>
                 )}
 
@@ -785,14 +1198,26 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                                 </TouchableOpacity>
                             </View>
 
-                            <View style={[styles.coverImagePreviewWrapper, { marginTop: 12 }]}>
-                                <Image source={{ uri: coverImage }} style={styles.coverImagePreview} resizeMode="cover" />
-                                <View style={styles.coverActionButtons}>
-                                    <TouchableOpacity style={styles.actionBtnCircle} onPress={handlePickCoverPhoto} activeOpacity={0.8}>
-                                        <Ionicons name="pencil" size={16} color="#133E32" />
-                                    </TouchableOpacity>
+                            {coverImage ? (
+                                <View style={[styles.coverImagePreviewWrapper, { marginTop: 12 }]}>
+                                    <Image source={{ uri: coverImage }} style={styles.coverImagePreview} resizeMode="cover" />
+                                    <View style={styles.coverActionButtons}>
+                                        <TouchableOpacity style={styles.actionBtnCircle} onPress={handlePickCoverPhoto} activeOpacity={0.8}>
+                                            <Ionicons name="pencil" size={16} color="#133E32" />
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
-                            </View>
+                            ) : (
+                                <TouchableOpacity
+                                    onPress={handlePickCoverPhoto}
+                                    style={{ marginTop: 12, height: 160, backgroundColor: '#F8FAFC', borderWidth: 2, borderColor: '#CBD5E1', borderStyle: 'dashed', borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}
+                                    activeOpacity={0.8}
+                                >
+                                    <Ionicons name="camera-outline" size={36} color="#133E32" style={{ marginBottom: 6 }} />
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#133E32' }}>Tap to Pick Cover Image</Text>
+                                    <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>Upload high-resolution property cover photo</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
 
                         {/* Additional Photos Box */}
@@ -850,6 +1275,153 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                     <Ionicons name="arrow-forward" size={18} color="#FFD700" style={{ marginLeft: 6 }} />
                 </TouchableOpacity>
             </View>
+
+            {/* Add / Edit Room Modal */}
+            <Modal
+                visible={isRoomModalVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setIsRoomModalVisible(false)}
+            >
+                <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.65)', justifyContent: 'flex-end' }}>
+                    <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '85%' }}>
+                        {/* Modal Header */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <Text style={{ fontSize: 18, fontWeight: '900', color: '#133E32' }}>
+                                {currentRoom.id && rooms.some(r => r.id === currentRoom.id) ? 'Edit Room Details' : 'Add New Room'}
+                            </Text>
+                            <TouchableOpacity onPress={() => setIsRoomModalVisible(false)} style={{ padding: 4 }}>
+                                <Ionicons name="close-circle" size={26} color="#64748B" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView showsVerticalScrollIndicator={false}>
+                            {/* Room Name Input */}
+                            <Text style={styles.fieldLabel}>Room Name / Number *</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="e.g. Room 101 - AC Double Bed"
+                                placeholderTextColor="#94A3B8"
+                                value={currentRoom.name}
+                                onChangeText={(text) => setCurrentRoom({ ...currentRoom, name: text })}
+                            />
+
+                            {/* Rent Charge Basis (Per Person vs Per Room) */}
+                            <Text style={styles.fieldLabel}>Rent Charge Basis *</Text>
+                            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+                                <TouchableOpacity
+                                    style={[styles.genderPill, (currentRoom.rentType || 'PER_PERSON') === 'PER_PERSON' && styles.genderPillActive]}
+                                    onPress={() => setCurrentRoom({ ...currentRoom, rentType: 'PER_PERSON' })}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={[styles.genderPillText, (currentRoom.rentType || 'PER_PERSON') === 'PER_PERSON' && styles.genderPillTextActive]}>
+                                        Per Person / Occupant
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.genderPill, currentRoom.rentType === 'PER_ROOM' && styles.genderPillActive]}
+                                    onPress={() => setCurrentRoom({ ...currentRoom, rentType: 'PER_ROOM' })}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={[styles.genderPillText, currentRoom.rentType === 'PER_ROOM' && styles.genderPillTextActive]}>
+                                        Per Entire Room
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Monthly Rent for Room */}
+                            <Text style={styles.fieldLabel}>Monthly Rent for this Room (LKR) *</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="e.g. 18000"
+                                placeholderTextColor="#94A3B8"
+                                value={currentRoom.rent}
+                                onChangeText={(text) => setCurrentRoom({ ...currentRoom, rent: text })}
+                                keyboardType="numeric"
+                            />
+
+                            {/* Maximum Capacity / Occupants */}
+                            <Text style={styles.fieldLabel}>Maximum Room Capacity (Occupants) *</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="e.g. 2"
+                                placeholderTextColor="#94A3B8"
+                                value={currentRoom.capacity}
+                                onChangeText={(text) => setCurrentRoom({ ...currentRoom, capacity: text })}
+                                keyboardType="numeric"
+                            />
+
+                            {/* Room Gender Preference Pill */}
+                            <Text style={styles.fieldLabel}>Accommodation Preference</Text>
+                            <View style={styles.genderContainer}>
+                                {['Mixed', 'Female Only', 'Male Only'].map((pref) => {
+                                    const isSelected = currentRoom.genderPreference === pref;
+                                    return (
+                                        <TouchableOpacity
+                                            key={pref}
+                                            style={[styles.genderPill, isSelected && styles.genderPillActive]}
+                                            onPress={() => setCurrentRoom({ ...currentRoom, genderPreference: pref })}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={[styles.genderPillText, isSelected && styles.genderPillTextActive]}>
+                                                {pref}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+
+                            {/* Room Photo Gallery Upload Section */}
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 8 }}>
+                                <Text style={[styles.fieldLabel, { marginTop: 0 }]}>Room Gallery Photos ({currentRoom.photos ? currentRoom.photos.length : 0})</Text>
+                                <TouchableOpacity
+                                    onPress={handlePickRoomPhoto}
+                                    style={{ backgroundColor: '#133E32', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+                                    activeOpacity={0.85}
+                                >
+                                    <Ionicons name="camera" size={15} color="#FFD700" style={{ marginRight: 4 }} />
+                                    <Text style={{ color: '#FFD700', fontSize: 12, fontWeight: '800' }}>+ Pick Photo</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Uploaded Room Photos Strip */}
+                            {currentRoom.photos && currentRoom.photos.length > 0 ? (
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+                                    {currentRoom.photos.map((photo) => (
+                                        <View key={photo.id} style={{ position: 'relative', width: 70, height: 70, borderRadius: 10, overflow: 'hidden' }}>
+                                            <Image source={{ uri: photo.uri }} style={{ width: '100%', height: '100%' }} />
+                                            <TouchableOpacity
+                                                onPress={() => handleRemoveRoomPhoto(photo.id)}
+                                                style={{ position: 'absolute', top: 2, right: 2, backgroundColor: 'rgba(239,68,68,0.9)', borderRadius: 10, padding: 2 }}
+                                            >
+                                                <Ionicons name="close" size={12} color="#FFF" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                </View>
+                            ) : (
+                                <TouchableOpacity
+                                    onPress={handlePickRoomPhoto}
+                                    style={{ height: 80, backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: '#CBD5E1', borderStyle: 'dashed', borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 14 }}
+                                    activeOpacity={0.8}
+                                >
+                                    <Ionicons name="images-outline" size={24} color="#133E32" />
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#133E32', marginTop: 4 }}>Upload Photos for this Room from Phone Gallery</Text>
+                                </TouchableOpacity>
+                            )}
+
+                            {/* Save Room Action Button */}
+                            <TouchableOpacity
+                                onPress={handleSaveRoom}
+                                style={{ backgroundColor: '#133E32', height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 10, marginBottom: 20 }}
+                                activeOpacity={0.9}
+                            >
+                                <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '800' }}>Save Room Details</Text>
+                            </TouchableOpacity>
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }

@@ -75,7 +75,11 @@ export default function AdminPendingPropertiesScreen({
         owner: p.ownerName || 'Property Owner',
         submittedTime: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Recently',
         priority: 'Submitted Today',
-        image: p.imageUrls && p.imageUrls.length > 0 ? p.imageUrls[0] : 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=600&q=80',
+        image: (p.imageUrls && p.imageUrls.length > 0)
+            ? p.imageUrls[0]
+            : (p.images && p.images.length > 0)
+                ? (typeof p.images[0] === 'string' ? p.images[0] : p.images[0].imageUrl)
+                : 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=600&q=80',
         rooms: p.rooms ? `${p.rooms.length} Units` : '1 Unit',
     }));
 

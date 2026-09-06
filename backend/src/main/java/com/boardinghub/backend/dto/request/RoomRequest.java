@@ -25,4 +25,6 @@ public class RoomRequest {
 
     @NotNull(message = "Remaining spaces is required")
     private Integer remainingSpaces;
+
+    private String rentType; // PER_PERSON or PER_ROOM
 }

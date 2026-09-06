@@ -14,4 +14,5 @@ public class RoomResponse {
     private Double monthlyPrice;
     private Integer totalCapacity;
     private Integer remainingSpaces;
+    private String rentType;
 }

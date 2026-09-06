@@ -52,7 +52,11 @@ export default function OwnerPropertiesScreen({
         availableRooms: p.rooms ? p.rooms.reduce((acc, r) => acc + (r.remainingSpaces || 0), 0) : 0,
         status: p.status || 'APPROVED',
         rating: p.rating || 4.8,
-        imageUrl: p.imageUrls && p.imageUrls.length > 0 ? p.imageUrls[0] : 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=800&q=80'
+        imageUrl: (p.imageUrls && p.imageUrls.length > 0)
+            ? p.imageUrls[0]
+            : (p.images && p.images.length > 0)
+                ? (typeof p.images[0] === 'string' ? p.images[0] : p.images[0].imageUrl)
+                : 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=800&q=80'
     }));
 
     const filteredProperties = properties.filter((p) => {

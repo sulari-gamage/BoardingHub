@@ -57,7 +57,11 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
         rating: p.rating || 4.8,
         reviewsCount: p.reviewsCount || 12,
         genderPreference: p.genderPreference === 'MALE_ONLY' ? 'Boys Only' : p.genderPreference === 'FEMALE_ONLY' ? 'Girls Only' : 'Any Gender',
-        image: p.imageUrls && p.imageUrls.length > 0 ? { uri: p.imageUrls[0] } : { uri: 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5' },
+        image: (p.imageUrls && p.imageUrls.length > 0)
+            ? { uri: p.imageUrls[0] }
+            : (p.images && p.images.length > 0)
+                ? { uri: typeof p.images[0] === 'string' ? p.images[0] : p.images[0].imageUrl }
+                : { uri: 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5' },
         tags: p.amenities ? p.amenities.map(a => a.name) : ['Wi-Fi', 'Security'],
     })) : POPULAR_BOARDINGS.filter((item) => {
         const matchesSearch =
