@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -7,14 +7,36 @@ import {
     SafeAreaView,
     ScrollView,
     Image,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import BottomNavBar from '../../components/BottomNavBar';
 import HeaderBar from '../../components/HeaderBar';
+import api from '../../services/api';
 
 export default function BookingsScreen({ bookings = [], onSelectBoarding, onViewBookingDetails, onNavigateTab, onOpenNotifications }) {
     const [activeTabFilter, setActiveTabFilter] = useState('Pending');
     const [activeNavTab, setActiveNavTab] = useState('BOOKINGS');
+    const [apiBookings, setApiBookings] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        loadMyBookings();
+    }, []);
+
+    const loadMyBookings = async () => {
+        try {
+            setLoading(true);
+            const data = await api.bookings.getMyBookings();
+            if (data && data.length > 0) {
+                setApiBookings(data);
+            }
+        } catch (error) {
+            console.log('Error fetching seeker bookings:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Initial mock bookings list if none passed via state
     const defaultBookings = [
@@ -59,12 +81,26 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
         }
     ];
 
-    const allBookings = bookings.length > 0 ? bookings : defaultBookings;
+    const mappedApiBookings = apiBookings.map(b => ({
+        id: b.id.toString(),
+        title: b.propertyTitle || 'Boarding Request',
+        location: b.roomType ? `${b.roomType} Room` : 'Property Room',
+        date: b.moveInDate ? new Date(b.moveInDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Sep 10, 2026',
+        roomType: b.roomType || 'Room Request',
+        status: b.status === 'APPROVED' ? 'ACCEPTED' : b.status,
+        price: b.monthlyPrice || 25000,
+        imageUrl: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80",
+        description: b.notes || 'Booking Request',
+        ownerName: b.seekerName || 'Owner',
+        ownerPhone: b.seekerPhone || ''
+    }));
+
+    const allBookings = mappedApiBookings.length > 0 ? mappedApiBookings : (bookings.length > 0 ? bookings : defaultBookings);
 
     const filteredBookings = allBookings.filter((b) => {
         if (activeTabFilter === 'Pending') return b.status === 'PENDING';
-        if (activeTabFilter === 'Accepted') return b.status === 'ACCEPTED';
-        if (activeTabFilter === 'Past') return b.status === 'PAST';
+        if (activeTabFilter === 'Accepted') return b.status === 'ACCEPTED' || b.status === 'APPROVED';
+        if (activeTabFilter === 'Past') return b.status === 'PAST' || b.status === 'REJECTED' || b.status === 'CANCELLED';
         return true;
     });
 

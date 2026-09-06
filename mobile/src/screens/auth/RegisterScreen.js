@@ -10,10 +10,11 @@ import {
     StatusBar,
     Alert,
     Image,
-    Platform
+    Platform,
+    ActivityIndicator
 } from 'react-native';
-
 import { Ionicons } from '@expo/vector-icons';
+import api from '../../services/api';
 
 export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess }) {
     const [role, setRole] = useState('Seeker'); // Seeker | Owner
@@ -27,8 +28,9 @@ export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess })
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [agreeTerms, setAgreeTerms] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-    const handleRegister = () => {
+    const handleRegister = async () => {
         if (!fullName || !phone || !email || !password || !confirmPassword) {
             Alert.alert('Required Fields', 'Please fill in all required fields.');
             return;
@@ -42,9 +44,25 @@ export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess })
             return;
         }
 
-        Alert.alert('Account Created!', `Welcome to BoardingHub, ${fullName}!`);
-        if (onRegisterSuccess) {
-            onRegisterSuccess(role);
+        try {
+            setLoading(true);
+            const backendRole = role.toUpperCase() === 'OWNER' ? 'OWNER' : 'SEEKER';
+            const response = await api.auth.register({
+                name: fullName.trim(),
+                email: email.trim(),
+                password: password,
+                whatsappNumber: phone.trim(),
+                role: backendRole
+            });
+
+            Alert.alert('Account Created!', `Welcome to BoardingHub, ${response.name}!`);
+            if (onRegisterSuccess) {
+                onRegisterSuccess(role, response);
+            }
+        } catch (error) {
+            Alert.alert('Registration Failed', error.message || 'Could not create account.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -236,11 +254,16 @@ export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess })
 
                 {/* Create Account Primary Button */}
                 <TouchableOpacity
-                    style={styles.createAccountBtn}
+                    style={[styles.createAccountBtn, loading && { opacity: 0.7 }]}
                     onPress={handleRegister}
+                    disabled={loading}
                     activeOpacity={0.85}
                 >
-                    <Text style={styles.createAccountBtnText}>Create Account</Text>
+                    {loading ? (
+                        <ActivityIndicator color="#FFD700" size="small" />
+                    ) : (
+                        <Text style={styles.createAccountBtnText}>Create Account</Text>
+                    )}
                 </TouchableOpacity>
 
                 {/* Already have an account link */}

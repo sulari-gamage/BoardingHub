@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -7,6 +7,7 @@ import {
     TouchableOpacity,
     SafeAreaView,
     ScrollView,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import BoardingCard from '../../components/BoardingCard';
@@ -14,13 +15,51 @@ import NearLocationCard from '../../components/NearLocationCard';
 import BottomNavBar from '../../components/BottomNavBar';
 import HeaderBar from '../../components/HeaderBar';
 import { NEAR_LOCATION_BOARDINGS, POPULAR_BOARDINGS } from '../../data/mockBoardings';
+import api from '../../services/api';
 
 export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('ALL');
     const [activeTab, setActiveTab] = useState('HOME');
+    const [properties, setProperties] = useState([]);
+    const [loading, setLoading] = useState(false);
 
-    const filteredPopularBoardings = POPULAR_BOARDINGS.filter((item) => {
+    useEffect(() => {
+        loadProperties();
+    }, [selectedFilter]);
+
+    const loadProperties = async () => {
+        try {
+            setLoading(true);
+            const filters = {};
+            if (selectedFilter === 'girls') filters.gender = 'FEMALE_ONLY';
+            if (selectedFilter === 'boys') filters.gender = 'MALE_ONLY';
+
+            const data = await api.properties.getAll(filters);
+            if (data && data.length > 0) {
+                setProperties(data);
+            } else {
+                setProperties([]);
+            }
+        } catch (error) {
+            console.log('Error loading properties from API, using fallback data:', error);
+            setProperties([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const displayBoardings = properties.length > 0 ? properties.map(p => ({
+        id: p.id,
+        title: p.title,
+        location: p.city + ' • ' + p.address,
+        rent: `Rs. ${p.monthlyRent?.toLocaleString() || '25,000'}/mo`,
+        rating: p.rating || 4.8,
+        reviewsCount: p.reviewsCount || 12,
+        genderPreference: p.genderPreference === 'MALE_ONLY' ? 'Boys Only' : p.genderPreference === 'FEMALE_ONLY' ? 'Girls Only' : 'Any Gender',
+        image: p.imageUrls && p.imageUrls.length > 0 ? { uri: p.imageUrls[0] } : { uri: 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5' },
+        tags: p.amenities ? p.amenities.map(a => a.name) : ['Wi-Fi', 'Security'],
+    })) : POPULAR_BOARDINGS.filter((item) => {
         const matchesSearch =
             item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -137,13 +176,17 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
 
                 {/* List of Popular Boardings */}
                 <View style={styles.popularList}>
-                    {filteredPopularBoardings.map((item) => (
-                        <BoardingCard
-                            key={item.id}
-                            item={item}
-                            onPress={() => onSelectBoarding && onSelectBoarding(item)}
-                        />
-                    ))}
+                    {loading ? (
+                        <ActivityIndicator color="#133E32" size="large" style={{ marginVertical: 20 }} />
+                    ) : (
+                        displayBoardings.map((item) => (
+                            <BoardingCard
+                                key={item.id}
+                                item={item}
+                                onPress={() => onSelectBoarding && onSelectBoarding(item)}
+                            />
+                        ))
+                    )}
                 </View>
             </ScrollView>
 

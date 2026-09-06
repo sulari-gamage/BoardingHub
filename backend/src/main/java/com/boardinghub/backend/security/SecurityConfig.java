@@ -39,7 +39,10 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/properties", "/api/properties/*").permitAll()
+                // Allow Spring Boot's internal /error forward so exceptions are not
+                // swallowed as 403 by Spring Security 6 (well-known SS6 migration issue)
+                .requestMatchers("/error").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/properties", "/api/properties/*", "/api/properties/*/reviews").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )

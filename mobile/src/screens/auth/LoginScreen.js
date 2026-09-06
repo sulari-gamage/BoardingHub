@@ -10,8 +10,10 @@ import {
     StatusBar,
     Alert,
     Image,
-    Platform
+    Platform,
+    ActivityIndicator
 } from 'react-native';
+import api from '../../services/api';
 
 export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
     const [selectedRole, setSelectedRole] = useState('Seekers'); // Seekers | Owners | Admins
@@ -19,15 +21,27 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-    const handleSignIn = () => {
+    const handleSignIn = async () => {
         if (!email || !password) {
             Alert.alert('Required Fields', 'Please enter your email and password.');
             return;
         }
-        Alert.alert('Success', `Signed in as ${selectedRole}`);
-        if (onLoginSuccess) {
-            onLoginSuccess(selectedRole);
+        try {
+            setLoading(true);
+            const response = await api.auth.login(email.trim(), password);
+            Alert.alert('Success', `Welcome back, ${response.name || 'User'}!`);
+            if (onLoginSuccess) {
+                let userRoleTab = 'Seekers';
+                if (response.role === 'OWNER') userRoleTab = 'Owners';
+                if (response.role === 'ADMIN') userRoleTab = 'Admins';
+                onLoginSuccess(userRoleTab, response);
+            }
+        } catch (error) {
+            Alert.alert('Sign In Failed', error.message || 'Invalid email or password.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -132,11 +146,16 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
 
                     {/* Primary Sign In Button */}
                     <TouchableOpacity
-                        style={styles.signInBtn}
+                        style={[styles.signInBtn, loading && { opacity: 0.7 }]}
                         onPress={handleSignIn}
+                        disabled={loading}
                         activeOpacity={0.85}
                     >
-                        <Text style={styles.signInBtnText}>Sign In</Text>
+                        {loading ? (
+                            <ActivityIndicator color="#FFD700" size="small" />
+                        ) : (
+                            <Text style={styles.signInBtnText}>Sign In</Text>
+                        )}
                     </TouchableOpacity>
 
                     {/* Sign Up Navigation Link */}
