@@ -1,6 +1,7 @@
 package com.boardinghub.backend.service;
 
 import com.boardinghub.backend.dto.request.PropertyRequest;
+import com.boardinghub.backend.dto.request.RoomRequest;
 import com.boardinghub.backend.dto.response.PropertyImageDTO;
 import com.boardinghub.backend.dto.response.PropertyResponse;
 import com.boardinghub.backend.dto.response.RoomResponse;
@@ -41,12 +42,12 @@ public class PropertyService {
                 .monthlyRent(request.getMonthlyRent())
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
-                .status(PropertyStatus.PENDING)
+                .status(PropertyStatus.APPROVED)
                 .owner(owner)
                 .build();
 
-        if (request.getAmenityIds() != null && !request.getAmenityIds().isEmpty()) {
-            List<Amenity> amenities = amenityRepository.findAllById(request.getAmenityIds());
+        List<Amenity> amenities = resolveAmenities(request);
+        if (!amenities.isEmpty()) {
             property.setAmenities(amenities);
         }
 
@@ -63,14 +64,20 @@ public class PropertyService {
         }
 
         if (request.getRooms() != null && !request.getRooms().isEmpty()) {
-            List<Room> rooms = request.getRooms().stream().map(roomReq -> Room.builder()
-                    .property(property)
-                    .roomType(roomReq.getRoomType())
-                    .monthlyPrice(roomReq.getMonthlyPrice())
-                    .totalCapacity(roomReq.getTotalCapacity())
-                    .remainingSpaces(roomReq.getRemainingSpaces() != null ? roomReq.getRemainingSpaces() : roomReq.getTotalCapacity())
-                    .rentType(roomReq.getRentType() != null ? roomReq.getRentType() : "PER_PERSON")
-                    .build()).collect(Collectors.toList());
+            List<Room> rooms = request.getRooms().stream().map(roomReq -> {
+                String img = (roomReq.getImageUrls() != null && !roomReq.getImageUrls().isEmpty()) 
+                        ? roomReq.getImageUrls().get(0) 
+                        : roomReq.getImageUrl();
+                return Room.builder()
+                        .property(property)
+                        .roomType(roomReq.getRoomType())
+                        .monthlyPrice(roomReq.getMonthlyPrice())
+                        .totalCapacity(roomReq.getTotalCapacity())
+                        .remainingSpaces(roomReq.getRemainingSpaces() != null ? roomReq.getRemainingSpaces() : roomReq.getTotalCapacity())
+                        .rentType(roomReq.getRentType() != null ? roomReq.getRentType() : "PER_PERSON")
+                        .imageUrl(img)
+                        .build();
+            }).collect(Collectors.toList());
             property.setRooms(rooms);
         }
 
@@ -99,10 +106,8 @@ public class PropertyService {
         property.setLatitude(request.getLatitude());
         property.setLongitude(request.getLongitude());
 
-        if (request.getAmenityIds() != null) {
-            List<Amenity> amenities = amenityRepository.findAllById(request.getAmenityIds());
-            property.setAmenities(amenities);
-        }
+        List<Amenity> amenities = resolveAmenities(request);
+        property.setAmenities(amenities);
 
         if (request.getImageUrls() != null) {
             property.getImages().clear();
@@ -111,6 +116,24 @@ public class PropertyService {
                         .property(property)
                         .imageUrl(request.getImageUrls().get(i))
                         .isPrimary(i == 0)
+                        .build());
+            }
+        }
+
+        if (request.getRooms() != null) {
+            property.getRooms().clear();
+            for (RoomRequest roomReq : request.getRooms()) {
+                String img = (roomReq.getImageUrls() != null && !roomReq.getImageUrls().isEmpty())
+                        ? roomReq.getImageUrls().get(0)
+                        : roomReq.getImageUrl();
+                property.getRooms().add(Room.builder()
+                        .property(property)
+                        .roomType(roomReq.getRoomType())
+                        .monthlyPrice(roomReq.getMonthlyPrice())
+                        .totalCapacity(roomReq.getTotalCapacity())
+                        .remainingSpaces(roomReq.getRemainingSpaces() != null ? roomReq.getRemainingSpaces() : roomReq.getTotalCapacity())
+                        .rentType(roomReq.getRentType() != null ? roomReq.getRentType() : "PER_PERSON")
+                        .imageUrl(img)
                         .build());
             }
         }
@@ -190,6 +213,7 @@ public class PropertyService {
                         .totalCapacity(r.getTotalCapacity())
                         .remainingSpaces(r.getRemainingSpaces())
                         .rentType(r.getRentType() != null ? r.getRentType() : "PER_PERSON")
+                        .imageUrl(r.getImageUrl())
                         .build()).collect(Collectors.toList()) : new ArrayList<>();
 
         List<String> imageUrlList = p.getImages() != null ?
@@ -215,5 +239,24 @@ public class PropertyService {
                 .rooms(roomResponses)
                 .createdAt(p.getCreatedAt())
                 .build();
+    }
+
+    private List<Amenity> resolveAmenities(PropertyRequest request) {
+        List<Amenity> result = new ArrayList<>();
+        if (request.getAmenityIds() != null && !request.getAmenityIds().isEmpty()) {
+            result.addAll(amenityRepository.findAllById(request.getAmenityIds()));
+        }
+        if (request.getAmenities() != null && !request.getAmenities().isEmpty()) {
+            for (String aName : request.getAmenities()) {
+                if (aName != null && !aName.isBlank()) {
+                    Amenity amenity = amenityRepository.findByName(aName)
+                            .orElseGet(() -> amenityRepository.save(Amenity.builder().name(aName).build()));
+                    if (!result.contains(amenity)) {
+                        result.add(amenity);
+                    }
+                }
+            }
+        }
+        return result;
     }
 }

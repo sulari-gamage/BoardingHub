@@ -15,4 +15,5 @@ public class RoomResponse {
     private Integer totalCapacity;
     private Integer remainingSpaces;
     private String rentType;
+    private String imageUrl;
 }

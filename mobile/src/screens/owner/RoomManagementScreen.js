@@ -13,43 +13,41 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function RoomManagementScreen({ onBack, onAddRoom, propertyName = 'Green Valley Boarding' }) {
+export default function RoomManagementScreen({ onBack, onAddRoom, property, propertyName = 'Boarding Property' }) {
     const [activeFilter, setActiveFilter] = useState('ALL'); // ALL, AVAILABLE, OCCUPIED
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Mock Rooms list matching Image 1 mockup
-    const [rooms, setRooms] = useState([
-        {
-            id: 'r101',
-            number: 'Room 101',
-            type: 'Single Type',
-            price: 15000,
-            occupants: '1 Occupant',
-            area: '150 sqft',
-            status: 'AVAILABLE',
-            imageUrl: 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80',
-        },
-        {
-            id: 'r102',
-            number: 'Room 102',
-            type: 'Shared Type',
-            price: 22000,
-            occupants: '2 Occupants',
-            area: '280 sqft',
-            status: 'OCCUPIED',
-            imageUrl: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-        },
-        {
-            id: 'r201',
-            number: 'Suite 201',
-            type: 'Executive',
-            price: 35000,
-            occupants: '1-2 Occupants',
-            area: '450 sqft',
-            status: 'AVAILABLE',
-            imageUrl: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80',
-        },
-    ]);
+    const displayPropertyName = property?.title || propertyName;
+
+    // Resolve real rooms from property object passed from parent
+    const rawRooms = property?.rooms || (property?.raw && property?.raw.rooms) || [];
+
+    const realRooms = rawRooms.map((r, idx) => {
+        const totCap = r.totalCapacity || r.totalSpaces || 1;
+        const remCap = r.remainingSpaces != null ? r.remainingSpaces : (r.availableSpaces != null ? r.availableSpaces : totCap);
+        const occCount = Math.max(0, totCap - remCap);
+        const isAvail = remCap > 0;
+
+        // Property level cover image as fallback if room has no specific photo
+        const propertyCover = property?.imageUrl ||
+            (property?.imageUrls && property?.imageUrls.length > 0 ? property.imageUrls[0] : null) ||
+            (property?.images && property?.images.length > 0 ? (typeof property.images[0] === 'string' ? property.images[0] : property.images[0].imageUrl) : null);
+
+        const roomImg = r.imageUrl || (r.imageUrls && r.imageUrls.length > 0 ? r.imageUrls[0] : propertyCover);
+
+        return {
+            id: r.id ? r.id.toString() : `r-${idx}`,
+            number: r.roomType || r.roomNumber || r.name || `Room ${idx + 1}`,
+            type: r.rentType === 'PER_ROOM' ? 'Per Room Basis' : 'Per Person Basis',
+            price: r.monthlyPrice || r.price || 0,
+            occupants: `${occCount} / ${totCap} Occupied (${remCap} Free)`,
+            area: r.area || (r.rentType === 'PER_ROOM' ? 'Entire Room' : `${totCap} Spaces`),
+            status: isAvail ? 'AVAILABLE' : 'OCCUPIED',
+            imageUrl: roomImg,
+        };
+    });
+
+    const rooms = realRooms;
 
     const filteredRooms = rooms.filter((r) => {
         const matchesFilter =
@@ -76,7 +74,7 @@ export default function RoomManagementScreen({ onBack, onAddRoom, propertyName =
                 <View style={styles.breadcrumbRow}>
                     <Text style={styles.breadcrumbLink}>Properties</Text>
                     <Ionicons name="chevron-forward" size={14} color="#94A3B8" style={{ marginHorizontal: 4 }} />
-                    <Text style={styles.breadcrumbCurrent} numberOfLines={1}>{propertyName}</Text>
+                    <Text style={styles.breadcrumbCurrent} numberOfLines={1}>{displayPropertyName}</Text>
                 </View>
                 <View style={{ width: 36 }} />
             </View>
@@ -86,7 +84,7 @@ export default function RoomManagementScreen({ onBack, onAddRoom, propertyName =
                 <View style={styles.titleSection}>
                     <Text style={styles.mainTitle}>Room Management</Text>
                     <Text style={styles.subtitle}>
-                        Manage units, availability, and pricing for {propertyName}.
+                        Manage units, availability, and pricing for {displayPropertyName}.
                     </Text>
 
                     <TouchableOpacity style={styles.addRoomBtn} onPress={onAddRoom} activeOpacity={0.85}>
@@ -164,7 +162,13 @@ export default function RoomManagementScreen({ onBack, onAddRoom, propertyName =
                             <View key={room.id} style={styles.roomCard}>
                                 {/* Room Image Box with Status Badge */}
                                 <View style={styles.roomImageWrapper}>
-                                    <Image source={{ uri: room.imageUrl }} style={styles.roomImage} resizeMode="cover" />
+                                    {room.imageUrl ? (
+                                        <Image source={{ uri: room.imageUrl }} style={styles.roomImage} resizeMode="cover" />
+                                    ) : (
+                                        <View style={[styles.roomImage, { backgroundColor: '#E6F0EC', justifyContent: 'center', alignItems: 'center' }]}>
+                                            <Ionicons name="bed-outline" size={44} color="#133E32" />
+                                        </View>
+                                    )}
 
                                     <View style={[
                                         styles.statusBadge,

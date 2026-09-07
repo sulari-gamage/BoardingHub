@@ -48,17 +48,25 @@ export default function OwnerPropertyDetailScreen({
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {/* Cover Image & Approved Status Badge */}
                 <View style={styles.coverWrapper}>
-                    <Image
-                        source={{
-                            uri: (currentProperty.imageUrls && currentProperty.imageUrls.length > 0)
-                                ? currentProperty.imageUrls[0]
-                                : (currentProperty.images && currentProperty.images.length > 0)
-                                    ? (typeof currentProperty.images[0] === 'string' ? currentProperty.images[0] : currentProperty.images[0].imageUrl)
-                                    : (currentProperty.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80')
-                        }}
-                        style={styles.coverImage}
-                        resizeMode="cover"
-                    />
+                    {((currentProperty.imageUrls && currentProperty.imageUrls.length > 0) ||
+                        (currentProperty.images && currentProperty.images.length > 0) ||
+                        currentProperty.imageUrl) ? (
+                        <Image
+                            source={{
+                                uri: (currentProperty.imageUrls && currentProperty.imageUrls.length > 0)
+                                    ? currentProperty.imageUrls[0]
+                                    : (currentProperty.images && currentProperty.images.length > 0)
+                                        ? (typeof currentProperty.images[0] === 'string' ? currentProperty.images[0] : currentProperty.images[0].imageUrl)
+                                        : currentProperty.imageUrl
+                            }}
+                            style={styles.coverImage}
+                            resizeMode="cover"
+                        />
+                    ) : (
+                        <View style={[styles.coverImage, { backgroundColor: '#E6F0EC', justifyContent: 'center', alignItems: 'center' }]}>
+                            <Ionicons name="home-outline" size={54} color="#133E32" />
+                        </View>
+                    )}
 
                     <View style={styles.approvedBadge}>
                         <Ionicons name="checkmark-circle" size={16} color="#10B981" style={{ marginRight: 4 }} />
@@ -129,6 +137,21 @@ export default function OwnerPropertyDetailScreen({
                         </View>
                     </View>
                 </View>
+
+                {/* Amenities Section */}
+                {((currentProperty.amenities && currentProperty.amenities.length > 0) || (currentProperty.raw && currentProperty.raw.amenities && currentProperty.raw.amenities.length > 0)) && (
+                    <>
+                        <Text style={styles.sectionTitle}>Property Amenities</Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
+                            {(currentProperty.amenities || currentProperty.raw.amenities).map((amenity, idx) => (
+                                <View key={idx} style={{ backgroundColor: '#E6F0EC', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#C3DCD4' }}>
+                                    <Ionicons name="checkmark-circle" size={16} color="#133E32" style={{ marginRight: 6 }} />
+                                    <Text style={{ fontSize: 12, fontWeight: '800', color: '#133E32' }}>{amenity}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    </>
+                )}
 
                 {/* Rooms Inventory Section if present */}
                 {currentProperty.rooms && currentProperty.rooms.length > 0 && (

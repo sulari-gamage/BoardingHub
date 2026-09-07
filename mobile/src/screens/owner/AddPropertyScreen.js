@@ -16,25 +16,72 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../../services/api';
+import { uploadImage } from '../../services/uploadService';
 
-export default function AddPropertyScreen({ onBack, onSaveProperty }) {
+const AMENITY_MAP = {
+    wifi: 'High-Speed WiFi',
+    water: 'Water Supply',
+    electricity: '24/7 Electricity',
+    gas: 'Gas Connection',
+    laundry: 'Laundry Room',
+    parking: 'Covered Parking',
+    kitchen: 'Shared Kitchen',
+    common: 'Common Area',
+    pool: 'Swimming Pool',
+    fitness: 'Fitness Center',
+    cctv: 'CCTV Security',
+    gate: 'Secure Gate',
+    fire: 'Fire Extinguisher',
+    firstaid: 'First Aid Kit',
+    ac: 'Air Conditioning',
+    generator: 'Generator Backup',
+    bathroom: 'Attached Bathroom',
+    balcony: 'Private Balcony',
+};
+
+export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEdit = null }) {
+    const isEditMode = !!propertyToEdit;
     // Current active wizard step: 1 (Info), 2 (Location), 3 (Amenities), 4 (Photos)
     const [currentStep, setCurrentStep] = useState(1);
 
+    // Initial state pre-population from propertyToEdit
+    const initialAmenities = {};
+    const existingAmenitiesList = propertyToEdit?.amenities || (propertyToEdit?.raw && propertyToEdit.raw.amenities) || [];
+    if (Array.isArray(existingAmenitiesList)) {
+        existingAmenitiesList.forEach(name => {
+            const foundKey = Object.keys(AMENITY_MAP).find(k => AMENITY_MAP[k].toLowerCase() === name.toLowerCase());
+            if (foundKey) initialAmenities[foundKey] = true;
+            else initialAmenities[name] = true;
+        });
+    }
+
     // Step 1 Form State (Property Info & Dynamic Room Inventory)
-    const [propertyName, setPropertyName] = useState('');
-    const [monthlyRent, setMonthlyRent] = useState('');
-    const [totalCapacity, setTotalCapacity] = useState('1');
-    const [propertyNature, setPropertyNature] = useState('ROOM_BASED'); // ROOM_BASED or WHOLE_HOUSE
-    const [description, setDescription] = useState('');
-    const [genderPreference, setGenderPreference] = useState('Mixed');
+    const [propertyName, setPropertyName] = useState(propertyToEdit?.title || propertyToEdit?.name || '');
+    const [monthlyRent, setMonthlyRent] = useState(propertyToEdit?.monthlyRent ? propertyToEdit.monthlyRent.toString() : (propertyToEdit?.price ? propertyToEdit.price.toString() : ''));
+    const [totalCapacity, setTotalCapacity] = useState(propertyToEdit?.totalCapacity ? propertyToEdit.totalCapacity.toString() : '1');
+    const [propertyNature, setPropertyNature] = useState(propertyToEdit?.rooms && propertyToEdit.rooms.length > 0 ? 'ROOM_BASED' : 'WHOLE_HOUSE');
+    const [description, setDescription] = useState(propertyToEdit?.description || '');
+    const [genderPreference, setGenderPreference] = useState(
+        propertyToEdit?.genderPreference === 'FEMALE_ONLY' ? 'Female Only' :
+            propertyToEdit?.genderPreference === 'MALE_ONLY' ? 'Male Only' : 'Mixed'
+    );
     const [certifications, setCertifications] = useState([]);
     const [uploadedCertPhotos, setUploadedCertPhotos] = useState([]);
     const [newCertText, setNewCertText] = useState('');
     const [isCertModalVisible, setIsCertModalVisible] = useState(false);
 
     // Dynamic Room Inventory State (for ROOM_BASED properties)
-    const [rooms, setRooms] = useState([]);
+    const [rooms, setRooms] = useState(
+        ((propertyToEdit?.rooms || (propertyToEdit?.raw && propertyToEdit.raw.rooms)) || []).map((r, i) => ({
+            id: r.id ? r.id.toString() : `room_${i}`,
+            name: r.roomType || r.name || `Room ${i + 1}`,
+            rent: (r.monthlyPrice || r.price || r.rent || 0).toString(),
+            capacity: (r.totalCapacity || r.capacity || 1).toString(),
+            genderPreference: r.genderPreference || 'Mixed',
+            rentType: r.rentType || 'PER_PERSON',
+            photos: r.imageUrl ? [{ id: `img_${i}`, uri: r.imageUrl }] : []
+        }))
+    );
     const [isRoomModalVisible, setIsRoomModalVisible] = useState(false);
     const [currentRoom, setCurrentRoom] = useState({
         id: null,
@@ -144,14 +191,20 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
     };
 
     // Step 2 Form State (Location & Dynamic Map Geocoding)
-    const [searchAddress, setSearchAddress] = useState('');
-    const [streetAddress, setStreetAddress] = useState('');
-    const [city, setCity] = useState('');
+    const [searchAddress, setSearchAddress] = useState(propertyToEdit?.address || '');
+    const [streetAddress, setStreetAddress] = useState(propertyToEdit?.address || '');
+    const [city, setCity] = useState(propertyToEdit?.city || '');
     const [postalCode, setPostalCode] = useState('');
-    const [mapCoords, setMapCoords] = useState({ lat: 6.9271, lng: 79.8612 });
+    const [mapCoords, setMapCoords] = useState({
+        lat: propertyToEdit?.latitude || 6.9271,
+        lng: propertyToEdit?.longitude || 79.8612
+    });
     const [isPrimaryHub, setIsPrimaryHub] = useState(true);
     const [isMapModalVisible, setIsMapModalVisible] = useState(false);
-    const [tempMapCoords, setTempMapCoords] = useState({ lat: 6.9271, lng: 79.8612 });
+    const [tempMapCoords, setTempMapCoords] = useState({
+        lat: propertyToEdit?.latitude || 6.9271,
+        lng: propertyToEdit?.longitude || 79.8612
+    });
     const [tempAddressLabel, setTempAddressLabel] = useState('');
 
     // Sri Lankan Known Cities & Regions Geocoding Table
@@ -275,10 +328,14 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
     };
 
     // Step 3 Form State (Amenities Selection)
-    const [selectedAmenities, setSelectedAmenities] = useState({});
+    const [selectedAmenities, setSelectedAmenities] = useState(initialAmenities);
 
     // Step 4 Form State (Photos)
-    const [coverImage, setCoverImage] = useState(null);
+    const initialCover = propertyToEdit?.imageUrl ||
+        (propertyToEdit?.imageUrls && propertyToEdit.imageUrls.length > 0 ? propertyToEdit.imageUrls[0] : null) ||
+        (propertyToEdit?.images && propertyToEdit.images.length > 0 ? (typeof propertyToEdit.images[0] === 'string' ? propertyToEdit.images[0] : propertyToEdit.images[0].imageUrl) : null);
+
+    const [coverImage, setCoverImage] = useState(initialCover);
     const [additionalPhotos, setAdditionalPhotos] = useState([]);
 
     const toggleAmenity = (key) => {
@@ -429,45 +486,62 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                 const lat = mapCoords.lat || 6.9271;
                 const lng = mapCoords.lng || 79.8612;
 
-                // 3. Prepare Image URLs list (cover + additional + all room photos)
-                const imagesList = [coverImage];
-                additionalPhotos.forEach(p => {
-                    if (p.uri && !imagesList.includes(p.uri)) {
-                        imagesList.push(p.uri);
-                    }
-                });
-                rooms.forEach(r => {
-                    (r.photos || []).forEach(p => {
-                        if (p.uri && !imagesList.includes(p.uri)) {
-                            imagesList.push(p.uri);
-                        }
-                    });
-                });
+                // 3. Prepare Image URLs list via Cloudinary (cover + additional + all room photos)
+                const uploadedCover = await uploadImage(coverImage);
+                const imagesList = [uploadedCover];
 
-                // 4. Construct RoomRequest DTO based on user room inventory or whole house settings
+                for (const p of additionalPhotos) {
+                    if (p.uri) {
+                        if (imagesList.includes(p.uri)) continue; // handle already remote urls
+                        const url = await uploadImage(p.uri);
+                        if (url && !imagesList.includes(url)) imagesList.push(url);
+                    }
+                }
+
+                // 4. Construct RoomRequest DTO and upload room images
                 const parsedRent = parseFloat(monthlyRent) || 0;
                 const parsedCapacity = parseInt(totalCapacity || '1');
                 const roomTypeLabel = propertyNature === 'WHOLE_HOUSE' ? 'Whole House / Annex' : 'Shared Room';
 
-                const payloadRooms = (propertyNature === 'ROOM_BASED' && rooms.length > 0)
-                    ? rooms.map(r => ({
-                        roomType: r.name,
-                        monthlyPrice: parseFloat(r.rent) || 0,
-                        totalCapacity: parseInt(r.capacity) || 1,
-                        remainingSpaces: parseInt(r.capacity) || 1,
-                        rentType: r.rentType || 'PER_PERSON',
-                        genderPreference: r.genderPreference || mappedGender,
-                        imageUrls: (r.photos || []).map(p => p.uri)
-                    }))
-                    : [
-                        {
-                            roomType: roomTypeLabel,
-                            monthlyPrice: parsedRent,
-                            totalCapacity: parsedCapacity,
-                            remainingSpaces: parsedCapacity,
-                            rentType: 'PER_ROOM'
+                const payloadRooms = [];
+
+                if (propertyNature === 'ROOM_BASED' && rooms.length > 0) {
+                    for (const r of rooms) {
+                        const uploadedRoomPhotos = [];
+                        for (const p of (r.photos || [])) {
+                            if (p.uri) {
+                                const url = await uploadImage(p.uri);
+                                if (url) {
+                                    uploadedRoomPhotos.push(url);
+                                    if (!imagesList.includes(url)) imagesList.push(url);
+                                }
+                            }
                         }
-                    ];
+
+                        payloadRooms.push({
+                            roomType: r.name,
+                            monthlyPrice: parseFloat(r.rent) || 0,
+                            totalCapacity: parseInt(r.capacity) || 1,
+                            remainingSpaces: parseInt(r.capacity) || 1,
+                            rentType: r.rentType || 'PER_PERSON',
+                            genderPreference: r.genderPreference || mappedGender,
+                            imageUrls: uploadedRoomPhotos
+                        });
+                    }
+                } else {
+                    payloadRooms.push({
+                        roomType: roomTypeLabel,
+                        monthlyPrice: parsedRent,
+                        totalCapacity: parsedCapacity,
+                        remainingSpaces: parsedCapacity,
+                        rentType: 'PER_ROOM'
+                    });
+                }
+
+                // 5. Build amenities string array
+                const selectedAmenityNamesList = Object.keys(selectedAmenities)
+                    .filter(k => selectedAmenities[k])
+                    .map(k => AMENITY_MAP[k] || k);
 
                 const propertyPayload = {
                     title: propertyName,
@@ -478,17 +552,24 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                     monthlyRent: parsedRent,
                     latitude: lat,
                     longitude: lng,
+                    amenities: selectedAmenityNamesList,
                     imageUrls: imagesList,
                     rooms: payloadRooms
                 };
 
-                const savedProperty = await api.properties.create(propertyPayload);
-                Alert.alert('Success 🎉', 'New property submitted successfully for admin review!');
+                let savedProperty;
+                if (isEditMode && propertyToEdit?.id) {
+                    savedProperty = await api.properties.update(propertyToEdit.id, propertyPayload);
+                    Alert.alert('Success 🎉', 'Property updated successfully!');
+                } else {
+                    savedProperty = await api.properties.create(propertyPayload);
+                    Alert.alert('Success 🎉', 'New property published successfully!');
+                }
                 if (onSaveProperty) onSaveProperty(savedProperty);
                 else if (onBack) onBack();
             } catch (err) {
-                console.log('Error creating property:', err);
-                Alert.alert('Submission Error', err.message || 'Could not submit property.');
+                console.log('Error saving property:', err);
+                Alert.alert('Submission Error', err.message || 'Could not save property.');
             }
         }
     };
@@ -529,7 +610,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                 {/* Subtitle Stepper Title */}
                 <View style={styles.titleSection}>
                     <Text style={styles.mainTitle}>
-                        {currentStep === 1 && 'Add New Property'}
+                        {currentStep === 1 && (isEditMode ? 'Edit Property' : 'Add New Property')}
                         {currentStep === 2 && 'Location'}
                         {currentStep === 3 && 'Select Property Amenities'}
                         {currentStep === 4 && 'Upload Property Photos'}
@@ -614,7 +695,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty }) {
                         <Text style={styles.fieldLabel}>Property Nature / Type *</Text>
                         <View style={styles.genderContainer}>
                             {[
-                                { key: 'ROOM_BASED', label: 'Room-Based (Multiple Rooms)' },
+                                { key: 'ROOM_BASED', label: 'Room-Based' },
                                 { key: 'WHOLE_HOUSE', label: 'Whole House / Annex' }
                             ].map((nature) => {
                                 const isSelected = propertyNature === nature.key;

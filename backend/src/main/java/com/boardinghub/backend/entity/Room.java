@@ -40,4 +40,7 @@ public class Room {
 
     @Column(name = "rent_type")
     private String rentType; // PER_PERSON or PER_ROOM
+
+    @Column(name = "image_url", length = 1000)
+    private String imageUrl;
 }

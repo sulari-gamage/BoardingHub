@@ -27,4 +27,7 @@ public class RoomRequest {
     private Integer remainingSpaces;
 
     private String rentType; // PER_PERSON or PER_ROOM
+
+    private String imageUrl;
+    private java.util.List<String> imageUrls;
 }

@@ -37,6 +37,7 @@ public class PropertyRequest {
     private Double longitude;
 
     private List<Long> amenityIds;
+    private List<String> amenities;
     private List<String> imageUrls;
     private List<RoomRequest> rooms;
 }

@@ -213,7 +213,10 @@ export default function App() {
         <OwnerPropertiesScreen
           activeTab="Properties"
           onNavigateTab={handleNavigateTab}
-          onAddNewProperty={() => setCurrentScreen('ADD_PROPERTY')}
+          onAddNewProperty={() => {
+            setSelectedOwnerProperty(null);
+            setCurrentScreen('ADD_PROPERTY');
+          }}
           onSelectProperty={handleSelectOwnerProperty}
         />
       ) : currentScreen === 'OWNER_PROPERTY_DETAIL' ? (
@@ -227,7 +230,8 @@ export default function App() {
         />
       ) : currentScreen === 'ROOM_MANAGEMENT' ? (
         <RoomManagementScreen
-          propertyName={selectedOwnerProperty?.title || 'Green Valley Boarding'}
+          property={selectedOwnerProperty}
+          propertyName={selectedOwnerProperty?.title || 'Boarding Property'}
           onBack={() => setCurrentScreen('OWNER_PROPERTY_DETAIL')}
           onAddRoom={() => setCurrentScreen('ADD_ROOM')}
         />
@@ -271,8 +275,12 @@ export default function App() {
         />
       ) : currentScreen === 'ADD_PROPERTY' ? (
         <AddPropertyScreen
+          propertyToEdit={selectedOwnerProperty}
           onBack={() => setCurrentScreen('OWNER_PROPERTIES')}
-          onSaveProperty={() => setCurrentScreen('OWNER_PROPERTIES')}
+          onSaveProperty={() => {
+            fetchOwnerData();
+            setCurrentScreen('OWNER_PROPERTIES');
+          }}
         />
       ) : currentScreen === 'ADMIN_DASHBOARD' ? (
         <AdminDashboardScreen

@@ -11,12 +11,17 @@ import {
     Alert,
     Image,
     Platform,
-    ActivityIndicator
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    TouchableWithoutFeedback,
+    Keyboard
 } from 'react-native';
 import api from '../../services/api';
 
 const REMEMBER_EMAIL_KEY = '@boardinghub_remember_email';
+const REMEMBER_PASSWORD_KEY = '@boardinghub_remember_password';
 const REMEMBER_ROLE_KEY = '@boardinghub_remember_role';
+const REMEMBER_ME_KEY = '@boardinghub_remember_me_flag';
 
 export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
     const [selectedRole, setSelectedRole] = useState('Seekers'); // Seekers | Owners | Admins
@@ -33,14 +38,16 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
     const loadRememberedCredentials = async () => {
         try {
             if (typeof window !== 'undefined' && window.localStorage) {
+                const isRemembered = window.localStorage.getItem(REMEMBER_ME_KEY) === 'true';
                 const savedEmail = window.localStorage.getItem(REMEMBER_EMAIL_KEY);
+                const savedPassword = window.localStorage.getItem(REMEMBER_PASSWORD_KEY);
                 const savedRole = window.localStorage.getItem(REMEMBER_ROLE_KEY);
-                if (savedEmail) {
-                    setEmail(savedEmail);
+
+                if (isRemembered || savedEmail) {
+                    if (savedEmail) setEmail(savedEmail);
+                    if (savedPassword) setPassword(savedPassword);
+                    if (savedRole) setSelectedRole(savedRole);
                     setRememberMe(true);
-                }
-                if (savedRole) {
-                    setSelectedRole(savedRole);
                 }
             }
         } catch (err) {
@@ -56,13 +63,17 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
         try {
             setLoading(true);
 
-            // Handle Remember Me persistence
+            // Handle Remember Me persistence (stores email, password, and role)
             if (typeof window !== 'undefined' && window.localStorage) {
                 if (rememberMe) {
+                    window.localStorage.setItem(REMEMBER_ME_KEY, 'true');
                     window.localStorage.setItem(REMEMBER_EMAIL_KEY, email.trim());
+                    window.localStorage.setItem(REMEMBER_PASSWORD_KEY, password);
                     window.localStorage.setItem(REMEMBER_ROLE_KEY, selectedRole);
                 } else {
+                    window.localStorage.removeItem(REMEMBER_ME_KEY);
                     window.localStorage.removeItem(REMEMBER_EMAIL_KEY);
+                    window.localStorage.removeItem(REMEMBER_PASSWORD_KEY);
                     window.localStorage.removeItem(REMEMBER_ROLE_KEY);
                 }
             }
@@ -85,137 +96,154 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
+            <KeyboardAvoidingView
+                style={styles.keyboardAvoidingView}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
-                {/* Main Card Container */}
-                <View style={styles.card}>
-                    {/* Official Logo */}
-                    <View style={styles.logoContainer}>
-                        <Image
-                            source={require('../../../assets/logo.png')}
-                            style={styles.logoImage}
-                            resizeMode="contain"
-                        />
-                    </View>
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+                    <View style={styles.innerView}>
+                        <ScrollView
+                            contentContainerStyle={styles.scrollContent}
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            {/* Main Card Container */}
+                            <View style={styles.card}>
+                                {/* Official Logo */}
+                                <View style={styles.logoContainer}>
+                                    <Image
+                                        source={require('../../../assets/logo.png')}
+                                        style={styles.logoImage}
+                                        resizeMode="contain"
+                                    />
+                                </View>
 
-                    {/* Heading & Subtitle */}
-                    <Text style={styles.cardTitle}>BoardingHub</Text>
-                    <Text style={styles.cardSubtitle}>
-                        Find your stay or manage your properties seamlessly.
-                    </Text>
+                                {/* Heading & Subtitle */}
+                                <Text style={styles.cardTitle}>BoardingHub</Text>
+                                <Text style={styles.cardSubtitle}>
+                                    Find your stay or manage your properties seamlessly.
+                                </Text>
 
-                    {/* Role Switcher Tabs */}
-                    <View style={styles.roleContainer}>
-                        {['Seekers', 'Owners', 'Admins'].map((role) => {
-                            const isActive = selectedRole === role;
-                            return (
+                                {/* Role Switcher Tabs */}
+                                <View style={styles.roleContainer}>
+                                    {['Seekers', 'Owners', 'Admins'].map((role) => {
+                                        const isActive = selectedRole === role;
+                                        return (
+                                            <TouchableOpacity
+                                                key={role}
+                                                style={[styles.roleTab, isActive && styles.roleTabActive]}
+                                                onPress={() => setSelectedRole(role)}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text
+                                                    style={[styles.roleText, isActive && styles.roleTextActive]}
+                                                >
+                                                    {role}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+
+                                {/* Email / Username Input */}
+                                <View style={styles.formGroup}>
+                                    <Text style={styles.label}>Email or Username</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="name@company.com"
+                                        placeholderTextColor="#94A3B8"
+                                        value={email}
+                                        onChangeText={setEmail}
+                                        keyboardType="email-address"
+                                        autoCapitalize="none"
+                                    />
+                                </View>
+
+                                {/* Password Input */}
+                                <View style={styles.formGroup}>
+                                    <View style={styles.labelRow}>
+                                        <Text style={styles.label}>Password</Text>
+                                        <TouchableOpacity
+                                            onPress={() => Alert.alert('Reset Password', 'Password reset instructions sent.')}
+                                        >
+                                            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                    <View style={styles.passwordWrapper}>
+                                        <TextInput
+                                            style={styles.passwordInput}
+                                            placeholder="••••••••"
+                                            placeholderTextColor="#94A3B8"
+                                            value={password}
+                                            onChangeText={setPassword}
+                                            secureTextEntry={!showPassword}
+                                        />
+                                        <TouchableOpacity
+                                            onPress={() => setShowPassword(!showPassword)}
+                                            style={styles.eyeBtn}
+                                        >
+                                            <Text style={styles.eyeIcon}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+
+                                {/* Remember Me Checkbox */}
                                 <TouchableOpacity
-                                    key={role}
-                                    style={[styles.roleTab, isActive && styles.roleTabActive]}
-                                    onPress={() => setSelectedRole(role)}
-                                    activeOpacity={0.8}
+                                    style={styles.rememberContainer}
+                                    onPress={() => setRememberMe(!rememberMe)}
+                                    activeOpacity={0.7}
                                 >
-                                    <Text
-                                        style={[styles.roleText, isActive && styles.roleTextActive]}
-                                    >
-                                        {role}
-                                    </Text>
+                                    <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                                        {rememberMe && <Text style={styles.checkmark}>✓</Text>}
+                                    </View>
+                                    <Text style={styles.rememberText}>Remember me</Text>
                                 </TouchableOpacity>
-                            );
-                        })}
+
+                                {/* Primary Sign In Button */}
+                                <TouchableOpacity
+                                    style={[styles.signInBtn, loading && { opacity: 0.7 }]}
+                                    onPress={handleSignIn}
+                                    disabled={loading}
+                                    activeOpacity={0.85}
+                                >
+                                    {loading ? (
+                                        <ActivityIndicator color="#FFD700" size="small" />
+                                    ) : (
+                                        <Text style={styles.signInBtnText}>Sign In</Text>
+                                    )}
+                                </TouchableOpacity>
+
+                                {/* Sign Up Navigation Link */}
+                                <View style={styles.signUpRow}>
+                                    <Text style={styles.noAccountText}>Don't have an account? </Text>
+                                    <TouchableOpacity onPress={onNavigateToRegister}>
+                                        <Text style={styles.signUpText}>Sign Up</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            {/* Footer */}
+                            <View style={styles.footerContainer}>
+                                <Text style={styles.copyrightText}>
+                                    © 2024 BoardingHub. All rights reserved.
+                                </Text>
+                            </View>
+                        </ScrollView>
                     </View>
-
-                    {/* Email / Username Input */}
-                    <View style={styles.formGroup}>
-                        <Text style={styles.label}>Email or Username</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="name@company.com"
-                            placeholderTextColor="#94A3B8"
-                            value={email}
-                            onChangeText={setEmail}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                        />
-                    </View>
-
-                    {/* Password Input */}
-                    <View style={styles.formGroup}>
-                        <View style={styles.labelRow}>
-                            <Text style={styles.label}>Password</Text>
-                            <TouchableOpacity
-                                onPress={() => Alert.alert('Reset Password', 'Password reset instructions sent.')}
-                            >
-                                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                            </TouchableOpacity>
-                        </View>
-                        <View style={styles.passwordWrapper}>
-                            <TextInput
-                                style={styles.passwordInput}
-                                placeholder="••••••••"
-                                placeholderTextColor="#94A3B8"
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry={!showPassword}
-                            />
-                            <TouchableOpacity
-                                onPress={() => setShowPassword(!showPassword)}
-                                style={styles.eyeBtn}
-                            >
-                                <Text style={styles.eyeIcon}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    {/* Remember Me Checkbox */}
-                    <TouchableOpacity
-                        style={styles.rememberContainer}
-                        onPress={() => setRememberMe(!rememberMe)}
-                        activeOpacity={0.7}
-                    >
-                        <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                            {rememberMe && <Text style={styles.checkmark}>✓</Text>}
-                        </View>
-                        <Text style={styles.rememberText}>Remember me</Text>
-                    </TouchableOpacity>
-
-                    {/* Primary Sign In Button */}
-                    <TouchableOpacity
-                        style={[styles.signInBtn, loading && { opacity: 0.7 }]}
-                        onPress={handleSignIn}
-                        disabled={loading}
-                        activeOpacity={0.85}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="#FFD700" size="small" />
-                        ) : (
-                            <Text style={styles.signInBtnText}>Sign In</Text>
-                        )}
-                    </TouchableOpacity>
-
-                    {/* Sign Up Navigation Link */}
-                    <View style={styles.signUpRow}>
-                        <Text style={styles.noAccountText}>Don't have an account? </Text>
-                        <TouchableOpacity onPress={onNavigateToRegister}>
-                            <Text style={styles.signUpText}>Sign Up</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                {/* Footer */}
-                <View style={styles.footerContainer}>
-                    <Text style={styles.copyrightText}>
-                        © 2024 BoardingHub. All rights reserved.
-                    </Text>
-                </View>
-            </ScrollView>
+                </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
+    keyboardAvoidingView: {
+        flex: 1,
+    },
+    innerView: {
+        flex: 1,
+    },
     container: {
         flex: 1,
         backgroundColor: '#F8FAFC',
@@ -226,6 +254,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: 20,
         paddingVertical: 24,
+        paddingBottom: 40,
         alignItems: 'center',
     },
 
