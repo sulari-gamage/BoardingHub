@@ -227,6 +227,7 @@ export default function App() {
           onOpenGallery={() => handleOpenGallery(selectedOwnerProperty)}
           onEditProperty={() => setCurrentScreen('ADD_PROPERTY')}
           onOpenBookings={() => setCurrentScreen('OWNER_REQUESTS')}
+          onPropertyUpdated={(updatedProp) => setSelectedOwnerProperty(updatedProp)}
         />
       ) : currentScreen === 'ROOM_MANAGEMENT' ? (
         <RoomManagementScreen
@@ -234,6 +235,7 @@ export default function App() {
           propertyName={selectedOwnerProperty?.title || 'Boarding Property'}
           onBack={() => setCurrentScreen('OWNER_PROPERTY_DETAIL')}
           onAddRoom={() => setCurrentScreen('ADD_ROOM')}
+          onPropertyUpdated={(updatedProp) => setSelectedOwnerProperty(updatedProp)}
         />
       ) : currentScreen === 'ADD_ROOM' ? (
         <AddRoomScreen

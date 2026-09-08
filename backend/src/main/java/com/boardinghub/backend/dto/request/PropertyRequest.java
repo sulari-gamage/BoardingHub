@@ -40,4 +40,5 @@ public class PropertyRequest {
     private List<String> amenities;
     private List<String> imageUrls;
     private List<RoomRequest> rooms;
+    private String propertyNature;
 }

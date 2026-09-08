@@ -9,58 +9,213 @@ import {
     ScrollView,
     TextInput,
     Image,
-    Platform
+    Platform,
+    Modal,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import api from '../../services/api';
+import AddRoomScreen from './AddRoomScreen';
 
-export default function RoomManagementScreen({ onBack, onAddRoom, property, propertyName = 'Boarding Property' }) {
-    const [activeFilter, setActiveFilter] = useState('ALL'); // ALL, AVAILABLE, OCCUPIED
-    const [searchQuery, setSearchQuery] = useState('');
-
+export default function RoomManagementScreen({ onBack, onAddRoom, property, propertyName = 'Boarding Property', onPropertyUpdated }) {
+    const isRoomBased = property?.propertyNature
+        ? property.propertyNature === 'ROOM_BASED'
+        : (property?.rooms && property.rooms.length > 0 && !property.rooms.some(r => r.roomType === 'Whole House / Annex' || r.roomType === 'Entire Boarding House'));
     const displayPropertyName = property?.title || propertyName;
+
+    // Edit Room Modal State
+    const [editingRoom, setEditingRoom] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     // Resolve real rooms from property object passed from parent
     const rawRooms = property?.rooms || (property?.raw && property?.raw.rooms) || [];
 
-    const realRooms = rawRooms.map((r, idx) => {
+    const rooms = rawRooms.map((r, idx) => {
         const totCap = r.totalCapacity || r.totalSpaces || 1;
         const remCap = r.remainingSpaces != null ? r.remainingSpaces : (r.availableSpaces != null ? r.availableSpaces : totCap);
         const occCount = Math.max(0, totCap - remCap);
         const isAvail = remCap > 0;
 
-        // Property level cover image as fallback if room has no specific photo
         const propertyCover = property?.imageUrl ||
             (property?.imageUrls && property?.imageUrls.length > 0 ? property.imageUrls[0] : null) ||
             (property?.images && property?.images.length > 0 ? (typeof property.images[0] === 'string' ? property.images[0] : property.images[0].imageUrl) : null);
 
         const roomImg = r.imageUrl || (r.imageUrls && r.imageUrls.length > 0 ? r.imageUrls[0] : propertyCover);
 
+        const rName = r.roomName || r.roomNumber || r.name || `Room ${idx + 1}`;
+        const rType = r.roomType || 'Single';
+        const beds = r.beds || 1;
+        const washrooms = r.washrooms || 1;
+        const washroomType = r.washroomType || 'Common';
+        const amenities = r.amenities || '';
+
         return {
             id: r.id ? r.id.toString() : `r-${idx}`,
-            number: r.roomType || r.roomNumber || r.name || `Room ${idx + 1}`,
+            rawId: r.id,
+            roomName: rName,
+            roomType: rType,
+            beds,
+            washrooms,
+            washroomType,
+            amenities,
+            number: rName,
             type: r.rentType === 'PER_ROOM' ? 'Per Room Basis' : 'Per Person Basis',
             price: r.monthlyPrice || r.price || 0,
             occupants: `${occCount} / ${totCap} Occupied (${remCap} Free)`,
-            area: r.area || (r.rentType === 'PER_ROOM' ? 'Entire Room' : `${totCap} Spaces`),
+            area: `${beds} Bed(s) • ${washrooms} ${washroomType} Bath`,
             status: isAvail ? 'AVAILABLE' : 'OCCUPIED',
             imageUrl: roomImg,
+            totCap,
+            raw: r,
         };
     });
 
-    const rooms = realRooms;
+    const handleManageRoom = (room) => {
+        const rawObj = room.raw || room;
+        setEditingRoom({
+            ...room,
+            id: room.id,
+            rawId: room.rawId,
+            roomName: rawObj.roomName || room.number || 'Unit',
+            roomType: rawObj.roomType || 'Single',
+            roomTypeStyle: rawObj.roomType || 'Single',
+            capacity: room.totCap || rawObj.totalCapacity || 1,
+            totalCapacity: room.totCap || rawObj.totalCapacity || 1,
+            price: room.price || rawObj.monthlyPrice || 15000,
+            monthlyPrice: room.price || rawObj.monthlyPrice || 15000,
+            rentType: rawObj.rentType || 'PER_PERSON',
+            beds: rawObj.beds || 1,
+            washrooms: rawObj.washrooms || 1,
+            washroomType: rawObj.washroomType || 'Common',
+            amenities: rawObj.amenities || '',
+            imageUrl: room.imageUrl,
+        });
+    };
 
-    const filteredRooms = rooms.filter((r) => {
-        const matchesFilter =
-            activeFilter === 'ALL' ||
-            (activeFilter === 'AVAILABLE' && r.status === 'AVAILABLE') ||
-            (activeFilter === 'OCCUPIED' && r.status === 'OCCUPIED');
+    const uploadImage = async (imgUri) => {
+        if (!imgUri || !imgUri.startsWith('file')) return imgUri;
+        const data = new FormData();
+        data.append("file", { uri: imgUri, type: 'image/jpeg', name: `upload_${Date.now()}.jpg` });
+        data.append("upload_preset", "boardinghub");
+        data.append("cloud_name", "dfpt8hyu1");
+        try {
+            const response = await fetch("https://api.cloudinary.com/v1_1/dfpt8hyu1/image/upload", {
+                method: "post",
+                body: data
+            });
+            const result = await response.json();
+            return result.secure_url;
+        } catch (error) {
+            return null;
+        }
+    };
 
-        const matchesQuery =
-            r.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            r.type.toLowerCase().includes(searchQuery.toLowerCase());
+    const saveRoomChanges = async (formRoom) => {
+        if (!editingRoom || !property?.id) return;
+        setIsSaving(true);
+        try {
+            const photosList = formRoom.photos || [];
+            const uploadedRoomPhotos = [];
+            for (const p of photosList) {
+                if (p.uri) {
+                    const url = await uploadImage(p.uri);
+                    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+                        uploadedRoomPhotos.push(url);
+                    }
+                }
+            }
 
-        return matchesFilter && matchesQuery;
-    });
+            // Reconstruct the raw room payload safely to bounce back to API
+            const updatedRooms = rawRooms.map((r, idx) => {
+                const matches = (editingRoom.rawId && r.id === editingRoom.rawId) ||
+                    (editingRoom.id && (r.id?.toString() === editingRoom.id.toString() || `r-${idx}` === editingRoom.id)) ||
+                    (formRoom.id && (r.id?.toString() === formRoom.id.toString() || `r-${idx}` === formRoom.id));
+
+                if (matches) {
+                    const diff = Math.max(0, parseInt(formRoom.totalCapacity || formRoom.capacity) - (r.totalCapacity || 0));
+                    const validExistingImg = (r.imageUrl && (r.imageUrl.startsWith('http://') || r.imageUrl.startsWith('https://'))) ? r.imageUrl : undefined;
+                    const finalImg = uploadedRoomPhotos.length > 0 ? uploadedRoomPhotos[0] : validExistingImg;
+                    return {
+                        ...r,
+                        id: r.id || undefined,
+                        roomName: formRoom.roomName || formRoom.number,
+                        roomType: formRoom.roomType || 'Single',
+                        beds: parseInt(formRoom.beds) || 1,
+                        washrooms: parseInt(formRoom.washrooms) || 1,
+                        washroomType: formRoom.washroomType || 'Common',
+                        amenities: typeof formRoom.amenities === 'string' ? formRoom.amenities : JSON.stringify(formRoom.amenities),
+                        monthlyPrice: parseFloat(formRoom.monthlyPrice || formRoom.price) || r.monthlyPrice,
+                        totalCapacity: parseInt(formRoom.totalCapacity || formRoom.capacity) || r.totalCapacity,
+                        remainingSpaces: Math.min(parseInt(formRoom.totalCapacity || formRoom.capacity) || r.totalCapacity, (r.remainingSpaces || r.totalCapacity || 1) + diff),
+                        rentType: formRoom.rentType || r.rentType || 'PER_PERSON',
+                        imageUrl: finalImg,
+                        imageUrls: uploadedRoomPhotos.length > 0 ? uploadedRoomPhotos : (finalImg ? [finalImg] : [])
+                    };
+                }
+                return r;
+            });
+
+            // Explicitly build full PropertyRequest payload to ensure no validation errors on update
+            const rawProp = property.raw || property;
+            const payload = {
+                title: rawProp.title || property.title,
+                description: rawProp.description || property.description || '',
+                address: rawProp.address || property.address,
+                city: rawProp.city || property.city,
+                genderPreference: rawProp.genderPreference || property.genderPreference || 'ANY',
+                monthlyRent: rawProp.monthlyRent || property.price || 15000,
+                latitude: rawProp.latitude || property.latitude,
+                longitude: rawProp.longitude || property.longitude,
+                propertyNature: rawProp.propertyNature || property.propertyNature,
+                amenities: rawProp.amenities || property.amenities || [],
+                imageUrls: rawProp.imageUrls || property.imageUrls || [],
+                rooms: updatedRooms
+            };
+
+            await api.properties.update(property.id, payload);
+
+            // Re-fetch fresh property from API to ensure instant UI synchronization
+            let freshProp = null;
+            try {
+                freshProp = await api.properties.getById(property.id);
+            } catch (e) { }
+
+            Alert.alert("Success", "Unit successfully saved!", [{
+                text: 'OK',
+                onPress: () => {
+                    setEditingRoom(null);
+                    if (freshProp && onPropertyUpdated) {
+                        onPropertyUpdated(freshProp);
+                    }
+                    onBack();
+                }
+            }]);
+        } catch (err) {
+            Alert.alert("Error", "Failed to update unit: " + err.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    if (editingRoom) {
+        return (
+            <View style={{ flex: 1 }}>
+                <AddRoomScreen
+                    initialRoomData={editingRoom}
+                    onBack={() => setEditingRoom(null)}
+                    onSaveRoom={saveRoomChanges}
+                />
+                {isSaving && (
+                    <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(255,255,255,0.7)', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}>
+                        <ActivityIndicator size="large" color="#133E32" />
+                        <Text style={{ marginTop: 12, fontWeight: '700', color: '#133E32' }}>Saving Changes...</Text>
+                    </View>
+                )}
+            </View>
+        );
+    }
 
     return (
         <SafeAreaView style={styles.container}>
@@ -82,144 +237,153 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {/* Title & Add Room Action */}
                 <View style={styles.titleSection}>
-                    <Text style={styles.mainTitle}>Room Management</Text>
+                    <Text style={styles.mainTitle}>{isRoomBased ? 'Property Units' : 'House Layout'}</Text>
                     <Text style={styles.subtitle}>
-                        Manage units, availability, and pricing for {displayPropertyName}.
+                        {isRoomBased ? 'Manage individual units, capacity, and pricing.' : 'Overview of complete property configuration.'}
                     </Text>
 
-                    <TouchableOpacity style={styles.addRoomBtn} onPress={onAddRoom} activeOpacity={0.85}>
-                        <Ionicons name="add" size={20} color="#FFD700" style={{ marginRight: 6 }} />
-                        <Text style={styles.addRoomBtnText}>Add New Room</Text>
-                    </TouchableOpacity>
+                    {isRoomBased && (
+                        <TouchableOpacity style={styles.addRoomBtn} onPress={onAddRoom} activeOpacity={0.85}>
+                            <Ionicons name="add" size={20} color="#FFD700" style={{ marginRight: 6 }} />
+                            <Text style={styles.addRoomBtnText}>Add New Room</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
 
-                {/* Filter & Search Bar Container Card */}
-                <View style={styles.filterCard}>
-                    {/* Status Pill Filters */}
-                    <View style={styles.filterPillRow}>
-                        <TouchableOpacity
-                            style={[styles.filterPill, activeFilter === 'ALL' && styles.filterPillActive]}
-                            onPress={() => setActiveFilter('ALL')}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={[styles.filterPillText, activeFilter === 'ALL' && styles.filterPillTextActive]}>
-                                All Rooms
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.filterPill, activeFilter === 'AVAILABLE' && styles.filterPillActive]}
-                            onPress={() => setActiveFilter('AVAILABLE')}
-                            activeOpacity={0.8}
-                        >
-                            <View style={[styles.dotIndicator, { backgroundColor: '#10B981' }]} />
-                            <Text style={[styles.filterPillText, activeFilter === 'AVAILABLE' && styles.filterPillTextActive]}>
-                                Available
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.filterPill, activeFilter === 'OCCUPIED' && styles.filterPillActive]}
-                            onPress={() => setActiveFilter('OCCUPIED')}
-                            activeOpacity={0.8}
-                        >
-                            <View style={[styles.dotIndicator, { backgroundColor: '#EF4444' }]} />
-                            <Text style={[styles.filterPillText, activeFilter === 'OCCUPIED' && styles.filterPillTextActive]}>
-                                Occupied
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Search Input */}
-                    <View style={styles.searchBar}>
-                        <Ionicons name="search-outline" size={18} color="#64748B" style={{ marginRight: 8 }} />
-                        <TextInput
-                            style={styles.searchInput}
-                            placeholder="Search rooms..."
-                            placeholderTextColor="#94A3B8"
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                        />
-                        {searchQuery ? (
-                            <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                <Ionicons name="close-circle" size={16} color="#94A3B8" />
-                            </TouchableOpacity>
-                        ) : null}
-                    </View>
-                </View>
-
-                {/* Room Cards List */}
-                {filteredRooms.length === 0 ? (
-                    <View style={styles.emptyContainer}>
-                        <Ionicons name="bed-outline" size={48} color="#94A3B8" />
-                        <Text style={styles.emptyTitle}>No Rooms Found</Text>
-                        <Text style={styles.emptySubtitle}>Try adjusting your filters or add a new room.</Text>
-                    </View>
-                ) : (
-                    filteredRooms.map((room) => {
-                        const isAvailable = room.status === 'AVAILABLE';
-                        return (
-                            <View key={room.id} style={styles.roomCard}>
-                                {/* Room Image Box with Status Badge */}
-                                <View style={styles.roomImageWrapper}>
-                                    {room.imageUrl ? (
-                                        <Image source={{ uri: room.imageUrl }} style={styles.roomImage} resizeMode="cover" />
-                                    ) : (
-                                        <View style={[styles.roomImage, { backgroundColor: '#E6F0EC', justifyContent: 'center', alignItems: 'center' }]}>
-                                            <Ionicons name="bed-outline" size={44} color="#133E32" />
-                                        </View>
-                                    )}
-
-                                    <View style={[
-                                        styles.statusBadge,
-                                        isAvailable ? styles.statusBadgeAvailable : styles.statusBadgeOccupied
-                                    ]}>
-                                        <View style={[
-                                            styles.badgeDot,
-                                            { backgroundColor: isAvailable ? '#059669' : '#DC2626' }
-                                        ]} />
-                                        <Text style={[
-                                            styles.statusBadgeText,
-                                            { color: isAvailable ? '#065F46' : '#991B1B' }
-                                        ]}>
-                                            {isAvailable ? 'Available' : 'Occupied'}
-                                        </Text>
-                                    </View>
+                {!isRoomBased ? (
+                    <View style={styles.roomCard}>
+                        <View style={styles.roomImageWrapper}>
+                            {property?.imageUrl || (property?.imageUrls && property?.imageUrls.length > 0) ? (
+                                <Image source={{ uri: property.imageUrl || property.imageUrls[0] }} style={styles.roomImage} resizeMode="cover" />
+                            ) : (
+                                <View style={[styles.roomImage, { backgroundColor: '#E6F0EC', justifyContent: 'center', alignItems: 'center' }]}>
+                                    <Ionicons name="home-outline" size={44} color="#133E32" />
                                 </View>
-
-                                {/* Room Details */}
-                                <View style={styles.roomContent}>
-                                    <View style={styles.titlePriceRow}>
-                                        <View>
-                                            <Text style={styles.roomNumber}>{room.number}</Text>
-                                            <Text style={styles.roomType}>{room.type}</Text>
-                                        </View>
-                                        <View style={{ alignItems: 'flex-end' }}>
-                                            <Text style={styles.roomPrice}>Rs.{room.price.toLocaleString()}</Text>
-                                            <Text style={styles.perMonthText}>/ month</Text>
-                                        </View>
-                                    </View>
-
-                                    <View style={styles.divider} />
-
-                                    {/* Occupants & Area Specs */}
-                                    <View style={styles.specsRow}>
-                                        <View style={styles.specItem}>
-                                            <Ionicons name="people-outline" size={16} color="#64748B" style={{ marginRight: 4 }} />
-                                            <Text style={styles.specText}>{room.occupants}</Text>
-                                        </View>
-
-                                        <View style={styles.specItem}>
-                                            <Ionicons name="expand-outline" size={16} color="#64748B" style={{ marginRight: 4 }} />
-                                            <Text style={styles.specText}>{room.area}</Text>
-                                        </View>
-                                    </View>
+                            )}
+                            <View style={[styles.statusBadge, property?.status === 'ACTIVE' ? styles.statusBadgeAvailable : styles.statusBadgeOccupied]}>
+                                <View style={[styles.badgeDot, { backgroundColor: property?.status === 'ACTIVE' ? '#059669' : '#DC2626' }]} />
+                                <Text style={[styles.statusBadgeText, { color: property?.status === 'ACTIVE' ? '#065F46' : '#991B1B' }]}>
+                                    {property?.status === 'ACTIVE' ? 'Available' : 'Occupied'}
+                                </Text>
+                            </View>
+                        </View>
+                        <View style={styles.roomContent}>
+                            <View style={styles.titlePriceRow}>
+                                <View>
+                                    <Text style={styles.roomNumber}>Entire Boarding House</Text>
+                                    <Text style={styles.roomType}>Exclusive Rental</Text>
                                 </View>
                             </View>
-                        );
-                    })
+                            <View style={styles.divider} />
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                                {property?.amenities && property.amenities.filter(a => a.includes('Bed') || a.includes('Washroom')).map((am, i) => (
+                                    <View key={i} style={styles.specItem}>
+                                        <Ionicons name="checkmark-circle" size={16} color="#10B981" style={{ marginRight: 4 }} />
+                                        <Text style={styles.specText}>{am}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                    </View>
+                ) : (
+                    rooms.length === 0 ? (
+                        <View style={styles.emptyContainer}>
+                            <Ionicons name="bed-outline" size={48} color="#94A3B8" />
+                            <Text style={styles.emptyTitle}>No Units Found</Text>
+                            <Text style={styles.emptySubtitle}>Try adding a new unit.</Text>
+                        </View>
+                    ) : (
+                        rooms.map((room) => {
+                            const totCap = room.totCap || room.raw?.totalCapacity || 1;
+                            const remCap = room.raw?.remainingSpaces != null ? room.raw.remainingSpaces : totCap;
+                            const occCount = Math.max(0, totCap - remCap);
+                            const isAvail = remCap > 0;
+                            const rName = room.roomName || room.number || 'Unit';
+
+                            return (
+                                <View key={room.id} style={styles.propertyCard}>
+                                    {/* Top Cover Image Box */}
+                                    <View style={styles.imageWrapper}>
+                                        {room.imageUrl ? (
+                                            <Image source={{ uri: room.imageUrl }} style={styles.cardImage} resizeMode="cover" />
+                                        ) : (
+                                            <View style={[styles.cardImage, { backgroundColor: '#E6F0EC', justifyContent: 'center', alignItems: 'center' }]}>
+                                                <Ionicons name="bed-outline" size={44} color="#133E32" />
+                                            </View>
+                                        )}
+
+                                        {/* Vacancies / Occupied Status Tag */}
+                                        <View style={[styles.statusTag, isAvail ? styles.statusActive : styles.statusFull]}>
+                                            <Text style={[styles.statusTagText, { color: isAvail ? '#065F46' : '#991B1B' }]}>
+                                                {isAvail ? 'VACANCIES' : 'FULLY OCCUPIED'}
+                                            </Text>
+                                        </View>
+
+                                        {/* Rent Type Tag */}
+                                        <View style={styles.rentTypeTag}>
+                                            <Ionicons name="pricetag-outline" size={11} color="#133E32" style={{ marginRight: 3 }} />
+                                            <Text style={styles.rentTypeTagText}>{room.type}</Text>
+                                        </View>
+                                    </View>
+
+                                    {/* Card Content Details */}
+                                    <View style={styles.cardContent}>
+                                        <Text style={styles.propertyTitle}>{rName}</Text>
+
+                                        <View style={styles.infoRow}>
+                                            <Ionicons name="bed-outline" size={14} color="#64748B" style={{ marginRight: 6 }} />
+                                            <Text style={[styles.locationText, { flex: 1 }]} numberOfLines={1}>
+                                                {room.area}
+                                            </Text>
+                                        </View>
+
+                                        <View style={[styles.infoRow, { marginBottom: 14 }]}>
+                                            <Ionicons name="home-outline" size={14} color="#64748B" style={{ marginRight: 6 }} />
+                                            <Text style={[styles.locationText, { color: '#0F172A', fontWeight: '600', flex: 1 }]} numberOfLines={1}>
+                                                {room.roomType ? `${room.roomType} Type Unit` : 'Boarding Unit'}
+                                            </Text>
+                                        </View>
+
+                                        {/* Stats Row Grid - 1:1 Match with Properties Screen */}
+                                        <View style={styles.statsRow}>
+                                            <View style={styles.statBox}>
+                                                <Text style={styles.statBoxNum}>{totCap}</Text>
+                                                <Text style={styles.statBoxLabel}>Total Spaces</Text>
+                                            </View>
+                                            <View style={styles.statBox}>
+                                                <Text style={[styles.statBoxNum, { color: '#D97706' }]}>{occCount}</Text>
+                                                <Text style={styles.statBoxLabel}>Occupied</Text>
+                                            </View>
+                                            <View style={styles.statBox}>
+                                                <Text style={[styles.statBoxNum, { color: isAvail ? '#133E32' : '#DC2626' }]}>{remCap}</Text>
+                                                <Text style={styles.statBoxLabel}>Available</Text>
+                                            </View>
+                                        </View>
+
+                                        {/* Card Footer: Price & Manage Button */}
+                                        <View style={styles.cardFooter}>
+                                            <Text style={styles.priceText}>
+                                                Rs. {(room.price || 0).toLocaleString()}{' '}
+                                                <Text style={styles.pricePeriod}>/ month</Text>
+                                            </Text>
+
+                                            <TouchableOpacity
+                                                style={styles.manageBtn}
+                                                onPress={() => handleManageRoom(room)}
+                                                activeOpacity={0.85}
+                                            >
+                                                <Text style={styles.manageBtnText}>Manage</Text>
+                                                <Ionicons name="chevron-forward" size={14} color="#133E32" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                </View>
+                            );
+                        })
+                    )
                 )}
             </ScrollView>
+
         </SafeAreaView>
     );
 }
@@ -371,58 +535,145 @@ const styles = StyleSheet.create({
         color: '#0F172A',
     },
 
-    /* Room Card */
-    roomCard: {
+    /* Property Card (Matching OwnerPropertiesScreen) */
+    propertyCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 18,
+        borderRadius: 16,
         overflow: 'hidden',
         borderWidth: 1,
         borderColor: '#E2E8F0',
         marginBottom: 16,
         shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+        elevation: 3,
     },
-    roomImageWrapper: {
+    imageWrapper: {
         position: 'relative',
         height: 170,
         backgroundColor: '#E2E8F0',
     },
-    roomImage: {
+    cardImage: {
         width: '100%',
         height: '100%',
     },
-    statusBadge: {
+    statusTag: {
+        position: 'absolute',
+        top: 12,
+        left: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 8,
+    },
+    statusActive: {
+        backgroundColor: '#E6F0EC',
+    },
+    statusFull: {
+        backgroundColor: '#FEE2E2',
+    },
+    statusTagText: {
+        fontSize: 10.5,
+        fontWeight: '900',
+        letterSpacing: 0.5,
+    },
+    rentTypeTag: {
         position: 'absolute',
         top: 12,
         right: 12,
         flexDirection: 'row',
         alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
         paddingHorizontal: 10,
         paddingVertical: 4,
-        borderRadius: 14,
+        borderRadius: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
     },
-    statusBadgeAvailable: {
-        backgroundColor: '#D1FAE5',
-    },
-    statusBadgeOccupied: {
-        backgroundColor: '#FEE2E2',
-    },
-    badgeDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        marginRight: 6,
-    },
-    statusBadgeText: {
+    rentTypeTagText: {
         fontSize: 11,
         fontWeight: '800',
+        color: '#133E32',
     },
 
-    roomContent: {
+    cardContent: {
         padding: 16,
+    },
+    propertyTitle: {
+        fontSize: 17,
+        fontWeight: '800',
+        color: '#0F172A',
+        marginBottom: 6,
+    },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 6,
+    },
+    locationText: {
+        fontSize: 13,
+        color: '#64748B',
+    },
+
+    statsRow: {
+        flexDirection: 'row',
+        backgroundColor: '#F8FAFC',
+        borderRadius: 12,
+        padding: 10,
+        justifyContent: 'space-around',
+        marginBottom: 14,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+    },
+    statBox: {
+        alignItems: 'center',
+    },
+    statBoxNum: {
+        fontSize: 16,
+        fontWeight: '900',
+        color: '#0F172A',
+    },
+    statBoxLabel: {
+        fontSize: 11,
+        color: '#64748B',
+        fontWeight: '600',
+        marginTop: 2,
+    },
+
+    cardFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        paddingTop: 12,
+    },
+    priceText: {
+        fontSize: 16,
+        fontWeight: '900',
+        color: '#133E32',
+    },
+    pricePeriod: {
+        fontSize: 11,
+        color: '#64748B',
+        fontWeight: '500',
+    },
+    manageBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#E6F0EC',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 10,
+    },
+    manageBtnText: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#133E32',
+        marginRight: 4,
     },
     titlePriceRow: {
         flexDirection: 'row',

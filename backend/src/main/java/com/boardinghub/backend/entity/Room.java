@@ -38,6 +38,21 @@ public class Room {
     @Column(name = "remaining_spaces", nullable = false)
     private Integer remainingSpaces;
 
+    @Column(name = "room_name")
+    private String roomName;
+
+    @Column(name = "beds")
+    private Integer beds;
+
+    @Column(name = "washrooms")
+    private Integer washrooms;
+
+    @Column(name = "washroom_type")
+    private String washroomType;
+
+    @Column(name = "amenities", length = 1000)
+    private String amenities;
+
     @Column(name = "rent_type")
     private String rentType; // PER_PERSON or PER_ROOM
 

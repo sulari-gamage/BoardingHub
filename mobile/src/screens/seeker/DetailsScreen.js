@@ -193,7 +193,14 @@ export default function DetailsScreen({ boarding = {}, onBack, onBookSuccess, on
                                 <View key={roomItem.id || index} style={[styles.roomCard, { marginBottom: 12 }]}>
                                     <View style={styles.roomHeaderRow}>
                                         <View style={{ flex: 1, paddingRight: 8 }}>
-                                            <Text style={styles.roomTypeTitle} numberOfLines={2}>{roomItem.roomType || `Room ${index + 1}`}</Text>
+                                            <Text style={styles.roomTypeTitle} numberOfLines={1}>
+                                                {roomItem.roomName || roomItem.roomNumber || roomItem.name || `Room ${index + 1}`}
+                                            </Text>
+                                            {roomItem.roomType ? (
+                                                <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                                                    {roomItem.roomType} Type {roomItem.beds ? `• ${roomItem.beds} Bed(s)` : ''} {roomItem.washrooms ? `• ${roomItem.washrooms} ${roomItem.washroomType || ''} Bath` : ''}
+                                                </Text>
+                                            ) : null}
                                         </View>
                                         <View style={styles.roomCardBadge}>
                                             <Ionicons name="people-outline" size={13} color="#1B4D3E" style={{ marginRight: 4 }} />

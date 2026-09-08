@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
+import { api } from '../../services/api';
 
 export default function OwnerPropertyDetailScreen({
     property,
@@ -20,9 +21,10 @@ export default function OwnerPropertyDetailScreen({
     onOpenRooms,
     onOpenGallery,
     onEditProperty,
-    onOpenBookings
+    onOpenBookings,
+    onPropertyUpdated
 }) {
-    const currentProperty = property || {
+    const [currentProperty, setCurrentProperty] = useState(property || {
         id: 'p1',
         title: 'Green Valley Boarding',
         address: '169, 44 Dewelta Homes, John Rodrigo Mawatha',
@@ -33,7 +35,59 @@ export default function OwnerPropertyDetailScreen({
         imageUrl: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
         totalRooms: 4,
         availableRooms: 2
-    };
+    });
+
+    useEffect(() => {
+        if (!property) return;
+
+        const propToUse = property.raw || property;
+        const totalCap = propToUse.rooms?.reduce((acc, r) => acc + (r.totalCapacity || 1), 0) || 1;
+        const availCap = propToUse.rooms?.reduce((acc, r) => acc + (r.remainingSpaces != null ? r.remainingSpaces : (r.totalCapacity || 1)), 0) || totalCap;
+
+        setCurrentProperty({
+            id: propToUse.id,
+            title: propToUse.title,
+            address: propToUse.address,
+            city: propToUse.city,
+            price: propToUse.monthlyRent || propToUse.price || 0,
+            totalRooms: totalCap,
+            availableRooms: availCap,
+            rooms: propToUse.rooms || [],
+            amenities: propToUse.amenities || [],
+            raw: propToUse,
+            imageUrls: propToUse.imageUrls,
+            images: propToUse.images,
+            imageUrl: (propToUse.imageUrls && propToUse.imageUrls.length > 0) ? propToUse.imageUrls[0] : null
+        });
+
+        if (!property?.id) return;
+        let isMounted = true;
+        const fetchLatest = async () => {
+            try {
+                const latest = await api.properties.getById(property.id);
+                if (isMounted) {
+                    const mapped = {
+                        id: latest.id,
+                        title: latest.title,
+                        address: latest.address,
+                        city: latest.city,
+                        price: latest.monthlyRent || 0,
+                        totalRooms: latest.rooms?.reduce((acc, r) => acc + (r.totalCapacity || 1), 0) || 1,
+                        availableRooms: latest.rooms?.reduce((acc, r) => acc + (r.remainingSpaces != null ? r.remainingSpaces : (r.totalCapacity || 1)), 0) || 1,
+                        rooms: latest.rooms || [],
+                        amenities: latest.amenities || [],
+                        raw: latest,
+                        imageUrls: latest.imageUrls,
+                        images: latest.images,
+                        imageUrl: (latest.imageUrls && latest.imageUrls.length > 0) ? latest.imageUrls[0] : null
+                    };
+                    setCurrentProperty(mapped);
+                }
+            } catch (e) { }
+        };
+        fetchLatest();
+        return () => { isMounted = false; };
+    }, [property]);
 
     const handleMapPress = () => {
         const lat = currentProperty.latitude || 6.9271;
@@ -186,23 +240,41 @@ export default function OwnerPropertyDetailScreen({
                     <>
                         <Text style={styles.sectionTitle}>Rooms Breakdown ({currentProperty.rooms.length})</Text>
                         <View style={{ gap: 10, marginBottom: 18 }}>
-                            {currentProperty.rooms.map((room, idx) => (
-                                <View key={room.id || idx} style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <View style={{ flex: 1, paddingRight: 8 }}>
-                                            <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A' }} numberOfLines={2}>{room.roomType || `Room ${idx + 1}`}</Text>
+                            {currentProperty.rooms.map((room, idx) => {
+                                const rName = room.roomName || room.roomNumber || room.name || `Room ${idx + 1}`;
+                                const rType = room.roomType || '';
+                                const subDetails = [
+                                    rType ? `${rType} Type` : null,
+                                    room.beds ? `${room.beds} Bed(s)` : null,
+                                    room.washrooms ? `${room.washrooms} ${room.washroomType || ''} Bath` : null
+                                ].filter(Boolean).join(' • ');
+
+                                return (
+                                    <View key={room.id || idx} style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <View style={{ flex: 1, paddingRight: 8 }}>
+                                                <Text style={{ fontSize: 15, fontWeight: '800', color: '#0F172A' }} numberOfLines={1}>{rName}</Text>
+                                                {subDetails ? (
+                                                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#475569', marginTop: 2 }}>{subDetails}</Text>
+                                                ) : null}
+                                                {room.amenities ? (
+                                                    <Text style={{ fontSize: 11, color: '#64748B', marginTop: 3 }}>
+                                                        Amenities: {typeof room.amenities === 'string' ? room.amenities : room.amenities.join(', ')}
+                                                    </Text>
+                                                ) : null}
+                                            </View>
+                                            <View style={{ backgroundColor: '#E6F0EC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start' }}>
+                                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#133E32' }}>
+                                                    LKR {(room.monthlyPrice || 0).toLocaleString()} {room.rentType === 'PER_ROOM' ? '/ room / mo' : '/ person / mo'}
+                                                </Text>
+                                            </View>
                                         </View>
-                                        <View style={{ backgroundColor: '#E6F0EC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                                            <Text style={{ fontSize: 11, fontWeight: '800', color: '#133E32' }}>
-                                                LKR {(room.monthlyPrice || 0).toLocaleString()} {room.rentType === 'PER_ROOM' ? '/ room / mo' : '/ person / mo'}
-                                            </Text>
-                                        </View>
+                                        <Text style={{ fontSize: 11, color: '#64748B', marginTop: 6 }}>
+                                            Remaining Spaces: <Text style={{ fontWeight: '700', color: '#133E32' }}>{room.remainingSpaces != null ? room.remainingSpaces : room.totalCapacity} / {room.totalCapacity}</Text>
+                                        </Text>
                                     </View>
-                                    <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>
-                                        Remaining Spaces: <Text style={{ fontWeight: '700', color: '#133E32' }}>{room.remainingSpaces != null ? room.remainingSpaces : room.totalCapacity} / {room.totalCapacity}</Text>
-                                    </Text>
-                                </View>
-                            ))}
+                                );
+                            })}
                         </View>
                     </>
                 )}

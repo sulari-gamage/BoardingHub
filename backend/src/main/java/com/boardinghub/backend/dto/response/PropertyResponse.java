@@ -34,6 +34,7 @@ public class PropertyResponse {
     private List<PropertyImageDTO> images;
     private List<String> imageUrls;
     private List<RoomResponse> rooms;
+    private String propertyNature;
 
     private LocalDateTime createdAt;
 }

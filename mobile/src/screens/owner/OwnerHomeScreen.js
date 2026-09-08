@@ -49,10 +49,14 @@ export default function OwnerHomeScreen({
     const totalProperties = properties.length;
     const pendingRequestsCount = requests.filter(r => r.status === 'PENDING').length;
     const availableSpaces = properties.reduce((acc, p) => {
-        return acc + (p.rooms ? p.rooms.reduce((rAcc, r) => rAcc + (r.remainingSpaces || 0), 0) : 0);
+        return acc + (p.rooms ? p.rooms.reduce((rAcc, r) => rAcc + Math.max(0, r.remainingSpaces || 0), 0) : 0);
     }, 0);
     const totalOccupants = properties.reduce((acc, p) => {
-        return acc + (p.rooms ? p.rooms.reduce((rAcc, r) => rAcc + ((r.totalSpaces || 0) - (r.remainingSpaces || 0)), 0) : 0);
+        return acc + (p.rooms ? p.rooms.reduce((rAcc, r) => {
+            const total = r.totalSpaces || r.capacity || 0;
+            const remaining = r.remainingSpaces || 0;
+            return rAcc + Math.max(0, total - remaining);
+        }, 0) : 0);
     }, 0);
 
     const recentRequests = requests.slice(0, 3);

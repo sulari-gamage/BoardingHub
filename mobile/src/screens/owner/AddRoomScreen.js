@@ -9,16 +9,19 @@ import {
     ScrollView,
     TextInput,
     Alert,
-    Platform
+    Platform,
+    Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 
-export default function AddRoomScreen({ onBack, onSaveRoom }) {
+export default function AddRoomScreen({ onBack, onSaveRoom, initialRoomData = null }) {
     // Form state matching Image 2 mockup
     const [roomNumber, setRoomNumber] = useState('');
     const [roomType, setRoomType] = useState('Single');
     const [maxOccupants, setMaxOccupants] = useState(1);
     const [pricePerMonth, setPricePerMonth] = useState('');
+    const [rentType, setRentType] = useState('PER_PERSON');
 
     const [beds, setBeds] = useState('1');
     const [washrooms, setWashrooms] = useState('1');
@@ -34,8 +37,58 @@ export default function AddRoomScreen({ onBack, onSaveRoom }) {
         oven: false,
     });
 
+    const [photos, setPhotos] = useState(initialRoomData?.photos || (initialRoomData?.imageUrl ? [{ id: '1', uri: initialRoomData.imageUrl }] : []));
+
     const toggleAmenity = (key) => {
         setAmenities((prev) => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    React.useEffect(() => {
+        if (initialRoomData) {
+            setRoomNumber(initialRoomData.roomName || initialRoomData.number || '');
+            setRoomType(initialRoomData.roomType || initialRoomData.roomTypeStyle || 'Single');
+            setMaxOccupants(parseInt(initialRoomData.totalCapacity || initialRoomData.capacity || 1, 10));
+            setPricePerMonth(initialRoomData.monthlyPrice || initialRoomData.price ? (initialRoomData.monthlyPrice || initialRoomData.price).toString() : '');
+            setBeds(initialRoomData.beds ? initialRoomData.beds.toString() : '1');
+            setWashrooms(initialRoomData.washrooms ? initialRoomData.washrooms.toString() : '1');
+            setWashroomType(initialRoomData.washroomType || 'Common');
+            setRentType(initialRoomData.rentType || 'PER_PERSON');
+            if (initialRoomData.amenities) {
+                if (typeof initialRoomData.amenities === 'string') {
+                    const str = initialRoomData.amenities;
+                    setAmenities({
+                        wifi: /Wi-Fi|wifi/i.test(str),
+                        ac: /AC/i.test(str),
+                        bathroom: /Bathroom|bathroom/i.test(str),
+                        desk: /Desk/i.test(str),
+                        fridge: /Fridge/i.test(str),
+                        oven: /Oven/i.test(str),
+                    });
+                } else {
+                    setAmenities(initialRoomData.amenities);
+                }
+            }
+        }
+    }, [initialRoomData]);
+
+    const handlePickRoomPhoto = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') return;
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: false,
+                quality: 0.8,
+            });
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                const asset = result.assets[0];
+                setPhotos(prev => [...prev, { id: `photo_${Date.now()}`, uri: asset.uri }]);
+            }
+        } catch (err) { }
+    };
+
+    const handleRemoveRoomPhoto = (id) => {
+        setPhotos(photos.filter(p => p.id !== id));
     };
 
     const handleSave = () => {
@@ -45,28 +98,39 @@ export default function AddRoomScreen({ onBack, onSaveRoom }) {
         }
 
         const activeAmenities = Object.keys(amenities).filter(k => amenities[k]).map(k => {
+            if (k === 'desk') return 'Desk';
+            if (k === 'fridge') return 'Fridge';
+            if (k === 'fan') return 'Fan';
+            if (k === 'tv') return 'TV';
+            if (k === 'iron') return 'Iron';
             if (k === 'wifi') return 'Wi-Fi';
             if (k === 'ac') return 'AC';
             if (k === 'bathroom') return 'En-suite Bath';
-            if (k === 'desk') return 'Desk';
-            if (k === 'fridge') return 'Fridge';
-            if (k === 'oven') return 'Oven';
             return k;
         });
 
-        const facilityStr = `${beds} Bed(s), ${washrooms} ${washroomType} Washroom(s)${activeAmenities.length > 0 ? ', ' + activeAmenities.join(', ') : ''}`;
+        const amenitiesStr = activeAmenities.join(', ');
+        const facilityStr = `${beds} Bed(s), ${washrooms} ${washroomType} Washroom(s)${activeAmenities.length > 0 ? ', ' + amenitiesStr : ''}`;
 
         const newRoom = {
-            id: `r_${Date.now()}`,
+            id: initialRoomData?.id || initialRoomData?.rawId || `r_${Date.now()}`,
+            rawId: initialRoomData?.rawId || initialRoomData?.id,
+            roomName: roomNumber,
+            roomType: roomType,
+            beds: parseInt(beds, 10) || 1,
+            washrooms: parseInt(washrooms, 10) || 1,
+            washroomType: washroomType,
+            amenities: amenitiesStr,
+            monthlyPrice: parseFloat(pricePerMonth) || 15000,
+            rentType: rentType,
+            totalCapacity: maxOccupants,
+            remainingSpaces: maxOccupants,
+            // UI compatibility fields
             number: roomNumber,
             type: `${roomType} Type | ${facilityStr}`,
             price: parseFloat(pricePerMonth) || 15000,
-            occupants: `${maxOccupants} Occupant${maxOccupants > 1 ? 's' : ''}`,
             capacity: maxOccupants,
-            availableSpaces: maxOccupants,
-            area: '200 sqft',
-            status: 'AVAILABLE',
-            amenities,
+            photos,
         };
 
         if (onSaveRoom) onSaveRoom(newRoom);
@@ -82,14 +146,14 @@ export default function AddRoomScreen({ onBack, onSaveRoom }) {
                 <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
                     <Ionicons name="arrow-back" size={20} color="#133E32" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Add New Room</Text>
+                <Text style={styles.headerTitle}>{initialRoomData?.id || initialRoomData?.rawId ? 'Edit Room' : 'Add New Room'}</Text>
                 <View style={{ width: 36 }} />
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {/* Title Section */}
                 <View style={styles.titleSection}>
-                    <Text style={styles.mainTitle}>Add New Room</Text>
+                    <Text style={styles.mainTitle}>{initialRoomData?.id || initialRoomData?.rawId ? 'Edit Room Details' : 'Add New Room'}</Text>
                     <Text style={styles.subtitle}>Configure room details, pricing, and amenities.</Text>
                 </View>
 
@@ -111,13 +175,18 @@ export default function AddRoomScreen({ onBack, onSaveRoom }) {
                     {/* Room Type Picker */}
                     <Text style={styles.fieldLabel}>Room Type</Text>
                     <View style={styles.typeSelectorRow}>
-                        {['Single', 'Shared', 'Deluxe', 'Suite'].map((type) => {
+                        {['Single', 'Shared', 'single/shared'].map((type) => {
                             const isSelected = roomType === type;
                             return (
                                 <TouchableOpacity
                                     key={type}
                                     style={[styles.typePill, isSelected && styles.typePillActive]}
-                                    onPress={() => setRoomType(type)}
+                                    onPress={() => {
+                                        setRoomType(type);
+                                        if (type.toLowerCase() === 'single') {
+                                            setMaxOccupants(1);
+                                        }
+                                    }}
                                     activeOpacity={0.8}
                                 >
                                     <Text style={[styles.typePillText, isSelected && styles.typePillTextActive]}>
@@ -139,23 +208,46 @@ export default function AddRoomScreen({ onBack, onSaveRoom }) {
                     <View style={styles.stepperBox}>
                         <TouchableOpacity
                             style={styles.stepperBtn}
-                            onPress={() => setMaxOccupants(Math.max(1, maxOccupants - 1))}
+                            onPress={() => setMaxOccupants(Math.max(1, parseInt(maxOccupants || 1, 10) - 1))}
                             activeOpacity={0.8}
                         >
                             <Ionicons name="remove" size={18} color="#133E32" />
                         </TouchableOpacity>
                         <Text style={styles.stepperValue}>{maxOccupants}</Text>
                         <TouchableOpacity
-                            style={styles.stepperBtn}
-                            onPress={() => setMaxOccupants(maxOccupants + 1)}
+                            style={[styles.stepperBtn, roomType.toLowerCase() === 'single' && { opacity: 0.4 }]}
+                            onPress={() => setMaxOccupants(parseInt(maxOccupants || 1, 10) + 1)}
                             activeOpacity={0.8}
+                            disabled={roomType.toLowerCase() === 'single'}
                         >
                             <Ionicons name="add" size={18} color="#133E32" />
                         </TouchableOpacity>
                     </View>
 
                     {/* Price per Month Input */}
-                    <Text style={styles.fieldLabel}>Price per Month</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 12 }}>
+                        <Text style={styles.fieldLabel}>Price per Month</Text>
+                        <View style={{ flexDirection: 'row', backgroundColor: '#F8FAFC', borderRadius: 8, padding: 3, borderWidth: 1, borderColor: '#E2E8F0', height: 32 }}>
+                            <TouchableOpacity
+                                style={[styles.rentToggleBtn, rentType === 'PER_PERSON' && styles.rentToggleBtnActive]}
+                                onPress={() => setRentType('PER_PERSON')}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={[styles.rentToggleText, rentType === 'PER_PERSON' && styles.rentToggleTextActive]}>
+                                    / Person
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.rentToggleBtn, rentType === 'PER_ROOM' && styles.rentToggleBtnActive]}
+                                onPress={() => setRentType('PER_ROOM')}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={[styles.rentToggleText, rentType === 'PER_ROOM' && styles.rentToggleTextActive]}>
+                                    / Room
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
                     <View style={styles.priceInputWrapper}>
                         <Text style={styles.currencyPrefix}>Rs.</Text>
                         <TextInput
@@ -198,7 +290,7 @@ export default function AddRoomScreen({ onBack, onSaveRoom }) {
                             />
                         </View>
                         <View style={{ flex: 1.5 }}>
-                            <Text style={styles.fieldLabel}>Bathroom Type</Text>
+                            <Text style={styles.fieldLabel}>Washroom Type</Text>
                             <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
                                 <TouchableOpacity
                                     style={[styles.typePill, washroomType === 'Attached' && styles.typePillActive, { paddingVertical: 10 }]}
@@ -216,14 +308,13 @@ export default function AddRoomScreen({ onBack, onSaveRoom }) {
                         </View>
                     </View>
 
-                    <Text style={styles.cardTitle}>Additional Amenities</Text>
+                    <Text style={styles.cardTitle}>Additional Amenities For Room</Text>
                     {[
-                        { key: 'wifi', label: 'High-Speed Wi-Fi' },
-                        { key: 'ac', label: 'Air Conditioning' },
-                        { key: 'bathroom', label: 'En-suite Bathroom' },
-                        { key: 'desk', label: 'Work Desk' },
+                        { key: 'desk', label: 'Work Desk / Study Table' },
                         { key: 'fridge', label: 'Mini Fridge' },
-                        { key: 'oven', label: 'Microwave/Oven' },
+                        { key: 'fan', label: 'Ceiling / Stand Fan' },
+                        { key: 'tv', label: 'Television' },
+                        { key: 'iron', label: 'Ironing Board' },
                     ].map((item) => {
                         const isChecked = !!amenities[item.key];
                         return (
@@ -240,6 +331,47 @@ export default function AddRoomScreen({ onBack, onSaveRoom }) {
                             </TouchableOpacity>
                         );
                     })}
+                </View>
+
+                {/* Card 4: Room Photos */}
+                <View style={styles.cardContainer}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <Text style={[styles.cardTitle, { marginBottom: 0 }]}>Room Photos</Text>
+                        <TouchableOpacity
+                            onPress={handlePickRoomPhoto}
+                            style={{ backgroundColor: '#133E32', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="camera" size={14} color="#FFD700" style={{ marginRight: 6 }} />
+                            <Text style={{ color: '#FFD700', fontSize: 12, fontWeight: '800' }}>+ Add Photo</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <View style={styles.titleDivider} />
+
+                    {photos && photos.length > 0 ? (
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                            {photos.map((photo) => (
+                                <View key={photo.id} style={{ position: 'relative', width: 75, height: 75, borderRadius: 10, overflow: 'hidden' }}>
+                                    <Image source={{ uri: photo.uri }} style={{ width: '100%', height: '100%' }} />
+                                    <TouchableOpacity
+                                        onPress={() => handleRemoveRoomPhoto(photo.id)}
+                                        style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(220, 38, 38, 0.9)', borderRadius: 12, padding: 3 }}
+                                    >
+                                        <Ionicons name="close" size={12} color="#FFF" />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                        </View>
+                    ) : (
+                        <TouchableOpacity
+                            onPress={handlePickRoomPhoto}
+                            style={{ height: 90, backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: '#CBD5E1', borderStyle: 'dashed', borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="images-outline" size={28} color="#133E32" />
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#133E32', marginTop: 6 }}>Upload images of this specific unit</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </ScrollView>
 
@@ -379,6 +511,27 @@ const styles = StyleSheet.create({
         color: '#FFD700',
         fontWeight: '900',
     },
+
+    /* Rent Toggle */
+    rentToggleBtn: {
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 6,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    rentToggleBtnActive: {
+        backgroundColor: '#133E32',
+    },
+    rentToggleText: {
+        fontSize: 11,
+        color: '#64748B',
+        fontWeight: '700',
+    },
+    rentToggleTextActive: {
+        color: '#FFFFFF',
+    },
+
 
     /* Stepper Box */
     stepperBox: {

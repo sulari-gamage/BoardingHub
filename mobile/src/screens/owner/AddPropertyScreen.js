@@ -20,6 +20,7 @@ import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import api from '../../services/api';
 import { uploadImage } from '../../services/uploadService';
+import AddRoomScreen from './AddRoomScreen';
 
 const AMENITY_MAP = {
     wifi: 'High-Speed WiFi',
@@ -44,6 +45,8 @@ const AMENITY_MAP = {
 
 export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEdit = null }) {
     const isEditMode = !!propertyToEdit;
+    const dbSource = propertyToEdit?.raw || propertyToEdit || {};
+
     // Current active wizard step: 1 (Info), 2 (Location), 3 (Amenities), 4 (Photos)
     const [currentStep, setCurrentStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,7 +54,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
 
     // Initial state pre-population from propertyToEdit
     const initialAmenities = {};
-    const existingAmenitiesList = propertyToEdit?.amenities || (propertyToEdit?.raw && propertyToEdit.raw.amenities) || [];
+    const existingAmenitiesList = dbSource.amenities || [];
     if (Array.isArray(existingAmenitiesList)) {
         existingAmenitiesList.forEach(name => {
             const foundKey = Object.keys(AMENITY_MAP).find(k => AMENITY_MAP[k].toLowerCase() === name.toLowerCase());
@@ -69,23 +72,23 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
     const [hasAC, setHasAC] = useState(false);
 
     // Step 1 Form State (Property Info & Dynamic Room Inventory)
-    const [propertyName, setPropertyName] = useState(propertyToEdit?.title || propertyToEdit?.name || '');
-    const [monthlyRent, setMonthlyRent] = useState(propertyToEdit?.monthlyRent ? propertyToEdit.monthlyRent.toString() : (propertyToEdit?.price ? propertyToEdit.price.toString() : ''));
-    const [totalCapacity, setTotalCapacity] = useState(propertyToEdit?.totalCapacity ? propertyToEdit.totalCapacity.toString() : '1');
-    const [propertyNature, setPropertyNature] = useState(propertyToEdit?.rooms && propertyToEdit.rooms.length > 0 ? 'ROOM_BASED' : 'WHOLE_HOUSE');
-    const [description, setDescription] = useState(propertyToEdit?.description || '');
+    const [propertyName, setPropertyName] = useState(dbSource.title || dbSource.name || propertyToEdit?.title || '');
+    const [monthlyRent, setMonthlyRent] = useState(dbSource.monthlyRent ? dbSource.monthlyRent.toString() : (dbSource.price ? dbSource.price.toString() : ''));
+    const [totalCapacity, setTotalCapacity] = useState(dbSource.totalCapacity ? dbSource.totalCapacity.toString() : '1');
+    const [propertyNature, setPropertyNature] = useState(dbSource.rooms && dbSource.rooms.length > 0 ? 'ROOM_BASED' : 'WHOLE_HOUSE');
+    const [description, setDescription] = useState(dbSource.description || '');
     const [genderPreference, setGenderPreference] = useState(
-        propertyToEdit?.genderPreference === 'FEMALE_ONLY' ? 'Female Only' :
-            propertyToEdit?.genderPreference === 'MALE_ONLY' ? 'Male Only' : 'Mixed'
+        dbSource.genderPreference === 'FEMALE_ONLY' ? 'Female Only' :
+            dbSource.genderPreference === 'MALE_ONLY' ? 'Male Only' : 'Mixed'
     );
-    const [certifications, setCertifications] = useState([]);
+    const [certifications, setCertifications] = useState(dbSource.certifications || []);
     const [uploadedCertPhotos, setUploadedCertPhotos] = useState([]);
     const [newCertText, setNewCertText] = useState('');
     const [isCertModalVisible, setIsCertModalVisible] = useState(false);
 
     // Dynamic Room Inventory State (for ROOM_BASED properties)
     const [rooms, setRooms] = useState(
-        ((propertyToEdit?.rooms || (propertyToEdit?.raw && propertyToEdit.raw.rooms)) || []).map((r, i) => ({
+        ((dbSource.rooms) || []).map((r, i) => ({
             id: r.id ? r.id.toString() : `room_${i}`,
             name: r.roomType || r.name || `Room ${i + 1}`,
             rent: (r.monthlyPrice || r.price || r.rent || 0).toString(),
@@ -133,14 +136,8 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
     const handleOpenEditRoomModal = (room) => {
         setCurrentRoom({
             ...room,
-            rentType: room.rentType || 'PER_PERSON',
-            photos: room.photos || [],
-            beds: room.beds || '1',
-            washrooms: room.washrooms || '1',
-            washroomType: room.washroomType || 'Common',
-            ac: room.ac || false,
-            fridge: room.fridge || false,
-            oven: room.oven || false,
+            number: room.name,
+            price: room.rent,
         });
         setIsRoomModalVisible(true);
     };
@@ -153,33 +150,37 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
         }, 0);
     };
 
-    const handleSaveRoom = () => {
-        if (!currentRoom.name.trim()) {
-            Alert.alert('Required Field', 'Please enter a name or identifier for the room (e.g. Room 101).');
-            return;
-        }
-        if (!currentRoom.rent.trim() || isNaN(parseFloat(currentRoom.rent)) || parseFloat(currentRoom.rent) <= 0) {
-            Alert.alert('Required Field', 'Please enter a valid monthly rent for this room.');
-            return;
-        }
-        if (!currentRoom.capacity.trim() || isNaN(parseInt(currentRoom.capacity)) || parseInt(currentRoom.capacity) <= 0) {
-            Alert.alert('Required Field', 'Please enter a valid capacity (occupants) for this room.');
-            return;
-        }
+    const handleSaveRoomFromScreen = (roomPayload) => {
+        if (!roomPayload) return setIsRoomModalVisible(false);
 
-        const existingIndex = rooms.findIndex((r) => r.id === currentRoom.id);
+        const existingIndex = rooms.findIndex((r) => r.id === roomPayload.id);
+        const unifiedRoomObj = {
+            id: roomPayload.id,
+            name: roomPayload.number,
+            compiledType: roomPayload.type,
+            rent: roomPayload.price.toString(),
+            capacity: roomPayload.capacity.toString(),
+            genderPreference: 'Mixed',
+            rentType: roomPayload.rentType || 'PER_PERSON',
+            photos: roomPayload.photos || [],
+            roomTypeStyle: roomPayload.roomTypeStyle,
+            beds: roomPayload.beds || '1',
+            washrooms: roomPayload.washrooms || '1',
+            washroomType: roomPayload.washroomType || 'Common',
+            amenities: roomPayload.amenities || {}
+        };
+
         let updatedRooms = [];
         if (existingIndex >= 0) {
             updatedRooms = [...rooms];
-            updatedRooms[existingIndex] = currentRoom;
+            updatedRooms[existingIndex] = unifiedRoomObj;
         } else {
-            updatedRooms = [...rooms, currentRoom];
+            updatedRooms = [...rooms, unifiedRoomObj];
         }
 
         setRooms(updatedRooms);
         setIsRoomModalVisible(false);
 
-        // Auto-aggregate total rent and capacity for room-based property
         const aggRent = calcAggregateRent(updatedRooms);
         const aggCap = updatedRooms.reduce((sum, r) => sum + (parseInt(r.capacity) || 0), 0);
         setMonthlyRent(aggRent.toString());
@@ -222,19 +223,19 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
     };
 
     // Step 2 Form State (Location & Dynamic Map Geocoding)
-    const [searchAddress, setSearchAddress] = useState(propertyToEdit?.address || '');
-    const [streetAddress, setStreetAddress] = useState(propertyToEdit?.address || '');
-    const [city, setCity] = useState(propertyToEdit?.city || '');
+    const [searchAddress, setSearchAddress] = useState(dbSource.address || '');
+    const [streetAddress, setStreetAddress] = useState(dbSource.address || '');
+    const [city, setCity] = useState(dbSource.city || '');
     const [postalCode, setPostalCode] = useState('');
     const [mapCoords, setMapCoords] = useState({
-        lat: propertyToEdit?.latitude || 6.9271,
-        lng: propertyToEdit?.longitude || 79.8612
+        lat: dbSource.latitude || 6.9271,
+        lng: dbSource.longitude || 79.8612
     });
     const [isPrimaryHub, setIsPrimaryHub] = useState(true);
     const [isMapModalVisible, setIsMapModalVisible] = useState(false);
     const [tempMapCoords, setTempMapCoords] = useState({
-        lat: propertyToEdit?.latitude || 6.9271,
-        lng: propertyToEdit?.longitude || 79.8612
+        lat: dbSource.latitude || 6.9271,
+        lng: dbSource.longitude || 79.8612
     });
     const [tempAddressLabel, setTempAddressLabel] = useState('');
 
@@ -353,12 +354,13 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
     const [selectedAmenities, setSelectedAmenities] = useState(initialAmenities);
 
     // Step 4 Form State (Photos)
-    const initialCover = propertyToEdit?.imageUrl ||
-        (propertyToEdit?.imageUrls && propertyToEdit.imageUrls.length > 0 ? propertyToEdit.imageUrls[0] : null) ||
-        (propertyToEdit?.images && propertyToEdit.images.length > 0 ? (typeof propertyToEdit.images[0] === 'string' ? propertyToEdit.images[0] : propertyToEdit.images[0].imageUrl) : null);
+    const initialImages = dbSource.imageUrls || (dbSource.images && dbSource.images.map(i => typeof i === 'string' ? i : i.imageUrl)) || [];
+    const initialCover = initialImages.length > 0 ? initialImages[0] : (propertyToEdit?.imageUrl || null);
 
     const [coverImage, setCoverImage] = useState(initialCover);
-    const [additionalPhotos, setAdditionalPhotos] = useState([]);
+    const [additionalPhotos, setAdditionalPhotos] = useState(
+        initialImages.slice(1).map((url, idx) => ({ id: `remote_photo_${idx}`, uri: url }))
+    );
 
     const toggleAmenity = (key) => {
         setSelectedAmenities((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -513,15 +515,17 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
 
                 // 3. Prepare Image URLs list via Cloudinary (cover + additional + all room photos)
                 const uploadedCover = await uploadImage(coverImage);
-                const imagesList = [uploadedCover];
+                const rawImagesList = [uploadedCover];
 
                 for (const p of additionalPhotos) {
                     if (p.uri) {
-                        if (imagesList.includes(p.uri)) continue; // handle already remote urls
                         const url = await uploadImage(p.uri);
-                        if (url && !imagesList.includes(url)) imagesList.push(url);
+                        if (url && !rawImagesList.includes(url)) rawImagesList.push(url);
                     }
                 }
+
+                // Filter out any local file:// or null paths to ensure ONLY valid remote HTTP/HTTPS URLs are stored in DB
+                const imagesList = rawImagesList.filter(url => url && typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://')));
 
                 // 4. Construct RoomRequest DTO and upload room images
                 const parsedRent = parseFloat(monthlyRent) || 0;
@@ -532,30 +536,20 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
 
                 if (propertyNature === 'ROOM_BASED' && rooms.length > 0) {
                     for (const r of rooms) {
+                        const photosList = r.photos || [];
                         const uploadedRoomPhotos = [];
-                        for (const p of (r.photos || [])) {
+                        for (const p of photosList) {
                             if (p.uri) {
                                 const url = await uploadImage(p.uri);
-                                if (url) {
+                                if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
                                     uploadedRoomPhotos.push(url);
                                     if (!imagesList.includes(url)) imagesList.push(url);
                                 }
                             }
                         }
 
-                        const activeAm = [];
-                        if (r.ac) activeAm.push('AC');
-                        if (r.fridge) activeAm.push('Fridge');
-                        if (r.oven) activeAm.push('Oven');
-
-                        let compiledRoomType = r.name;
-                        if (r.beds || r.washrooms || activeAm.length > 0) {
-                            const facs = `${r.beds || '1'} Bed(s), ${r.washrooms || '1'} ${r.washroomType || 'Common'} Washroom`;
-                            compiledRoomType = `${r.name} | ${facs}${activeAm.length > 0 ? ', ' + activeAm.join(', ') : ''}`;
-                        }
-
                         payloadRooms.push({
-                            roomType: compiledRoomType,
+                            roomType: r.compiledType || r.name,
                             monthlyPrice: parseFloat(r.rent) || 0,
                             totalCapacity: parseInt(r.capacity) || 1,
                             remainingSpaces: parseInt(r.capacity) || 1,
@@ -721,6 +715,18 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
         );
     };
 
+    if (isRoomModalVisible && currentRoom) {
+        return (
+            <View style={{ flex: 1 }}>
+                <AddRoomScreen
+                    initialRoomData={currentRoom}
+                    onBack={() => setIsRoomModalVisible(false)}
+                    onSaveRoom={handleSaveRoomFromScreen}
+                />
+            </View>
+        );
+    }
+
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
@@ -790,40 +796,42 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                             </>
                         ) : (
                             /* If ROOM_BASED selected: render dynamic Room Inventory Management card */
-                            <View style={{ marginTop: 16, backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#CBD5E1' }}>
+                            <View style={{ marginTop: 20 }}>
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                                    <Text style={{ fontSize: 15, fontWeight: '900', color: '#133E32' }}>
-                                        🛏️ Rooms Inventory ({rooms.length})
-                                    </Text>
+                                    <View>
+                                        <Text style={{ fontSize: 15, fontWeight: '900', color: '#0F172A' }}>
+                                            🛏️ Rooms Inventory ({rooms.length})
+                                        </Text>
+                                        <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                                            Specify rent, capacity, and upload specific device photos natively for each unit.
+                                        </Text>
+                                    </View>
                                     <TouchableOpacity
                                         onPress={handleOpenAddRoomModal}
-                                        style={{ backgroundColor: '#133E32', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+                                        style={{ backgroundColor: '#133E32', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start' }}
                                         activeOpacity={0.85}
                                     >
-                                        <Ionicons name="add-circle" size={16} color="#FFD700" style={{ marginRight: 4 }} />
-                                        <Text style={{ color: '#FFD700', fontSize: 12, fontWeight: '800' }}>Add Room</Text>
+                                        <Ionicons name="add-circle" size={16} color="#FFD700" style={{ marginRight: 6 }} />
+                                        <Text style={{ color: '#FFD700', fontSize: 12, fontWeight: '800' }}>Add</Text>
                                     </TouchableOpacity>
                                 </View>
-                                <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 12 }}>
-                                    Specify rent, capacity, and upload device photos separately for each room.
-                                </Text>
 
                                 {/* Total Aggregated Rent & Capacity Summary Badge */}
                                 {rooms.length > 0 && (
-                                    <View style={{ backgroundColor: '#E6F0EC', padding: 10, borderRadius: 10, flexDirection: 'row', justifyContent: 'space-around', marginBottom: 12, borderWidth: 1, borderColor: '#C3DCD4' }}>
-                                        <View style={{ alignItems: 'center' }}>
-                                            <Text style={{ fontSize: 10, color: '#133E32', fontWeight: '700' }}>TOTAL ROOMS</Text>
-                                            <Text style={{ fontSize: 14, fontWeight: '900', color: '#133E32' }}>{rooms.length}</Text>
+                                    <View style={{ backgroundColor: '#F8FAFC', padding: 16, borderRadius: 14, flexDirection: 'row', justifyContent: 'space-between', marginVertical: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                                        <View style={{ alignItems: 'flex-start', flex: 1 }}>
+                                            <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '800', marginBottom: 2 }}>TOTAL ROOMS</Text>
+                                            <Text style={{ fontSize: 16, fontWeight: '900', color: '#0F172A' }}>{rooms.length}</Text>
                                         </View>
-                                        <View style={{ width: 1, backgroundColor: '#CBD5E1' }} />
-                                        <View style={{ alignItems: 'center' }}>
-                                            <Text style={{ fontSize: 10, color: '#133E32', fontWeight: '700' }}>TOTAL RENT</Text>
-                                            <Text style={{ fontSize: 14, fontWeight: '900', color: '#133E32' }}>LKR {monthlyRent || '0'}</Text>
+                                        <View style={{ width: 1, backgroundColor: '#E2E8F0', height: '100%', marginHorizontal: 10 }} />
+                                        <View style={{ alignItems: 'flex-start', flex: 1.5 }}>
+                                            <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '800', marginBottom: 2 }}>TOTAL RENT</Text>
+                                            <Text style={{ fontSize: 16, fontWeight: '900', color: '#10B981' }}>LKR {monthlyRent || '0'}</Text>
                                         </View>
-                                        <View style={{ width: 1, backgroundColor: '#CBD5E1' }} />
-                                        <View style={{ alignItems: 'center' }}>
-                                            <Text style={{ fontSize: 10, color: '#133E32', fontWeight: '700' }}>TOTAL CAPACITY</Text>
-                                            <Text style={{ fontSize: 14, fontWeight: '900', color: '#133E32' }}>{totalCapacity || '0'} Beds</Text>
+                                        <View style={{ width: 1, backgroundColor: '#E2E8F0', height: '100%', marginHorizontal: 10 }} />
+                                        <View style={{ alignItems: 'flex-start', flex: 1 }}>
+                                            <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '800', marginBottom: 2 }}>TOTAL CAPACITY</Text>
+                                            <Text style={{ fontSize: 16, fontWeight: '900', color: '#0F172A' }}>{totalCapacity || '0'} Beds</Text>
                                         </View>
                                     </View>
                                 )}
@@ -840,40 +848,40 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                                         <Text style={{ fontSize: 11, color: '#94A3B8' }}>Set monthly rent, capacity, and room photos</Text>
                                     </TouchableOpacity>
                                 ) : (
-                                    <View style={{ gap: 10 }}>
+                                    <View style={{ gap: 12 }}>
                                         {rooms.map((room, index) => (
-                                            <View key={room.id} style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E2E8F0', elevation: 1 }}>
-                                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                        <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#133E32', justifyContent: 'center', alignItems: 'center', marginRight: 8 }}>
-                                                            <Text style={{ color: '#FFD700', fontSize: 12, fontWeight: '900' }}>{index + 1}</Text>
+                                            <View key={room.id} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}>
+                                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                    <View style={{ flexDirection: 'row', flex: 1, marginRight: 12 }}>
+                                                        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', marginRight: 10 }}>
+                                                            <Text style={{ color: '#0F172A', fontSize: 13, fontWeight: '900' }}>{index + 1}</Text>
                                                         </View>
-                                                        <View>
-                                                            <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A' }}>{room.name}</Text>
-                                                            <Text style={{ fontSize: 11, color: '#64748B' }}>
-                                                                Pref: <Text style={{ fontWeight: '700', color: '#133E32' }}>{room.genderPreference || 'Mixed'}</Text>
+                                                        <View style={{ flex: 1 }}>
+                                                            <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A', marginBottom: 2 }} numberOfLines={1}>{room.name}</Text>
+                                                            <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '600' }}>
+                                                                Pref: <Text style={{ color: '#133E32', fontWeight: '800' }}>{room.genderPreference || 'Mixed'}</Text>
                                                             </Text>
                                                         </View>
                                                     </View>
-                                                    <View style={{ flexDirection: 'row', gap: 6 }}>
-                                                        <TouchableOpacity onPress={() => handleOpenEditRoomModal(room)} style={{ padding: 4 }}>
-                                                            <Ionicons name="pencil" size={18} color="#133E32" />
+                                                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                                                        <TouchableOpacity onPress={() => handleOpenEditRoomModal(room)} style={{ padding: 6, backgroundColor: '#F1F5F9', borderRadius: 8 }}>
+                                                            <Ionicons name="pencil" size={16} color="#475569" />
                                                         </TouchableOpacity>
-                                                        <TouchableOpacity onPress={() => handleDeleteRoom(room.id)} style={{ padding: 4 }}>
-                                                            <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                                                        <TouchableOpacity onPress={() => handleDeleteRoom(room.id)} style={{ padding: 6, backgroundColor: '#FEF2F2', borderRadius: 8 }}>
+                                                            <Ionicons name="trash-outline" size={16} color="#EF4444" />
                                                         </TouchableOpacity>
                                                     </View>
                                                 </View>
 
                                                 {/* Room Specs Pills */}
-                                                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                                                    <View style={{ backgroundColor: '#E6F0EC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                                                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#133E32' }}>
+                                                <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 12 }}>
+                                                    <View style={{ backgroundColor: '#ECFDF5', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 }}>
+                                                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>
                                                             💰 LKR {parseFloat(room.rent).toLocaleString()} {room.rentType === 'PER_ROOM' ? '/ room / mo' : '/ person / mo'}
                                                         </Text>
                                                     </View>
-                                                    <View style={{ backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                                                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#334155' }}>
+                                                    <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                                                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569' }}>
                                                             👥 Max {room.capacity} Occupant(s)
                                                         </Text>
                                                     </View>
@@ -1402,216 +1410,6 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                 </TouchableOpacity>
             </View>
 
-            {/* Add / Edit Room Modal */}
-            <Modal
-                visible={isRoomModalVisible}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => setIsRoomModalVisible(false)}
-            >
-                <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.65)', justifyContent: 'flex-end' }}>
-                    <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '85%' }}>
-                        {/* Modal Header */}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <Text style={{ fontSize: 18, fontWeight: '900', color: '#133E32' }}>
-                                {currentRoom.id && rooms.some(r => r.id === currentRoom.id) ? 'Edit Room Details' : 'Add New Room'}
-                            </Text>
-                            <TouchableOpacity onPress={() => setIsRoomModalVisible(false)} style={{ padding: 4 }}>
-                                <Ionicons name="close-circle" size={26} color="#64748B" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            {/* Room Name Input */}
-                            <Text style={styles.fieldLabel}>Room Name / Number *</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="e.g. Room 101 - AC Double Bed"
-                                placeholderTextColor="#94A3B8"
-                                value={currentRoom.name}
-                                onChangeText={(text) => setCurrentRoom({ ...currentRoom, name: text })}
-                            />
-
-                            {/* Rent Charge Basis (Per Person vs Per Room) */}
-                            <Text style={styles.fieldLabel}>Rent Charge Basis *</Text>
-                            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
-                                <TouchableOpacity
-                                    style={[styles.genderPill, (currentRoom.rentType || 'PER_PERSON') === 'PER_PERSON' && styles.genderPillActive]}
-                                    onPress={() => setCurrentRoom({ ...currentRoom, rentType: 'PER_PERSON' })}
-                                    activeOpacity={0.8}
-                                >
-                                    <Text style={[styles.genderPillText, (currentRoom.rentType || 'PER_PERSON') === 'PER_PERSON' && styles.genderPillTextActive]}>
-                                        Per Person / Occupant
-                                    </Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.genderPill, currentRoom.rentType === 'PER_ROOM' && styles.genderPillActive]}
-                                    onPress={() => setCurrentRoom({ ...currentRoom, rentType: 'PER_ROOM' })}
-                                    activeOpacity={0.8}
-                                >
-                                    <Text style={[styles.genderPillText, currentRoom.rentType === 'PER_ROOM' && styles.genderPillTextActive]}>
-                                        Per Entire Room
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* Monthly Rent for Room */}
-                            <Text style={styles.fieldLabel}>Monthly Rent for this Room (LKR) *</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="e.g. 18000"
-                                placeholderTextColor="#94A3B8"
-                                value={currentRoom.rent}
-                                onChangeText={(text) => setCurrentRoom({ ...currentRoom, rent: text })}
-                                keyboardType="numeric"
-                            />
-
-                            {/* Maximum Capacity / Occupants */}
-                            <Text style={styles.fieldLabel}>Maximum Room Capacity (Occupants) *</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="e.g. 2"
-                                placeholderTextColor="#94A3B8"
-                                value={currentRoom.capacity}
-                                onChangeText={(text) => setCurrentRoom({ ...currentRoom, capacity: text })}
-                                keyboardType="numeric"
-                            />
-
-                            {/* Room Gender Preference Pill */}
-                            <Text style={styles.fieldLabel}>Accommodation Preference</Text>
-                            <View style={styles.genderContainer}>
-                                {['Mixed', 'Female Only', 'Male Only'].map((pref) => {
-                                    const isSelected = currentRoom.genderPreference === pref;
-                                    return (
-                                        <TouchableOpacity
-                                            key={pref}
-                                            style={[styles.genderPill, isSelected && styles.genderPillActive]}
-                                            onPress={() => setCurrentRoom({ ...currentRoom, genderPreference: pref })}
-                                            activeOpacity={0.8}
-                                        >
-                                            <Text style={[styles.genderPillText, isSelected && styles.genderPillTextActive]}>
-                                                {pref}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-
-                            {/* Room Facilities & Washroom Toggle */}
-                            <Text style={styles.fieldLabel}>Room Internal Facilities</Text>
-                            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 8 }}>
-                                <View style={{ flex: 1 }}>
-                                    <View style={{ flexDirection: 'row', width: '100%', marginBottom: 8, gap: 10 }}>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={[styles.fieldLabel, { marginTop: 0 }]}>Beds</Text>
-                                            <TextInput
-                                                style={[styles.input, { height: 40 }]}
-                                                value={currentRoom.beds}
-                                                onChangeText={(text) => setCurrentRoom({ ...currentRoom, beds: text })}
-                                                keyboardType="numeric"
-                                            />
-                                        </View>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={[styles.fieldLabel, { marginTop: 0 }]}>Washrooms</Text>
-                                            <TextInput
-                                                style={[styles.input, { height: 40 }]}
-                                                value={currentRoom.washrooms}
-                                                onChangeText={(text) => setCurrentRoom({ ...currentRoom, washrooms: text })}
-                                                keyboardType="numeric"
-                                            />
-                                        </View>
-                                    </View>
-
-                                    <View style={{ flexDirection: 'row', gap: 4, marginTop: 4 }}>
-                                        <TouchableOpacity
-                                            style={[styles.genderPill, currentRoom.washroomType === 'Attached' && styles.genderPillActive, { paddingVertical: 8, borderWidth: 1, borderColor: '#CBD5E1' }]}
-                                            onPress={() => setCurrentRoom({ ...currentRoom, washroomType: 'Attached' })}
-                                        >
-                                            <Text style={[styles.genderPillText, currentRoom.washroomType === 'Attached' && styles.genderPillTextActive, { fontSize: 11 }]}>Attached</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={[styles.genderPill, currentRoom.washroomType === 'Common' && styles.genderPillActive, { paddingVertical: 8, borderWidth: 1, borderColor: '#CBD5E1' }]}
-                                            onPress={() => setCurrentRoom({ ...currentRoom, washroomType: 'Common' })}
-                                        >
-                                            <Text style={[styles.genderPillText, currentRoom.washroomType === 'Common' && styles.genderPillTextActive, { fontSize: 11 }]}>Common</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            </View>
-
-                            <View style={{ flexDirection: 'row', gap: 14, marginBottom: 4, marginTop: 2 }}>
-                                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }} onPress={() => setCurrentRoom({ ...currentRoom, ac: !currentRoom.ac })}>
-                                    <View style={[styles.checkbox, currentRoom.ac && styles.checkboxActive, { width: 18, height: 18, marginRight: 6 }]}>
-                                        {currentRoom.ac && <Ionicons name="checkmark" size={12} color="#FFD700" />}
-                                    </View>
-                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>Air-con</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }} onPress={() => setCurrentRoom({ ...currentRoom, fridge: !currentRoom.fridge })}>
-                                    <View style={[styles.checkbox, currentRoom.fridge && styles.checkboxActive, { width: 18, height: 18, marginRight: 6 }]}>
-                                        {currentRoom.fridge && <Ionicons name="checkmark" size={12} color="#FFD700" />}
-                                    </View>
-                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>Fridge</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }} onPress={() => setCurrentRoom({ ...currentRoom, oven: !currentRoom.oven })}>
-                                    <View style={[styles.checkbox, currentRoom.oven && styles.checkboxActive, { width: 18, height: 18, marginRight: 6 }]}>
-                                        {currentRoom.oven && <Ionicons name="checkmark" size={12} color="#FFD700" />}
-                                    </View>
-                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>Oven</Text>
-                                </TouchableOpacity>
-                            </View>
-                            <View style={[styles.titleDivider, { marginTop: 14 }]} />
-
-                            {/* Room Photo Gallery Upload Section */}
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 8 }}>
-                                <Text style={[styles.fieldLabel, { marginTop: 0 }]}>Room Gallery Photos ({currentRoom.photos ? currentRoom.photos.length : 0})</Text>
-                                <TouchableOpacity
-                                    onPress={handlePickRoomPhoto}
-                                    style={{ backgroundColor: '#133E32', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
-                                    activeOpacity={0.85}
-                                >
-                                    <Ionicons name="camera" size={15} color="#FFD700" style={{ marginRight: 4 }} />
-                                    <Text style={{ color: '#FFD700', fontSize: 12, fontWeight: '800' }}>+ Pick Photo</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* Uploaded Room Photos Strip */}
-                            {currentRoom.photos && currentRoom.photos.length > 0 ? (
-                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-                                    {currentRoom.photos.map((photo) => (
-                                        <View key={photo.id} style={{ position: 'relative', width: 70, height: 70, borderRadius: 10, overflow: 'hidden' }}>
-                                            <Image source={{ uri: photo.uri }} style={{ width: '100%', height: '100%' }} />
-                                            <TouchableOpacity
-                                                onPress={() => handleRemoveRoomPhoto(photo.id)}
-                                                style={{ position: 'absolute', top: 2, right: 2, backgroundColor: 'rgba(239,68,68,0.9)', borderRadius: 10, padding: 2 }}
-                                            >
-                                                <Ionicons name="close" size={12} color="#FFF" />
-                                            </TouchableOpacity>
-                                        </View>
-                                    ))}
-                                </View>
-                            ) : (
-                                <TouchableOpacity
-                                    onPress={handlePickRoomPhoto}
-                                    style={{ height: 80, backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: '#CBD5E1', borderStyle: 'dashed', borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 14 }}
-                                    activeOpacity={0.8}
-                                >
-                                    <Ionicons name="images-outline" size={24} color="#133E32" />
-                                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#133E32', marginTop: 4 }}>Upload Photos for this Room from Phone Gallery</Text>
-                                </TouchableOpacity>
-                            )}
-
-                            {/* Save Room Action Button */}
-                            <TouchableOpacity
-                                onPress={handleSaveRoom}
-                                style={{ backgroundColor: '#133E32', height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 10, marginBottom: 20 }}
-                                activeOpacity={0.9}
-                            >
-                                <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '800' }}>Save Room Details</Text>
-                            </TouchableOpacity>
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
         </SafeAreaView>
     );
 }
@@ -1619,7 +1417,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#FFFFFF',
     },
 
     /* Top Header */
@@ -1761,16 +1559,8 @@ const styles = StyleSheet.create({
     /* Card Container */
     cardContainer: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 18,
-        padding: 18,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-        elevation: 2,
-        marginBottom: 16,
+        paddingVertical: 12,
+        marginBottom: 20,
     },
 
     fieldLabel: {
@@ -1782,12 +1572,13 @@ const styles = StyleSheet.create({
     },
     input: {
         backgroundColor: '#F8FAFC',
-        borderRadius: 12,
+        borderRadius: 10,
         borderWidth: 1,
         borderColor: '#E2E8F0',
         paddingHorizontal: 14,
-        height: 46,
+        height: 48,
         fontSize: 14,
+        fontWeight: '500',
         color: '#0F172A',
     },
     textArea: {
@@ -1795,25 +1586,31 @@ const styles = StyleSheet.create({
         paddingTop: 12,
     },
 
-    /* Gender Selector */
     genderContainer: {
         flexDirection: 'row',
-        backgroundColor: '#F1F5F9',
-        borderRadius: 12,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
         padding: 4,
         marginTop: 4,
     },
     genderPill: {
         flex: 1,
         paddingVertical: 10,
-        borderRadius: 10,
+        borderRadius: 8,
         alignItems: 'center',
     },
     genderPillActive: {
         backgroundColor: '#133E32',
+        shadowColor: '#133E32',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+        elevation: 2,
     },
     genderPillText: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: '700',
         color: '#64748B',
     },
@@ -1832,12 +1629,12 @@ const styles = StyleSheet.create({
     certChip: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#E6F0EC',
+        backgroundColor: '#F8FAFC',
         borderWidth: 1,
-        borderColor: '#C3DCD4',
+        borderColor: '#E2E8F0',
         paddingHorizontal: 12,
         paddingVertical: 6,
-        borderRadius: 20,
+        borderRadius: 8,
     },
     certChipText: {
         fontSize: 12,
@@ -1847,9 +1644,9 @@ const styles = StyleSheet.create({
     addCertChip: {
         flexDirection: 'row',
         alignItems: 'center',
-        borderWidth: 1.5,
-        borderColor: '#133E32',
-        borderStyle: 'dashed',
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
+        borderStyle: 'solid',
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 20,

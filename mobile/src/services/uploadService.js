@@ -13,23 +13,35 @@ const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/uplo
 export const uploadImage = async (uri) => {
     if (!uri) return null;
 
-    // If it's already a remote URL, no need to upload
-    if (uri.startsWith('http://') || uri.startsWith('https://')) {
+    // If it's already a remote URL (HTTP/HTTPS), return as is
+    if (typeof uri === 'string' && (uri.startsWith('http://') || uri.startsWith('https://'))) {
         return uri;
     }
 
-    // Get the file extension and type
-    const uriParts = uri.split('.');
-    const fileType = uriParts[uriParts.length - 1];
+    // Determine clean file extension & mime type
+    let mimeType = 'image/jpeg';
+    let fileName = `upload_${Date.now()}.jpg`;
 
-    // Convert to standard format
-    const name = uri.split('/').pop();
+    if (typeof uri === 'string') {
+        const cleanUri = uri.split('?')[0];
+        const ext = cleanUri.split('.').pop()?.toLowerCase();
+        if (ext === 'png') {
+            mimeType = 'image/png';
+            fileName = `upload_${Date.now()}.png`;
+        } else if (ext === 'webp') {
+            mimeType = 'image/webp';
+            fileName = `upload_${Date.now()}.webp`;
+        } else if (ext === 'jpg' || ext === 'jpeg') {
+            mimeType = 'image/jpeg';
+            fileName = `upload_${Date.now()}.jpg`;
+        }
+    }
 
     const formData = new FormData();
     formData.append('file', {
         uri,
-        name,
-        type: `image/${fileType === 'jpg' ? 'jpeg' : fileType}`
+        name: fileName,
+        type: mimeType
     });
     formData.append('upload_preset', UPLOAD_PRESET);
 
@@ -38,7 +50,7 @@ export const uploadImage = async (uri) => {
             method: 'POST',
             body: formData,
             headers: {
-                'Content-Type': 'multipart/form-data',
+                'Accept': 'application/json',
             }
         });
 
@@ -47,12 +59,12 @@ export const uploadImage = async (uri) => {
         if (data.secure_url) {
             return data.secure_url;
         } else {
-            console.error('Cloudinary Upload Error:', data);
-            throw new Error(data.error?.message || 'Failed to upload image');
+            console.error('Cloudinary Upload Error details:', data);
+            return null;
         }
     } catch (error) {
         console.error('Upload catch error:', error);
-        throw error;
+        return null;
     }
 };
 

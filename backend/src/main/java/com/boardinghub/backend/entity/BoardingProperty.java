@@ -59,6 +59,9 @@ public class BoardingProperty {
 
     private Double longitude;
 
+    @Column(name = "property_nature")
+    private String propertyNature;
+
     @ManyToMany
     @JoinTable(
         name = "property_amenities",

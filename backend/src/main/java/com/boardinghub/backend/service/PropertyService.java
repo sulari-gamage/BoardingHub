@@ -42,6 +42,7 @@ public class PropertyService {
                 .monthlyRent(request.getMonthlyRent())
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
+                .propertyNature(request.getPropertyNature())
                 .status(PropertyStatus.APPROVED)
                 .owner(owner)
                 .build();
@@ -70,10 +71,15 @@ public class PropertyService {
                         : roomReq.getImageUrl();
                 return Room.builder()
                         .property(property)
+                        .roomName(roomReq.getRoomName())
                         .roomType(roomReq.getRoomType())
                         .monthlyPrice(roomReq.getMonthlyPrice())
                         .totalCapacity(roomReq.getTotalCapacity())
                         .remainingSpaces(roomReq.getRemainingSpaces() != null ? roomReq.getRemainingSpaces() : roomReq.getTotalCapacity())
+                        .beds(roomReq.getBeds())
+                        .washrooms(roomReq.getWashrooms())
+                        .washroomType(roomReq.getWashroomType())
+                        .amenities(roomReq.getAmenities())
                         .rentType(roomReq.getRentType() != null ? roomReq.getRentType() : "PER_PERSON")
                         .imageUrl(img)
                         .build();
@@ -105,6 +111,7 @@ public class PropertyService {
         property.setMonthlyRent(request.getMonthlyRent());
         property.setLatitude(request.getLatitude());
         property.setLongitude(request.getLongitude());
+        property.setPropertyNature(request.getPropertyNature());
 
         List<Amenity> amenities = resolveAmenities(request);
         property.setAmenities(amenities);
@@ -121,20 +128,60 @@ public class PropertyService {
         }
 
         if (request.getRooms() != null) {
-            property.getRooms().clear();
-            for (RoomRequest roomReq : request.getRooms()) {
+            List<Room> existingRooms = property.getRooms();
+            List<RoomRequest> newRoomReqs = request.getRooms();
+
+            for (int i = 0; i < newRoomReqs.size(); i++) {
+                RoomRequest roomReq = newRoomReqs.get(i);
                 String img = (roomReq.getImageUrls() != null && !roomReq.getImageUrls().isEmpty())
                         ? roomReq.getImageUrls().get(0)
                         : roomReq.getImageUrl();
-                property.getRooms().add(Room.builder()
-                        .property(property)
-                        .roomType(roomReq.getRoomType())
-                        .monthlyPrice(roomReq.getMonthlyPrice())
-                        .totalCapacity(roomReq.getTotalCapacity())
-                        .remainingSpaces(roomReq.getRemainingSpaces() != null ? roomReq.getRemainingSpaces() : roomReq.getTotalCapacity())
-                        .rentType(roomReq.getRentType() != null ? roomReq.getRentType() : "PER_PERSON")
-                        .imageUrl(img)
-                        .build());
+
+                Room roomToUpdate = null;
+                if (roomReq.getId() != null) {
+                    roomToUpdate = existingRooms.stream()
+                            .filter(r -> r.getId().equals(roomReq.getId()))
+                            .findFirst()
+                            .orElse(null);
+                }
+                if (roomToUpdate == null && i < existingRooms.size()) {
+                    roomToUpdate = existingRooms.get(i);
+                }
+
+                if (roomToUpdate != null) {
+                    // Update existing entity in-place
+                    roomToUpdate.setRoomName(roomReq.getRoomName());
+                    roomToUpdate.setRoomType(roomReq.getRoomType());
+                    roomToUpdate.setMonthlyPrice(roomReq.getMonthlyPrice());
+                    roomToUpdate.setTotalCapacity(roomReq.getTotalCapacity());
+                    roomToUpdate.setRemainingSpaces(roomReq.getRemainingSpaces() != null ? roomReq.getRemainingSpaces() : roomReq.getTotalCapacity());
+                    roomToUpdate.setBeds(roomReq.getBeds());
+                    roomToUpdate.setWashrooms(roomReq.getWashrooms());
+                    roomToUpdate.setWashroomType(roomReq.getWashroomType());
+                    roomToUpdate.setAmenities(roomReq.getAmenities());
+                    roomToUpdate.setRentType(roomReq.getRentType() != null ? roomReq.getRentType() : "PER_PERSON");
+                    roomToUpdate.setImageUrl(img);
+                } else {
+                    // Add new room entity
+                    existingRooms.add(Room.builder()
+                            .property(property)
+                            .roomName(roomReq.getRoomName())
+                            .roomType(roomReq.getRoomType())
+                            .monthlyPrice(roomReq.getMonthlyPrice())
+                            .totalCapacity(roomReq.getTotalCapacity())
+                            .remainingSpaces(roomReq.getRemainingSpaces() != null ? roomReq.getRemainingSpaces() : roomReq.getTotalCapacity())
+                            .beds(roomReq.getBeds())
+                            .washrooms(roomReq.getWashrooms())
+                            .washroomType(roomReq.getWashroomType())
+                            .amenities(roomReq.getAmenities())
+                            .rentType(roomReq.getRentType() != null ? roomReq.getRentType() : "PER_PERSON")
+                            .imageUrl(img)
+                            .build());
+                }
+            }
+
+            while (existingRooms.size() > newRoomReqs.size()) {
+                existingRooms.remove(existingRooms.size() - 1);
             }
         }
 
@@ -208,10 +255,15 @@ public class PropertyService {
         List<RoomResponse> roomResponses = p.getRooms() != null ?
                 p.getRooms().stream().map(r -> RoomResponse.builder()
                         .id(r.getId())
+                        .roomName(r.getRoomName())
                         .roomType(r.getRoomType())
                         .monthlyPrice(r.getMonthlyPrice())
                         .totalCapacity(r.getTotalCapacity())
                         .remainingSpaces(r.getRemainingSpaces())
+                        .beds(r.getBeds())
+                        .washrooms(r.getWashrooms())
+                        .washroomType(r.getWashroomType())
+                        .amenities(r.getAmenities())
                         .rentType(r.getRentType() != null ? r.getRentType() : "PER_PERSON")
                         .imageUrl(r.getImageUrl())
                         .build()).collect(Collectors.toList()) : new ArrayList<>();
@@ -233,6 +285,7 @@ public class PropertyService {
                 .ownerWhatsapp(p.getOwner().getWhatsappNumber())
                 .latitude(p.getLatitude())
                 .longitude(p.getLongitude())
+                .propertyNature(p.getPropertyNature())
                 .amenities(amenityNames)
                 .images(imageDTOs)
                 .imageUrls(imageUrlList)

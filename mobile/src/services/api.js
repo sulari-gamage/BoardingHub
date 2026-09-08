@@ -192,11 +192,11 @@ export const api = {
         },
 
         getById: async (id) => {
-            return await request(`/properties/${id}`, { method: 'GET' });
+            return await request(`/properties/${id}?t=${Date.now()}`, { method: 'GET' });
         },
 
         getMyProperties: async () => {
-            return await request('/properties/my-properties', { method: 'GET' });
+            return await request(`/properties/my-properties?t=${Date.now()}`, { method: 'GET' });
         },
 
         create: async (propertyData) => {

@@ -12,6 +12,8 @@ import lombok.*;
 @Builder
 public class RoomRequest {
 
+    private Long id;
+
     @NotBlank(message = "Room type is required (e.g., Single Room, Shared Room)")
     private String roomType;
 
@@ -25,6 +27,12 @@ public class RoomRequest {
 
     @NotNull(message = "Remaining spaces is required")
     private Integer remainingSpaces;
+
+    private String roomName;
+    private Integer beds;
+    private Integer washrooms;
+    private String washroomType;
+    private String amenities;
 
     private String rentType; // PER_PERSON or PER_ROOM
 

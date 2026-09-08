@@ -43,11 +43,11 @@ export default function OwnerPropertiesScreen({
 
     const properties = apiProperties.map(p => {
         const totalCap = p.rooms && p.rooms.length > 0
-            ? p.rooms.reduce((acc, r) => acc + (r.totalCapacity || r.totalSpaces || 0), 0)
-            : (p.totalCapacity || p.totalSpaces || 0);
+            ? Math.max(0, p.rooms.reduce((acc, r) => acc + (r.totalCapacity || r.totalSpaces || 0), 0))
+            : Math.max(0, (p.totalCapacity || p.totalSpaces || 0));
         const availCap = p.rooms && p.rooms.length > 0
-            ? p.rooms.reduce((acc, r) => acc + (r.remainingSpaces || 0), 0)
-            : (p.remainingSpaces || p.availableSpaces || 0);
+            ? Math.max(0, p.rooms.reduce((acc, r) => acc + (r.remainingSpaces || 0), 0))
+            : Math.max(0, (p.remainingSpaces || p.availableSpaces || 0));
         const occCap = Math.max(0, totalCap - availCap);
 
         return {
@@ -55,7 +55,9 @@ export default function OwnerPropertiesScreen({
             title: p.title || 'Boarding Property',
             location: (p.city || '') + (p.address ? ' • ' + p.address : ''),
             price: p.monthlyRent || 0,
-            type: p.rooms && p.rooms.length > 0 ? `${p.rooms.length} Room(s)` : 'Boarding',
+            type: (p.propertyNature === 'ROOM_BASED' || (p.rooms && p.rooms.length > 0 && !p.rooms.some(r => r.roomType === 'Whole House / Annex' || r.roomType === 'Entire Boarding House')))
+                ? `Room Based Boarding`
+                : (p.propertyNature === 'WHOLE_HOUSE' || (p.rooms && p.rooms.length > 0 && p.rooms.some(r => r.roomType === 'Whole House / Annex' || r.roomType === 'Entire Boarding House')) ? 'Annex / Whole House' : 'Boarding House'),
             totalRooms: totalCap,
             occupiedRooms: occCap,
             availableRooms: availCap,
@@ -165,7 +167,12 @@ export default function OwnerPropertiesScreen({
 
                                 <View style={styles.infoRow}>
                                     <Ionicons name="location-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
-                                    <Text style={styles.locationText}>{item.location}</Text>
+                                    <Text style={[styles.locationText, { flex: 1 }]} numberOfLines={1}>{item.location}</Text>
+                                </View>
+
+                                <View style={[styles.infoRow, { marginBottom: 16 }]}>
+                                    <Ionicons name="business-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
+                                    <Text style={[styles.locationText, { color: '#0F172A', fontWeight: '600', flex: 1 }]} numberOfLines={1}>{item.type}</Text>
                                 </View>
 
                                 <View style={styles.statsRow}>
