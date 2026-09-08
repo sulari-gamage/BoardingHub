@@ -9,9 +9,11 @@ import {
     SafeAreaView,
     StatusBar,
     Alert,
-    Platform
+    Platform,
+    Linking
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import MapView, { Marker } from 'react-native-maps';
 import BookingRequestModal from '../../components/BookingRequestModal';
 
 export default function DetailsScreen({ boarding = {}, onBack, onBookSuccess, onOpenGallery, onOpenReviews, onOpenMap }) {
@@ -20,17 +22,41 @@ export default function DetailsScreen({ boarding = {}, onBack, onBookSuccess, on
     const [isBookingModalVisible, setIsBookingModalVisible] = useState(false);
 
     const title = boarding.title || 'Green Valley Boarding';
-    const location = boarding.location || 'Moratuwa, Sri Lanka';
+    const location = boarding.city ? `${boarding.address}, ${boarding.city}` : (boarding.location || boarding.address || 'Location Not Set');
     const price = boarding.price ? boarding.price.toLocaleString() : '15,000';
     const rating = boarding.rating || 4.8;
     const imageUrl = (boarding.images && boarding.images.length > 0)
         ? (typeof boarding.images[0] === 'string' ? boarding.images[0] : boarding.images[0].imageUrl)
         : (boarding.imageUrls && boarding.imageUrls.length > 0)
             ? boarding.imageUrls[0]
-            : (boarding.imageUrl || (boarding.image ? (typeof boarding.image === 'string' ? boarding.image : boarding.image.uri) : 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80'));
+            : (boarding.imageUrl || (boarding.image ? (typeof boarding.image === 'string' ? boarding.image : boarding.image.uri) : null));
 
     const handleBookNowPress = () => {
         setIsBookingModalVisible(true);
+    };
+
+    const handleMapPress = () => {
+        const lat = boarding.latitude || 6.9271;
+        const lng = boarding.longitude || 79.8612;
+        const label = encodeURIComponent(boarding.title || 'Boarding Location');
+
+        let url = Platform.select({
+            ios: `maps:0,0?q=${label}&ll=${lat},${lng}`,
+            android: `geo:0,0?q=${lat},${lng}(${label})`
+        });
+
+        // Fallback for universal web browser routing
+        const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+
+        Linking.canOpenURL(url).then(supported => {
+            if (supported) {
+                Linking.openURL(url);
+            } else {
+                Linking.openURL(fallbackUrl);
+            }
+        }).catch(() => {
+            Linking.openURL(fallbackUrl);
+        });
     };
 
     const handleShare = () => {
@@ -44,11 +70,15 @@ export default function DetailsScreen({ boarding = {}, onBack, onBookSuccess, on
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {/* Cover Hero Image & Floating Navigation Bar */}
                 <TouchableOpacity
-                    style={styles.imageContainer}
+                    style={[styles.imageContainer, !imageUrl && { backgroundColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' }]}
                     activeOpacity={0.95}
                     onPress={() => onOpenGallery && onOpenGallery(boarding)}
                 >
-                    <Image source={{ uri: imageUrl }} style={styles.heroImage} resizeMode="cover" />
+                    {imageUrl ? (
+                        <Image source={{ uri: imageUrl }} style={styles.heroImage} resizeMode="cover" />
+                    ) : (
+                        <Ionicons name="home-outline" size={64} color="#64748B" />
+                    )}
 
                     {/* Top Action Overlay Bar */}
                     <View style={styles.topBarOverlay}>
@@ -162,7 +192,9 @@ export default function DetailsScreen({ boarding = {}, onBack, onBookSuccess, on
                             return (
                                 <View key={roomItem.id || index} style={[styles.roomCard, { marginBottom: 12 }]}>
                                     <View style={styles.roomHeaderRow}>
-                                        <Text style={styles.roomTypeTitle}>{roomItem.roomType || `Room ${index + 1}`}</Text>
+                                        <View style={{ flex: 1, paddingRight: 8 }}>
+                                            <Text style={styles.roomTypeTitle} numberOfLines={2}>{roomItem.roomType || `Room ${index + 1}`}</Text>
+                                        </View>
                                         <View style={styles.roomCardBadge}>
                                             <Ionicons name="people-outline" size={13} color="#1B4D3E" style={{ marginRight: 4 }} />
                                             <Text style={styles.roomBadgeText}>
@@ -233,16 +265,31 @@ export default function DetailsScreen({ boarding = {}, onBack, onBookSuccess, on
                     <Text style={styles.sectionHeading}>Location</Text>
                     <TouchableOpacity
                         style={styles.mapCard}
-                        onPress={() => onOpenMap && onOpenMap(boarding)}
+                        onPress={handleMapPress}
                         activeOpacity={0.9}
                     >
-                        <Image
-                            source={{ uri: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80' }}
-                            style={styles.mapImage}
-                            resizeMode="cover"
-                        />
+                        <MapView
+                            style={StyleSheet.absoluteFillObject}
+                            zoomEnabled={false}
+                            scrollEnabled={false}
+                            pitchEnabled={false}
+                            rotateEnabled={false}
+                            region={{
+                                latitude: boarding.latitude || 6.9271,
+                                longitude: boarding.longitude || 79.8612,
+                                latitudeDelta: 0.02,
+                                longitudeDelta: 0.02,
+                            }}
+                        >
+                            <Marker
+                                coordinate={{
+                                    latitude: boarding.latitude || 6.9271,
+                                    longitude: boarding.longitude || 79.8612,
+                                }}
+                            />
+                        </MapView>
+                        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.1)' }]} />
                         <View style={styles.mapOverlayPin}>
-                            <Ionicons name="location" size={24} color="#1B4D3E" />
                             <View style={styles.mapPinBadge}>
                                 <Text style={styles.mapPinText}>Tap to Open Map</Text>
                             </View>

@@ -278,7 +278,6 @@ export default function App() {
           propertyToEdit={selectedOwnerProperty}
           onBack={() => setCurrentScreen('OWNER_PROPERTIES')}
           onSaveProperty={() => {
-            fetchOwnerData();
             setCurrentScreen('OWNER_PROPERTIES');
           }}
         />

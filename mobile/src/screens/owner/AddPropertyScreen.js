@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     View,
     Text,
@@ -11,10 +11,13 @@ import {
     Image,
     Alert,
     Platform,
-    Modal
+    Modal,
+    ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import MapView, { Marker } from 'react-native-maps';
+import * as Location from 'expo-location';
 import api from '../../services/api';
 import { uploadImage } from '../../services/uploadService';
 
@@ -43,6 +46,8 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
     const isEditMode = !!propertyToEdit;
     // Current active wizard step: 1 (Info), 2 (Location), 3 (Amenities), 4 (Photos)
     const [currentStep, setCurrentStep] = useState(1);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const submitLock = useRef(false);
 
     // Initial state pre-population from propertyToEdit
     const initialAmenities = {};
@@ -54,6 +59,14 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
             else initialAmenities[name] = true;
         });
     }
+
+    // Nearest Locations & Extra Facilities
+    const [nearestPlaces, setNearestPlaces] = useState('');
+    const [wholeHouseBeds, setWholeHouseBeds] = useState('');
+    const [wholeHouseWashrooms, setWholeHouseWashrooms] = useState('');
+    const [hasFridge, setHasFridge] = useState(false);
+    const [hasOven, setHasOven] = useState(false);
+    const [hasAC, setHasAC] = useState(false);
 
     // Step 1 Form State (Property Info & Dynamic Room Inventory)
     const [propertyName, setPropertyName] = useState(propertyToEdit?.title || propertyToEdit?.name || '');
@@ -90,6 +103,12 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
         capacity: '1',
         genderPreference: 'Mixed',
         photos: [],
+        beds: '1',
+        washrooms: '1',
+        washroomType: 'Common',
+        ac: false,
+        fridge: false,
+        oven: false,
     });
 
     const handleOpenAddRoomModal = () => {
@@ -101,6 +120,12 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
             genderPreference: 'Mixed',
             rentType: 'PER_PERSON',
             photos: [],
+            beds: '1',
+            washrooms: '1',
+            washroomType: 'Common',
+            ac: false,
+            fridge: false,
+            oven: false,
         });
         setIsRoomModalVisible(true);
     };
@@ -109,7 +134,13 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
         setCurrentRoom({
             ...room,
             rentType: room.rentType || 'PER_PERSON',
-            photos: room.photos || []
+            photos: room.photos || [],
+            beds: room.beds || '1',
+            washrooms: room.washrooms || '1',
+            washroomType: room.washroomType || 'Common',
+            ac: room.ac || false,
+            fridge: room.fridge || false,
+            oven: room.oven || false,
         });
         setIsRoomModalVisible(true);
     };
@@ -301,30 +332,21 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
         }
     };
 
-    const handleOpenMapPicker = () => {
-        setTempMapCoords(mapCoords);
-        setTempAddressLabel(streetAddress || searchAddress || city || 'Selected Location');
-        setIsMapModalVisible(true);
-    };
-
-    const handleConfirmMapPicker = () => {
-        setMapCoords(tempMapCoords);
-        if (tempAddressLabel) {
-            setSearchAddress(tempAddressLabel);
-            setStreetAddress(tempAddressLabel);
+    const handleGetCurrentLocation = async () => {
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Please allow location access to use this feature.');
+                return;
+            }
+            const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            const { latitude, longitude } = location.coords;
+            setMapCoords({ lat: latitude, lng: longitude });
+            Alert.alert('Location Found 📍', 'Map pin has been precisely placed at your current location.');
+        } catch (error) {
+            console.log('Error fetching location:', error);
+            Alert.alert('Error', 'Could not fetch device location.');
         }
-        setIsMapModalVisible(false);
-        Alert.alert('Location Updated 📍', `Pin placed at (${tempMapCoords.lat.toFixed(4)}° N, ${tempMapCoords.lng.toFixed(4)}° E)`);
-    };
-
-    const handleInteractiveMapTap = (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
-        const latOffset = ((150 - locationY) / 150) * 0.04;
-        const lngOffset = ((locationX - 150) / 150) * 0.04;
-        const newLat = parseFloat((tempMapCoords.lat + latOffset).toFixed(4));
-        const newLng = parseFloat((tempMapCoords.lng + lngOffset).toFixed(4));
-        setTempMapCoords({ lat: newLat, lng: newLng });
-        setTempAddressLabel(`${streetAddress || city || 'Picked Map Target'}`);
     };
 
     // Step 3 Form State (Amenities Selection)
@@ -471,10 +493,13 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
             setCurrentStep(currentStep + 1);
         } else {
             // Step 4: Publish Property
+            if (isSubmitting || submitLock.current) return;
             if (!coverImage) {
                 Alert.alert('Cover Photo Required', 'Please select a cover photo from your device gallery before publishing.');
                 return;
             }
+            setIsSubmitting(true);
+            submitLock.current = true;
             try {
                 // 1. Map GenderPreference to backend Enum (ANY, MALE_ONLY, FEMALE_ONLY)
                 let mappedGender = 'ANY';
@@ -518,8 +543,19 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                             }
                         }
 
+                        const activeAm = [];
+                        if (r.ac) activeAm.push('AC');
+                        if (r.fridge) activeAm.push('Fridge');
+                        if (r.oven) activeAm.push('Oven');
+
+                        let compiledRoomType = r.name;
+                        if (r.beds || r.washrooms || activeAm.length > 0) {
+                            const facs = `${r.beds || '1'} Bed(s), ${r.washrooms || '1'} ${r.washroomType || 'Common'} Washroom`;
+                            compiledRoomType = `${r.name} | ${facs}${activeAm.length > 0 ? ', ' + activeAm.join(', ') : ''}`;
+                        }
+
                         payloadRooms.push({
-                            roomType: r.name,
+                            roomType: compiledRoomType,
                             monthlyPrice: parseFloat(r.rent) || 0,
                             totalCapacity: parseInt(r.capacity) || 1,
                             remainingSpaces: parseInt(r.capacity) || 1,
@@ -543,6 +579,17 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                     .filter(k => selectedAmenities[k])
                     .map(k => AMENITY_MAP[k] || k);
 
+                if (nearestPlaces.trim()) {
+                    selectedAmenityNamesList.push(`Nearest Places: ${nearestPlaces.trim()}`);
+                }
+                if (propertyNature === 'WHOLE_HOUSE') {
+                    if (wholeHouseBeds) selectedAmenityNamesList.push(`${wholeHouseBeds} Beds`);
+                    if (wholeHouseWashrooms) selectedAmenityNamesList.push(`${wholeHouseWashrooms} Washrooms`);
+                    if (hasFridge) selectedAmenityNamesList.push('Fridge');
+                    if (hasOven) selectedAmenityNamesList.push('Oven');
+                    if (hasAC) selectedAmenityNamesList.push('Air Conditioning');
+                }
+
                 const propertyPayload = {
                     title: propertyName,
                     description: description || 'Boarding house property.',
@@ -550,8 +597,8 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                     city: city,
                     genderPreference: mappedGender,
                     monthlyRent: parsedRent,
-                    latitude: lat,
-                    longitude: lng,
+                    latitude: mapCoords.lat,
+                    longitude: mapCoords.lng,
                     amenities: selectedAmenityNamesList,
                     imageUrls: imagesList,
                     rooms: payloadRooms
@@ -565,11 +612,15 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                     savedProperty = await api.properties.create(propertyPayload);
                     Alert.alert('Success 🎉', 'New property published successfully!');
                 }
+                setIsSubmitting(false);
+                submitLock.current = false;
                 if (onSaveProperty) onSaveProperty(savedProperty);
                 else if (onBack) onBack();
             } catch (err) {
                 console.log('Error saving property:', err);
                 Alert.alert('Submission Error', err.message || 'Could not save property.');
+                setIsSubmitting(false);
+                submitLock.current = false;
             }
         }
     };
@@ -646,7 +697,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                                         isPassed && styles.stepCirclePassed
                                     ]}>
                                         {isPassed ? (
-                                            <Ionicons name="checkmark-bold" size={14} color="#FFD700" />
+                                            <Ionicons name="checkmark" size={14} color="#FFD700" />
                                         ) : (
                                             <Text style={[styles.stepNumText, isActive && styles.stepNumTextActive]}>
                                                 {step.num}
@@ -954,21 +1005,39 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                 {/* STEP 2: LOCATION */}
                 {currentStep === 2 && (
                     <View style={styles.stepTwoContainer}>
-                        {/* Interactive Vector Map Canvas Box with Floating Address Search */}
-                        <TouchableOpacity
-                            style={styles.mapCard}
-                            onPress={handleOpenMapPicker}
-                            activeOpacity={0.9}
-                        >
-                            {/* Stylized Vector Grid Background */}
-                            <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: '#1E293B', justifyContent: 'center', alignItems: 'center' }}>
-                                {/* Grid lines background simulation */}
-                                <View style={{ position: 'absolute', width: '100%', height: 1, backgroundColor: 'rgba(255, 255, 255, 0.1)', top: '25%' }} />
-                                <View style={{ position: 'absolute', width: '100%', height: 1, backgroundColor: 'rgba(255, 255, 255, 0.1)', top: '50%' }} />
-                                <View style={{ position: 'absolute', width: '100%', height: 1, backgroundColor: 'rgba(255, 255, 255, 0.1)', top: '75%' }} />
-                                <View style={{ position: 'absolute', height: '100%', width: 1, backgroundColor: 'rgba(255, 255, 255, 0.1)', left: '33%' }} />
-                                <View style={{ position: 'absolute', height: '100%', width: 1, backgroundColor: 'rgba(255, 255, 255, 0.1)', left: '66%' }} />
-                            </View>
+                        {/* Interactive React Native Maps */}
+                        <View style={styles.mapCard}>
+                            <MapView
+                                style={StyleSheet.absoluteFillObject}
+                                region={{
+                                    latitude: mapCoords.lat || 6.9271,
+                                    longitude: mapCoords.lng || 79.8612,
+                                    latitudeDelta: 0.02,
+                                    longitudeDelta: 0.02,
+                                }}
+                                onPress={(e) => {
+                                    setMapCoords({
+                                        lat: e.nativeEvent.coordinate.latitude,
+                                        lng: e.nativeEvent.coordinate.longitude
+                                    });
+                                }}
+                            >
+                                <Marker
+                                    coordinate={{
+                                        latitude: mapCoords.lat || 6.9271,
+                                        longitude: mapCoords.lng || 79.8612,
+                                    }}
+                                    title={streetAddress || city || 'Selected Location'}
+                                    description="Property Pin Location"
+                                    draggable
+                                    onDragEnd={(e) => {
+                                        setMapCoords({
+                                            lat: e.nativeEvent.coordinate.latitude,
+                                            lng: e.nativeEvent.coordinate.longitude
+                                        });
+                                    }}
+                                />
+                            </MapView>
 
                             {/* Floating Address Search Input */}
                             <View style={styles.mapSearchOverlay}>
@@ -982,40 +1051,21 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                                 />
                             </View>
 
-                            {/* Map Action Badges (Zoom / Tap Indicator) */}
-                            <View style={{ position: 'absolute', right: 12, top: 60, gap: 6 }}>
-                                <View style={{ backgroundColor: '#133E32', padding: 6, borderRadius: 8, opacity: 0.9 }}>
-                                    <Ionicons name="compass" size={18} color="#FFD700" />
-                                </View>
-                                <View style={{ backgroundColor: '#133E32', padding: 6, borderRadius: 8, opacity: 0.9 }}>
-                                    <Ionicons name="scan-outline" size={18} color="#FFFFFF" />
-                                </View>
-                            </View>
+                            {/* Device Location Provider Button */}
+                            <TouchableOpacity
+                                style={{ position: 'absolute', right: 12, top: 70, backgroundColor: '#FFFFFF', padding: 8, borderRadius: 20, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3 }}
+                                onPress={handleGetCurrentLocation}
+                            >
+                                <Ionicons name="locate" size={24} color="#133E32" />
+                            </TouchableOpacity>
 
-                            {/* Center Map Pin with Dynamic Location Info Badge */}
-                            <View style={styles.mapPinContainer}>
-                                <View style={{ alignItems: 'center' }}>
-                                    <View style={{ backgroundColor: '#133E32', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, marginBottom: 4, elevation: 4 }}>
-                                        <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '800' }}>
-                                            📍 {streetAddress || city || 'Selected Location'}
-                                        </Text>
-                                        <Text style={{ color: '#E2E8F0', fontSize: 9, fontWeight: '600', textAlign: 'center' }}>
-                                            ({mapCoords.lat.toFixed(4)}° N, {mapCoords.lng.toFixed(4)}° E) • Tap to adjust
-                                        </Text>
-                                    </View>
-                                    <View style={styles.pinCircle}>
-                                        <Ionicons name="location" size={24} color="#133E32" />
-                                    </View>
-                                </View>
-                            </View>
-
-                            {/* Bottom Touch Map Prompt */}
-                            <View style={{ position: 'absolute', bottom: 10, alignSelf: 'center', backgroundColor: 'rgba(15, 23, 42, 0.85)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 }}>
-                                <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700' }}>
-                                    👇 Touch map to adjust pin position
+                            {/* Bottom Info Touch Prompt */}
+                            <View style={{ position: 'absolute', bottom: 10, alignSelf: 'center', backgroundColor: 'rgba(15, 23, 42, 0.85)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
+                                <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>
+                                    👇 Tap or drag pin to accurately adjust
                                 </Text>
                             </View>
-                        </TouchableOpacity>
+                        </View>
 
                         {/* Address, City & Postal Code Inputs */}
                         <View style={styles.cardContainer}>
@@ -1060,95 +1110,79 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                             </TouchableOpacity>
                         </View>
 
-                        {/* Interactive Full-Screen Map Location Picker Modal */}
-                        <Modal
-                            visible={isMapModalVisible}
-                            animationType="slide"
-                            transparent={false}
-                            onRequestClose={() => setIsMapModalVisible(false)}
-                        >
-                            <SafeAreaView style={{ flex: 1, backgroundColor: '#0F172A' }}>
-                                <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
 
-                                {/* Modal Header */}
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#133E32' }}>
-                                    <TouchableOpacity onPress={() => setIsMapModalVisible(false)} style={{ padding: 4 }}>
-                                        <Ionicons name="close" size={24} color="#FFFFFF" />
-                                    </TouchableOpacity>
-                                    <View style={{ alignItems: 'center' }}>
-                                        <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800' }}>Adjust Map Location</Text>
-                                        <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '600' }}>Tap map canvas to set precise pin target</Text>
-                                    </View>
-                                    <TouchableOpacity onPress={handleConfirmMapPicker} style={{ backgroundColor: '#FFD700', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}>
-                                        <Text style={{ color: '#133E32', fontSize: 12, fontWeight: '800' }}>Confirm</Text>
-                                    </TouchableOpacity>
-                                </View>
-
-                                {/* Full Interactive Map View Box */}
-                                <TouchableOpacity
-                                    style={{ flex: 1, backgroundColor: '#1E293B', position: 'relative' }}
-                                    activeOpacity={1}
-                                    onPress={handleInteractiveMapTap}
-                                >
-                                    {/* Grid canvas background simulation */}
-                                    <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: '#0F172A' }}>
-                                        <View style={{ position: 'absolute', width: '100%', height: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)', top: '20%' }} />
-                                        <View style={{ position: 'absolute', width: '100%', height: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)', top: '40%' }} />
-                                        <View style={{ position: 'absolute', width: '100%', height: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)', top: '60%' }} />
-                                        <View style={{ position: 'absolute', width: '100%', height: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)', top: '80%' }} />
-                                        <View style={{ position: 'absolute', height: '100%', width: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)', left: '25%' }} />
-                                        <View style={{ position: 'absolute', height: '100%', width: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)', left: '50%' }} />
-                                        <View style={{ position: 'absolute', height: '100%', width: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)', left: '75%' }} />
-                                    </View>
-
-                                    {/* Crosshair Target overlay */}
-                                    <View style={{ position: 'absolute', top: '50%', left: '50%', transform: [{ translateX: -20 }, { translateY: -20 }], alignItems: 'center' }}>
-                                        <View style={{ backgroundColor: '#133E32', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, marginBottom: 4, elevation: 6 }}>
-                                            <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '800', textAlign: 'center' }}>
-                                                🎯 {tempAddressLabel}
-                                            </Text>
-                                            <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '600', textAlign: 'center' }}>
-                                                {tempMapCoords.lat.toFixed(4)}° N, {tempMapCoords.lng.toFixed(4)}° E
-                                            </Text>
-                                        </View>
-                                        <Ionicons name="location" size={36} color="#FFD700" />
-                                    </View>
-
-                                    {/* Map Controls Floating Column */}
-                                    <View style={{ position: 'absolute', right: 16, top: 16, backgroundColor: '#0F172A', borderRadius: 12, padding: 6, gap: 12 }}>
-                                        <TouchableOpacity style={{ padding: 4 }} onPress={() => setTempMapCoords(prev => ({ ...prev, lat: prev.lat + 0.005 }))}>
-                                            <Ionicons name="add-circle-outline" size={24} color="#FFFFFF" />
-                                        </TouchableOpacity>
-                                        <View style={{ height: 1, backgroundColor: '#334155' }} />
-                                        <TouchableOpacity style={{ padding: 4 }} onPress={() => setTempMapCoords(prev => ({ ...prev, lat: prev.lat - 0.005 }))}>
-                                            <Ionicons name="remove-circle-outline" size={24} color="#FFFFFF" />
-                                        </TouchableOpacity>
-                                    </View>
-
-                                    {/* Bottom Info bar */}
-                                    <View style={{ position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: 'rgba(19, 62, 50, 0.95)', padding: 14, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <View style={{ flex: 1, marginRight: 10 }}>
-                                            <Text style={{ color: '#FFD700', fontSize: 13, fontWeight: '800' }}>Pinned Location</Text>
-                                            <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }} numberOfLines={1}>
-                                                {tempAddressLabel}
-                                            </Text>
-                                        </View>
-                                        <TouchableOpacity
-                                            style={{ backgroundColor: '#FFD700', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 }}
-                                            onPress={handleConfirmMapPicker}
-                                        >
-                                            <Text style={{ color: '#133E32', fontSize: 13, fontWeight: '900' }}>Confirm Pin 📍</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </TouchableOpacity>
-                            </SafeAreaView>
-                        </Modal>
                     </View>
                 )}
 
                 {/* STEP 3: AMENITIES */}
                 {currentStep === 3 && (
                     <View style={styles.stepThreeContainer}>
+
+                        <View style={styles.cardContainer}>
+                            <Text style={styles.fieldLabel}>Nearest Special Places</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="e.g. 500m to SLIIT / Supermarket"
+                                placeholderTextColor="#94A3B8"
+                                value={nearestPlaces}
+                                onChangeText={setNearestPlaces}
+                            />
+                        </View>
+
+                        {propertyNature === 'WHOLE_HOUSE' && (
+                            <View style={styles.cardContainer}>
+                                <Text style={styles.cardTitle}>Whole House Facilities</Text>
+                                <View style={styles.titleDivider} />
+
+                                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.fieldLabel}>No. of Beds</Text>
+                                        <TextInput
+                                            style={styles.input}
+                                            placeholder="e.g. 3"
+                                            placeholderTextColor="#94A3B8"
+                                            value={wholeHouseBeds}
+                                            onChangeText={setWholeHouseBeds}
+                                            keyboardType="numeric"
+                                        />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.fieldLabel}>Washrooms</Text>
+                                        <TextInput
+                                            style={styles.input}
+                                            placeholder="e.g. 2"
+                                            placeholderTextColor="#94A3B8"
+                                            value={wholeHouseWashrooms}
+                                            onChangeText={setWholeHouseWashrooms}
+                                            keyboardType="numeric"
+                                        />
+                                    </View>
+                                </View>
+
+                                <Text style={styles.fieldLabel}>Appliances</Text>
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                                    <TouchableOpacity style={[styles.checkboxRow, { width: '45%' }]} onPress={() => setHasAC(!hasAC)}>
+                                        <View style={[styles.checkbox, hasAC && styles.checkboxActive]}>
+                                            {hasAC && <Ionicons name="checkmark" size={14} color="#FFD700" />}
+                                        </View>
+                                        <Text style={styles.checkboxLabel}>Air Con.</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.checkboxRow, { width: '45%' }]} onPress={() => setHasFridge(!hasFridge)}>
+                                        <View style={[styles.checkbox, hasFridge && styles.checkboxActive]}>
+                                            {hasFridge && <Ionicons name="checkmark" size={14} color="#FFD700" />}
+                                        </View>
+                                        <Text style={styles.checkboxLabel}>Fridge</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.checkboxRow, { width: '45%' }]} onPress={() => setHasOven(!hasOven)}>
+                                        <View style={[styles.checkbox, hasOven && styles.checkboxActive]}>
+                                            {hasOven && <Ionicons name="checkmark" size={14} color="#FFD700" />}
+                                        </View>
+                                        <Text style={styles.checkboxLabel}>Oven</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
+
                         {/* Section 1: Basic Utilities */}
                         <Text style={styles.amenityCategoryTitle}>Basic Utilities</Text>
                         <View style={styles.amenityGrid}>
@@ -1349,11 +1383,22 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                     </TouchableOpacity>
                 )}
 
-                <TouchableOpacity style={styles.primaryNextBtn} onPress={handleNext} activeOpacity={0.85}>
-                    <Text style={styles.primaryNextBtnText}>
-                        {currentStep === 4 ? 'Publish Listing' : 'Next Step'}
-                    </Text>
-                    <Ionicons name="arrow-forward" size={18} color="#FFD700" style={{ marginLeft: 6 }} />
+                <TouchableOpacity
+                    style={[styles.primaryNextBtn, currentStep === 4 && isSubmitting && { opacity: 0.7 }]}
+                    onPress={handleNext}
+                    activeOpacity={0.85}
+                    disabled={currentStep === 4 && isSubmitting}
+                >
+                    {currentStep === 4 && isSubmitting ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                        <>
+                            <Text style={styles.primaryNextBtnText}>
+                                {currentStep === 4 ? 'Publish Listing' : 'Next Step'}
+                            </Text>
+                            <Ionicons name="arrow-forward" size={18} color="#FFD700" style={{ marginLeft: 6 }} />
+                        </>
+                    )}
                 </TouchableOpacity>
             </View>
 
@@ -1451,6 +1496,70 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                                     );
                                 })}
                             </View>
+
+                            {/* Room Facilities & Washroom Toggle */}
+                            <Text style={styles.fieldLabel}>Room Internal Facilities</Text>
+                            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 8 }}>
+                                <View style={{ flex: 1 }}>
+                                    <View style={{ flexDirection: 'row', width: '100%', marginBottom: 8, gap: 10 }}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={[styles.fieldLabel, { marginTop: 0 }]}>Beds</Text>
+                                            <TextInput
+                                                style={[styles.input, { height: 40 }]}
+                                                value={currentRoom.beds}
+                                                onChangeText={(text) => setCurrentRoom({ ...currentRoom, beds: text })}
+                                                keyboardType="numeric"
+                                            />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={[styles.fieldLabel, { marginTop: 0 }]}>Washrooms</Text>
+                                            <TextInput
+                                                style={[styles.input, { height: 40 }]}
+                                                value={currentRoom.washrooms}
+                                                onChangeText={(text) => setCurrentRoom({ ...currentRoom, washrooms: text })}
+                                                keyboardType="numeric"
+                                            />
+                                        </View>
+                                    </View>
+
+                                    <View style={{ flexDirection: 'row', gap: 4, marginTop: 4 }}>
+                                        <TouchableOpacity
+                                            style={[styles.genderPill, currentRoom.washroomType === 'Attached' && styles.genderPillActive, { paddingVertical: 8, borderWidth: 1, borderColor: '#CBD5E1' }]}
+                                            onPress={() => setCurrentRoom({ ...currentRoom, washroomType: 'Attached' })}
+                                        >
+                                            <Text style={[styles.genderPillText, currentRoom.washroomType === 'Attached' && styles.genderPillTextActive, { fontSize: 11 }]}>Attached</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.genderPill, currentRoom.washroomType === 'Common' && styles.genderPillActive, { paddingVertical: 8, borderWidth: 1, borderColor: '#CBD5E1' }]}
+                                            onPress={() => setCurrentRoom({ ...currentRoom, washroomType: 'Common' })}
+                                        >
+                                            <Text style={[styles.genderPillText, currentRoom.washroomType === 'Common' && styles.genderPillTextActive, { fontSize: 11 }]}>Common</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </View>
+
+                            <View style={{ flexDirection: 'row', gap: 14, marginBottom: 4, marginTop: 2 }}>
+                                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }} onPress={() => setCurrentRoom({ ...currentRoom, ac: !currentRoom.ac })}>
+                                    <View style={[styles.checkbox, currentRoom.ac && styles.checkboxActive, { width: 18, height: 18, marginRight: 6 }]}>
+                                        {currentRoom.ac && <Ionicons name="checkmark" size={12} color="#FFD700" />}
+                                    </View>
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>Air-con</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }} onPress={() => setCurrentRoom({ ...currentRoom, fridge: !currentRoom.fridge })}>
+                                    <View style={[styles.checkbox, currentRoom.fridge && styles.checkboxActive, { width: 18, height: 18, marginRight: 6 }]}>
+                                        {currentRoom.fridge && <Ionicons name="checkmark" size={12} color="#FFD700" />}
+                                    </View>
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>Fridge</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }} onPress={() => setCurrentRoom({ ...currentRoom, oven: !currentRoom.oven })}>
+                                    <View style={[styles.checkbox, currentRoom.oven && styles.checkboxActive, { width: 18, height: 18, marginRight: 6 }]}>
+                                        {currentRoom.oven && <Ionicons name="checkmark" size={12} color="#FFD700" />}
+                                    </View>
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>Oven</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={[styles.titleDivider, { marginTop: 14 }]} />
 
                             {/* Room Photo Gallery Upload Section */}
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 8 }}>

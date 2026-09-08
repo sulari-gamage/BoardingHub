@@ -8,9 +8,11 @@ import {
     StatusBar,
     ScrollView,
     Image,
-    Platform
+    Platform,
+    Linking
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import MapView, { Marker } from 'react-native-maps';
 
 export default function OwnerPropertyDetailScreen({
     property,
@@ -23,13 +25,37 @@ export default function OwnerPropertyDetailScreen({
     const currentProperty = property || {
         id: 'p1',
         title: 'Green Valley Boarding',
-        location: 'Moratuwa',
+        address: '169, 44 Dewelta Homes, John Rodrigo Mawatha',
+        city: 'Moratuwa',
         price: 15000,
         status: 'ACTIVE',
         isApproved: true,
         imageUrl: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
         totalRooms: 4,
         availableRooms: 2
+    };
+
+    const handleMapPress = () => {
+        const lat = currentProperty.latitude || 6.9271;
+        const lng = currentProperty.longitude || 79.8612;
+        const label = encodeURIComponent(currentProperty.title || 'Boarding Location');
+
+        let url = Platform.select({
+            ios: `maps:0,0?q=${label}&ll=${lat},${lng}`,
+            android: `geo:0,0?q=${lat},${lng}(${label})`
+        });
+
+        const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+
+        Linking.canOpenURL(url).then(supported => {
+            if (supported) {
+                Linking.openURL(url);
+            } else {
+                Linking.openURL(fallbackUrl);
+            }
+        }).catch(() => {
+            Linking.openURL(fallbackUrl);
+        });
     };
 
     return (
@@ -120,7 +146,9 @@ export default function OwnerPropertyDetailScreen({
                         </View>
                         <View style={{ flex: 1 }}>
                             <Text style={styles.infoLabel}>LOCATION</Text>
-                            <Text style={styles.infoValue}>{currentProperty.location}</Text>
+                            <Text style={styles.infoValue}>
+                                {currentProperty.city ? `${currentProperty.address}, ${currentProperty.city}` : (currentProperty.location || currentProperty.address || 'Location Not Set')}
+                            </Text>
                         </View>
                     </View>
 
@@ -161,7 +189,9 @@ export default function OwnerPropertyDetailScreen({
                             {currentProperty.rooms.map((room, idx) => (
                                 <View key={room.id || idx} style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
                                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A' }}>{room.roomType || `Room ${idx + 1}`}</Text>
+                                        <View style={{ flex: 1, paddingRight: 8 }}>
+                                            <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A' }} numberOfLines={2}>{room.roomType || `Room ${idx + 1}`}</Text>
+                                        </View>
                                         <View style={{ backgroundColor: '#E6F0EC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
                                             <Text style={{ fontSize: 11, fontWeight: '800', color: '#133E32' }}>
                                                 LKR {(room.monthlyPrice || 0).toLocaleString()} {room.rentType === 'PER_ROOM' ? '/ room / mo' : '/ person / mo'}
@@ -178,18 +208,32 @@ export default function OwnerPropertyDetailScreen({
                 )}
 
                 {/* Map View Box */}
-                <View style={styles.mapCard}>
-                    <Image
-                        source={{ uri: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80' }}
-                        style={styles.mapImage}
-                        resizeMode="cover"
-                    />
-                    <View style={styles.mapPinContainer}>
-                        <View style={styles.pinCircle}>
-                            <Ionicons name="location" size={22} color="#133E32" />
-                        </View>
+                <TouchableOpacity style={styles.mapCard} activeOpacity={0.9} onPress={handleMapPress}>
+                    <MapView
+                        style={StyleSheet.absoluteFillObject}
+                        zoomEnabled={false}
+                        scrollEnabled={false}
+                        pitchEnabled={false}
+                        rotateEnabled={false}
+                        region={{
+                            latitude: currentProperty.latitude || 6.9271,
+                            longitude: currentProperty.longitude || 79.8612,
+                            latitudeDelta: 0.02,
+                            longitudeDelta: 0.02,
+                        }}
+                    >
+                        <Marker
+                            coordinate={{
+                                latitude: currentProperty.latitude || 6.9271,
+                                longitude: currentProperty.longitude || 79.8612,
+                            }}
+                        />
+                    </MapView>
+                    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.1)' }]} />
+                    <View style={{ position: 'absolute', top: '42%', left: '40%', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, elevation: 4 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#133E32' }}>Tap for Directions</Text>
                     </View>
-                </View>
+                </TouchableOpacity>
             </ScrollView>
         </SafeAreaView>
     );

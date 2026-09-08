@@ -16,15 +16,32 @@ import { Ionicons } from '@expo/vector-icons';
 const { width } = Dimensions.get('window');
 
 export default function ImageGalleryScreen({ boarding = {}, onBack }) {
-    const images = boarding.images || [
-        boarding.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80',
-        'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
-        'https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=800&q=80'
-    ];
+    const images = (boarding.imageUrls && boarding.imageUrls.length > 0)
+        ? boarding.imageUrls
+        : (boarding.images && boarding.images.length > 0)
+            ? boarding.images.map(img => typeof img === 'string' ? img : img.imageUrl)
+            : boarding.imageUrl
+                ? [boarding.imageUrl]
+                : [];
 
     const [activeIndex, setActiveIndex] = useState(0);
+
+    if (!images || images.length === 0) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
+                <View style={styles.topBar}>
+                    <TouchableOpacity style={styles.iconBtn} onPress={onBack} activeOpacity={0.8}>
+                        <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+                    </TouchableOpacity>
+                </View>
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <Ionicons name="images-outline" size={64} color="#334155" />
+                    <Text style={{ color: '#64748B', marginTop: 12, fontWeight: '700' }}>No pictures uploaded yet.</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={styles.container}>

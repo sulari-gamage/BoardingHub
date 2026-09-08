@@ -20,12 +20,18 @@ export default function AddRoomScreen({ onBack, onSaveRoom }) {
     const [maxOccupants, setMaxOccupants] = useState(1);
     const [pricePerMonth, setPricePerMonth] = useState('');
 
+    const [beds, setBeds] = useState('1');
+    const [washrooms, setWashrooms] = useState('1');
+    const [washroomType, setWashroomType] = useState('Common');
+
     // Room Amenities state
     const [amenities, setAmenities] = useState({
         wifi: true,
         ac: false,
         bathroom: false,
         desk: true,
+        fridge: false,
+        oven: false,
     });
 
     const toggleAmenity = (key) => {
@@ -38,17 +44,28 @@ export default function AddRoomScreen({ onBack, onSaveRoom }) {
             return;
         }
 
+        const activeAmenities = Object.keys(amenities).filter(k => amenities[k]).map(k => {
+            if (k === 'wifi') return 'Wi-Fi';
+            if (k === 'ac') return 'AC';
+            if (k === 'bathroom') return 'En-suite Bath';
+            if (k === 'desk') return 'Desk';
+            if (k === 'fridge') return 'Fridge';
+            if (k === 'oven') return 'Oven';
+            return k;
+        });
+
+        const facilityStr = `${beds} Bed(s), ${washrooms} ${washroomType} Washroom(s)${activeAmenities.length > 0 ? ', ' + activeAmenities.join(', ') : ''}`;
+
         const newRoom = {
             id: `r_${Date.now()}`,
             number: roomNumber,
-            type: `${roomType} Type`,
+            type: `${roomType} Type | ${facilityStr}`,
             price: parseFloat(pricePerMonth) || 15000,
             occupants: `${maxOccupants} Occupant${maxOccupants > 1 ? 's' : ''}`,
             capacity: maxOccupants,
             availableSpaces: maxOccupants,
             area: '200 sqft',
             status: 'AVAILABLE',
-            imageUrl: 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80',
             amenities,
         };
 
@@ -152,16 +169,61 @@ export default function AddRoomScreen({ onBack, onSaveRoom }) {
                     </View>
                 </View>
 
-                {/* Card 3: Room Amenities */}
+                {/* Card 3: Room Facilities & Amenities */}
                 <View style={styles.cardContainer}>
-                    <Text style={styles.cardTitle}>Room Amenities</Text>
+                    <Text style={styles.cardTitle}>Room Facilities</Text>
                     <View style={styles.titleDivider} />
 
+                    <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.fieldLabel}>No. of Beds</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="e.g. 2"
+                                placeholderTextColor="#94A3B8"
+                                value={beds}
+                                onChangeText={setBeds}
+                                keyboardType="numeric"
+                            />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.fieldLabel}>Washrooms</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="e.g. 1"
+                                placeholderTextColor="#94A3B8"
+                                value={washrooms}
+                                onChangeText={setWashrooms}
+                                keyboardType="numeric"
+                            />
+                        </View>
+                        <View style={{ flex: 1.5 }}>
+                            <Text style={styles.fieldLabel}>Bathroom Type</Text>
+                            <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
+                                <TouchableOpacity
+                                    style={[styles.typePill, washroomType === 'Attached' && styles.typePillActive, { paddingVertical: 10 }]}
+                                    onPress={() => setWashroomType('Attached')}
+                                >
+                                    <Text style={[styles.typePillText, washroomType === 'Attached' && styles.typePillTextActive, { fontSize: 11 }]}>Attached</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.typePill, washroomType === 'Common' && styles.typePillActive, { paddingVertical: 10 }]}
+                                    onPress={() => setWashroomType('Common')}
+                                >
+                                    <Text style={[styles.typePillText, washroomType === 'Common' && styles.typePillTextActive, { fontSize: 11 }]}>Common</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+
+                    <Text style={styles.cardTitle}>Additional Amenities</Text>
                     {[
                         { key: 'wifi', label: 'High-Speed Wi-Fi' },
                         { key: 'ac', label: 'Air Conditioning' },
                         { key: 'bathroom', label: 'En-suite Bathroom' },
                         { key: 'desk', label: 'Work Desk' },
+                        { key: 'fridge', label: 'Mini Fridge' },
+                        { key: 'oven', label: 'Microwave/Oven' },
                     ].map((item) => {
                         const isChecked = !!amenities[item.key];
                         return (
