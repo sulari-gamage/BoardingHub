@@ -53,16 +53,24 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
         id: p.id,
         title: p.title,
         location: (p.city || '') + (p.address ? ' • ' + p.address : ''),
+        price: p.monthlyRent || 0,
         rent: `Rs. ${p.monthlyRent?.toLocaleString() || '25,000'}/mo`,
         rating: p.rating || 4.8,
         reviewsCount: p.reviewsCount || 12,
+        roomsCount: p.rooms ? p.rooms.length : 0,
+        rooms: p.rooms || [],
         genderPreference: p.genderPreference === 'MALE_ONLY' ? 'Boys Only' : p.genderPreference === 'FEMALE_ONLY' ? 'Girls Only' : 'Any Gender',
         image: (p.imageUrls && p.imageUrls.length > 0)
             ? { uri: p.imageUrls[0] }
             : (p.images && p.images.length > 0)
                 ? { uri: typeof p.images[0] === 'string' ? p.images[0] : p.images[0].imageUrl }
                 : { uri: 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5' },
-        tags: p.amenities ? p.amenities.map(a => a.name) : ['Wi-Fi', 'Security'],
+        imageUrl: (p.imageUrls && p.imageUrls.length > 0)
+            ? p.imageUrls[0]
+            : (p.images && p.images.length > 0)
+                ? (typeof p.images[0] === 'string' ? p.images[0] : p.images[0].imageUrl)
+                : 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5',
+        tags: p.amenities ? p.amenities.map(a => (typeof a === 'string' ? a : a.name)) : ['Wi-Fi', 'Security'],
     })) : POPULAR_BOARDINGS.filter((item) => {
         const matchesSearch =
             item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||

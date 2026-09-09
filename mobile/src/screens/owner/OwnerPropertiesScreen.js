@@ -58,6 +58,7 @@ export default function OwnerPropertiesScreen({
             type: (p.propertyNature === 'ROOM_BASED' || (p.rooms && p.rooms.length > 0 && !p.rooms.some(r => r.roomType === 'Whole House / Annex' || r.roomType === 'Entire Boarding House')))
                 ? `Room Based Boarding`
                 : (p.propertyNature === 'WHOLE_HOUSE' || (p.rooms && p.rooms.length > 0 && p.rooms.some(r => r.roomType === 'Whole House / Annex' || r.roomType === 'Entire Boarding House')) ? 'Annex / Whole House' : 'Boarding House'),
+            roomsCount: p.rooms ? p.rooms.length : 0,
             totalRooms: totalCap,
             occupiedRooms: occCap,
             availableRooms: availCap,
@@ -163,7 +164,17 @@ export default function OwnerPropertiesScreen({
                             </View>
 
                             <View style={styles.cardContent}>
-                                <Text style={styles.propertyTitle}>{item.title}</Text>
+                                <View style={styles.titleRow}>
+                                    <Text style={styles.propertyTitle} numberOfLines={1}>{item.title}</Text>
+                                    {(item.roomsCount > 0 || (item.rooms && item.rooms.length > 0)) && (
+                                        <View style={styles.roomBadgeRight}>
+                                            <Ionicons name="bed-outline" size={12} color="#D97706" style={{ marginRight: 4 }} />
+                                            <Text style={styles.roomBadgeRightText}>
+                                                {(item.roomsCount || item.rooms.length)} {(item.roomsCount || item.rooms.length) === 1 ? 'Room' : 'Rooms'}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
 
                                 <View style={styles.infoRow}>
                                     <Ionicons name="location-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
@@ -433,11 +444,33 @@ const styles = StyleSheet.create({
     cardContent: {
         padding: 16,
     },
+    titleRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 6,
+    },
     propertyTitle: {
+        flex: 1,
         fontSize: 17,
         fontWeight: '800',
         color: '#0F172A',
-        marginBottom: 4,
+        marginRight: 8,
+    },
+    roomBadgeRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFBEB',
+        paddingHorizontal: 9,
+        paddingVertical: 4,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#FEF08A',
+    },
+    roomBadgeRightText: {
+        fontSize: 11.5,
+        fontWeight: '800',
+        color: '#B45309',
     },
     infoRow: {
         flexDirection: 'row',
@@ -447,6 +480,21 @@ const styles = StyleSheet.create({
     locationText: {
         fontSize: 13,
         color: '#64748B',
+    },
+    roomCountPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#E6F0EC',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#C3DCD4',
+    },
+    roomCountPillText: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#133E32',
     },
 
     statsRow: {

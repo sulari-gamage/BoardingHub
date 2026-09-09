@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
+import { uploadImage } from '../../services/uploadService';
 import AddRoomScreen from './AddRoomScreen';
 
 export default function RoomManagementScreen({ onBack, onAddRoom, property, propertyName = 'Boarding Property', onPropertyUpdated }) {
@@ -72,6 +73,22 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
         };
     });
 
+    const handleAddNewRoom = () => {
+        setEditingRoom({
+            isNew: true,
+            roomName: `Room ${rawRooms.length + 1}`,
+            roomType: 'Single',
+            totalCapacity: 1,
+            monthlyPrice: 15000,
+            rentType: 'PER_PERSON',
+            beds: 1,
+            washrooms: 1,
+            washroomType: 'Common',
+            amenities: '',
+            photos: []
+        });
+    };
+
     const handleManageRoom = (room) => {
         const rawObj = room.raw || room;
         setEditingRoom({
@@ -94,24 +111,6 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
         });
     };
 
-    const uploadImage = async (imgUri) => {
-        if (!imgUri || !imgUri.startsWith('file')) return imgUri;
-        const data = new FormData();
-        data.append("file", { uri: imgUri, type: 'image/jpeg', name: `upload_${Date.now()}.jpg` });
-        data.append("upload_preset", "boardinghub");
-        data.append("cloud_name", "dfpt8hyu1");
-        try {
-            const response = await fetch("https://api.cloudinary.com/v1_1/dfpt8hyu1/image/upload", {
-                method: "post",
-                body: data
-            });
-            const result = await response.json();
-            return result.secure_url;
-        } catch (error) {
-            return null;
-        }
-    };
-
     const saveRoomChanges = async (formRoom) => {
         if (!editingRoom || !property?.id) return;
         setIsSaving(true);
@@ -119,43 +118,68 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
             const photosList = formRoom.photos || [];
             const uploadedRoomPhotos = [];
             for (const p of photosList) {
-                if (p.uri) {
-                    const url = await uploadImage(p.uri);
+                const photoUri = typeof p === 'string' ? p : (p?.uri || p?.imageUrl || p?.url);
+                if (photoUri) {
+                    const url = await uploadImage(photoUri);
                     if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
                         uploadedRoomPhotos.push(url);
                     }
                 }
             }
 
-            // Reconstruct the raw room payload safely to bounce back to API
-            const updatedRooms = rawRooms.map((r, idx) => {
-                const matches = (editingRoom.rawId && r.id === editingRoom.rawId) ||
-                    (editingRoom.id && (r.id?.toString() === editingRoom.id.toString() || `r-${idx}` === editingRoom.id)) ||
-                    (formRoom.id && (r.id?.toString() === formRoom.id.toString() || `r-${idx}` === formRoom.id));
+            const isNewRoom = !!editingRoom?.isNew || (!editingRoom?.rawId && !editingRoom?.id);
 
-                if (matches) {
-                    const diff = Math.max(0, parseInt(formRoom.totalCapacity || formRoom.capacity) - (r.totalCapacity || 0));
-                    const validExistingImg = (r.imageUrl && (r.imageUrl.startsWith('http://') || r.imageUrl.startsWith('https://'))) ? r.imageUrl : undefined;
-                    const finalImg = uploadedRoomPhotos.length > 0 ? uploadedRoomPhotos[0] : validExistingImg;
-                    return {
-                        ...r,
-                        id: r.id || undefined,
-                        roomName: formRoom.roomName || formRoom.number,
-                        roomType: formRoom.roomType || 'Single',
-                        beds: parseInt(formRoom.beds) || 1,
-                        washrooms: parseInt(formRoom.washrooms) || 1,
-                        washroomType: formRoom.washroomType || 'Common',
-                        amenities: typeof formRoom.amenities === 'string' ? formRoom.amenities : JSON.stringify(formRoom.amenities),
-                        monthlyPrice: parseFloat(formRoom.monthlyPrice || formRoom.price) || r.monthlyPrice,
-                        totalCapacity: parseInt(formRoom.totalCapacity || formRoom.capacity) || r.totalCapacity,
-                        remainingSpaces: Math.min(parseInt(formRoom.totalCapacity || formRoom.capacity) || r.totalCapacity, (r.remainingSpaces || r.totalCapacity || 1) + diff),
-                        rentType: formRoom.rentType || r.rentType || 'PER_PERSON',
-                        imageUrl: finalImg,
-                        imageUrls: uploadedRoomPhotos.length > 0 ? uploadedRoomPhotos : (finalImg ? [finalImg] : [])
-                    };
-                }
-                return r;
-            });
+            let updatedRooms = [];
+            if (isNewRoom) {
+                const newRoomPayload = {
+                    roomName: formRoom.roomName || formRoom.number || `Room ${rawRooms.length + 1}`,
+                    roomType: formRoom.roomType || 'Single',
+                    beds: parseInt(formRoom.beds) || 1,
+                    washrooms: parseInt(formRoom.washrooms) || 1,
+                    washroomType: formRoom.washroomType || 'Common',
+                    amenities: typeof formRoom.amenities === 'string' ? formRoom.amenities : JSON.stringify(formRoom.amenities || ''),
+                    monthlyPrice: parseFloat(formRoom.monthlyPrice || formRoom.price) || 15000,
+                    totalCapacity: parseInt(formRoom.totalCapacity || formRoom.capacity) || 1,
+                    remainingSpaces: parseInt(formRoom.totalCapacity || formRoom.capacity) || 1,
+                    rentType: formRoom.rentType || 'PER_PERSON',
+                    imageUrl: uploadedRoomPhotos.length > 0 ? uploadedRoomPhotos[0] : undefined,
+                    imageUrls: uploadedRoomPhotos
+                };
+
+                updatedRooms = [
+                    ...rawRooms.map(r => ({ ...r, id: r.id || undefined })),
+                    newRoomPayload
+                ];
+            } else {
+                updatedRooms = rawRooms.map((r, idx) => {
+                    const matches = (editingRoom.rawId && r.id === editingRoom.rawId) ||
+                        (editingRoom.id && (r.id?.toString() === editingRoom.id.toString() || `r-${idx}` === editingRoom.id)) ||
+                        (formRoom.id && (r.id?.toString() === formRoom.id.toString() || `r-${idx}` === formRoom.id));
+
+                    if (matches) {
+                        const diff = Math.max(0, parseInt(formRoom.totalCapacity || formRoom.capacity) - (r.totalCapacity || 0));
+                        const validExistingImg = (r.imageUrl && (r.imageUrl.startsWith('http://') || r.imageUrl.startsWith('https://'))) ? r.imageUrl : undefined;
+                        const finalImg = uploadedRoomPhotos.length > 0 ? uploadedRoomPhotos[0] : validExistingImg;
+                        return {
+                            ...r,
+                            id: r.id || undefined,
+                            roomName: formRoom.roomName || formRoom.number,
+                            roomType: formRoom.roomType || 'Single',
+                            beds: parseInt(formRoom.beds) || 1,
+                            washrooms: parseInt(formRoom.washrooms) || 1,
+                            washroomType: formRoom.washroomType || 'Common',
+                            amenities: typeof formRoom.amenities === 'string' ? formRoom.amenities : JSON.stringify(formRoom.amenities || ''),
+                            monthlyPrice: parseFloat(formRoom.monthlyPrice || formRoom.price) || r.monthlyPrice,
+                            totalCapacity: parseInt(formRoom.totalCapacity || formRoom.capacity) || r.totalCapacity,
+                            remainingSpaces: Math.min(parseInt(formRoom.totalCapacity || formRoom.capacity) || r.totalCapacity, (r.remainingSpaces || r.totalCapacity || 1) + diff),
+                            rentType: formRoom.rentType || r.rentType || 'PER_PERSON',
+                            imageUrl: finalImg,
+                            imageUrls: uploadedRoomPhotos.length > 0 ? uploadedRoomPhotos : (finalImg ? [finalImg] : [])
+                        };
+                    }
+                    return r;
+                });
+            }
 
             // Explicitly build full PropertyRequest payload to ensure no validation errors on update
             const rawProp = property.raw || property;
@@ -174,26 +198,25 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                 rooms: updatedRooms
             };
 
-            await api.properties.update(property.id, payload);
+            const updatedResponse = await api.properties.update(property.id, payload);
 
             // Re-fetch fresh property from API to ensure instant UI synchronization
-            let freshProp = null;
+            let freshProp = updatedResponse;
             try {
                 freshProp = await api.properties.getById(property.id);
             } catch (e) { }
 
-            Alert.alert("Success", "Unit successfully saved!", [{
+            Alert.alert("Success 🎉", isNewRoom ? "New room added successfully!" : "Unit successfully saved!", [{
                 text: 'OK',
                 onPress: () => {
                     setEditingRoom(null);
                     if (freshProp && onPropertyUpdated) {
                         onPropertyUpdated(freshProp);
                     }
-                    onBack();
                 }
             }]);
         } catch (err) {
-            Alert.alert("Error", "Failed to update unit: " + err.message);
+            Alert.alert("Error", "Failed to save unit: " + err.message);
         } finally {
             setIsSaving(false);
         }
@@ -243,7 +266,7 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                     </Text>
 
                     {isRoomBased && (
-                        <TouchableOpacity style={styles.addRoomBtn} onPress={onAddRoom} activeOpacity={0.85}>
+                        <TouchableOpacity style={styles.addRoomBtn} onPress={handleAddNewRoom} activeOpacity={0.85}>
                             <Ionicons name="add" size={20} color="#FFD700" style={{ marginRight: 6 }} />
                             <Text style={styles.addRoomBtnText}>Add New Room</Text>
                         </TouchableOpacity>

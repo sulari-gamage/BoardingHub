@@ -160,7 +160,7 @@ export default function OwnerPropertyDetailScreen({
                     {/* Rooms Card */}
                     <TouchableOpacity style={styles.actionCard} onPress={onOpenRooms} activeOpacity={0.85}>
                         <View style={styles.iconCircle}>
-                            <Ionicons name="door-open-outline" size={24} color="#133E32" />
+                            <Ionicons name="bed-outline" size={24} color="#133E32" />
                         </View>
                         <Text style={styles.actionCardTitle}>Rooms</Text>
                     </TouchableOpacity>

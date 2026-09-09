@@ -12,14 +12,24 @@ export default function BoardingCard({ item, onPress }) {
 
             {/* Card Content */}
             <View style={styles.content}>
-                {/* Title & Rating Badge Row */}
+                {/* Title & Rating / Room Badge Row */}
                 <View style={styles.titleRow}>
                     <Text style={styles.title} numberOfLines={1}>
                         {item.title}
                     </Text>
-                    <View style={styles.ratingBadge}>
-                        <Ionicons name="star" size={12} color="#D97706" style={{ marginRight: 3 }} />
-                        <Text style={styles.ratingText}>{item.rating}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        {(item.roomsCount > 0 || (item.rooms && item.rooms.length > 0)) && (
+                            <View style={styles.roomBadgeRight}>
+                                <Ionicons name="bed-outline" size={11} color="#D97706" style={{ marginRight: 3 }} />
+                                <Text style={styles.roomBadgeRightText}>
+                                    {item.roomsCount || item.rooms.length} {(item.roomsCount || item.rooms.length) === 1 ? 'Room' : 'Rooms'}
+                                </Text>
+                            </View>
+                        )}
+                        <View style={styles.ratingBadge}>
+                            <Ionicons name="star" size={12} color="#D97706" style={{ marginRight: 3 }} />
+                            <Text style={styles.ratingText}>{item.rating}</Text>
+                        </View>
                     </View>
                 </View>
 
@@ -86,6 +96,21 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         color: '#0F172A',
         marginRight: 8,
+    },
+    roomBadgeRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFBEB',
+        borderWidth: 1,
+        borderColor: '#FEF08A',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 8,
+    },
+    roomBadgeRightText: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#B45309',
     },
     ratingBadge: {
         flexDirection: 'row',

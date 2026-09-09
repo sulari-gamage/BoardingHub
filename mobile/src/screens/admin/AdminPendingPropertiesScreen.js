@@ -80,7 +80,7 @@ export default function AdminPendingPropertiesScreen({
             : (p.images && p.images.length > 0)
                 ? (typeof p.images[0] === 'string' ? p.images[0] : p.images[0].imageUrl)
                 : 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=600&q=80',
-        rooms: p.rooms ? `${p.rooms.length} Units` : '1 Unit',
+        roomsText: p.rooms ? `${p.rooms.length} ${p.rooms.length === 1 ? 'Room' : 'Rooms'} Added` : '1 Room Added',
     }));
 
     const filtered = pendingProperties.filter(p => {
@@ -156,7 +156,15 @@ export default function AdminPendingPropertiesScreen({
                                 <Text style={styles.submittedTime}>{item.submittedTime}</Text>
                             </View>
 
-                            <Text style={styles.propertyTitle}>{item.title}</Text>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                <Text style={[styles.propertyTitle, { flex: 1, marginBottom: 0 }]} numberOfLines={1}>{item.title}</Text>
+                                {item.roomsText ? (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FEF08A', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginLeft: 8 }}>
+                                        <Ionicons name="bed-outline" size={11} color="#D97706" style={{ marginRight: 3 }} />
+                                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#B45309' }}>{item.roomsText}</Text>
+                                    </View>
+                                ) : null}
+                            </View>
 
                             <View style={styles.locationRow}>
                                 <Ionicons name="location-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />

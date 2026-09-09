@@ -130,9 +130,9 @@ public class PropertyService {
         if (request.getRooms() != null) {
             List<Room> existingRooms = property.getRooms();
             List<RoomRequest> newRoomReqs = request.getRooms();
+            List<Room> processedRooms = new ArrayList<>();
 
-            for (int i = 0; i < newRoomReqs.size(); i++) {
-                RoomRequest roomReq = newRoomReqs.get(i);
+            for (RoomRequest roomReq : newRoomReqs) {
                 String img = (roomReq.getImageUrls() != null && !roomReq.getImageUrls().isEmpty())
                         ? roomReq.getImageUrls().get(0)
                         : roomReq.getImageUrl();
@@ -143,9 +143,6 @@ public class PropertyService {
                             .filter(r -> r.getId().equals(roomReq.getId()))
                             .findFirst()
                             .orElse(null);
-                }
-                if (roomToUpdate == null && i < existingRooms.size()) {
-                    roomToUpdate = existingRooms.get(i);
                 }
 
                 if (roomToUpdate != null) {
@@ -161,9 +158,10 @@ public class PropertyService {
                     roomToUpdate.setAmenities(roomReq.getAmenities());
                     roomToUpdate.setRentType(roomReq.getRentType() != null ? roomReq.getRentType() : "PER_PERSON");
                     roomToUpdate.setImageUrl(img);
+                    processedRooms.add(roomToUpdate);
                 } else {
-                    // Add new room entity
-                    existingRooms.add(Room.builder()
+                    // Create new room entity
+                    Room newRoom = Room.builder()
                             .property(property)
                             .roomName(roomReq.getRoomName())
                             .roomType(roomReq.getRoomType())
@@ -176,12 +174,18 @@ public class PropertyService {
                             .amenities(roomReq.getAmenities())
                             .rentType(roomReq.getRentType() != null ? roomReq.getRentType() : "PER_PERSON")
                             .imageUrl(img)
-                            .build());
+                            .build();
+                    processedRooms.add(newRoom);
                 }
             }
 
-            while (existingRooms.size() > newRoomReqs.size()) {
-                existingRooms.remove(existingRooms.size() - 1);
+            // Remove existing rooms that are no longer part of the updated list
+            existingRooms.retainAll(processedRooms);
+            // Add any newly created room entities
+            for (Room r : processedRooms) {
+                if (!existingRooms.contains(r)) {
+                    existingRooms.add(r);
+                }
             }
         }
 
