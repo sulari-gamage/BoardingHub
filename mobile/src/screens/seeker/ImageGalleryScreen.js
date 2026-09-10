@@ -16,13 +16,29 @@ import { Ionicons } from '@expo/vector-icons';
 const { width } = Dimensions.get('window');
 
 export default function ImageGalleryScreen({ boarding = {}, onBack }) {
-    const images = (boarding.imageUrls && boarding.imageUrls.length > 0)
+    // 1. Gather all property-level images
+    const propertyImages = (boarding.imageUrls && boarding.imageUrls.length > 0)
         ? boarding.imageUrls
         : (boarding.images && boarding.images.length > 0)
-            ? boarding.images.map(img => typeof img === 'string' ? img : img.imageUrl)
+            ? boarding.images.map(img => typeof img === 'string' ? img : img?.imageUrl).filter(Boolean)
             : boarding.imageUrl
                 ? [boarding.imageUrl]
                 : [];
+
+    // 2. Gather room-level images
+    const roomImages = [];
+    if (boarding.rooms && Array.isArray(boarding.rooms)) {
+        boarding.rooms.forEach(r => {
+            if (r.imageUrl) roomImages.push(r.imageUrl);
+            if (r.imageUrls && Array.isArray(r.imageUrls)) {
+                r.imageUrls.forEach(url => { if (url) roomImages.push(url); });
+            }
+        });
+    }
+
+    // 3. Deduplicate all collected images
+    const rawAllImages = [...propertyImages, ...roomImages];
+    const images = Array.from(new Set(rawAllImages.filter(url => url && typeof url === 'string')));
 
     const [activeIndex, setActiveIndex] = useState(0);
 
