@@ -41,8 +41,13 @@ export default function OwnerPropertyDetailScreen({
         if (!property) return;
 
         const propToUse = property.raw || property;
-        const totalCap = propToUse.rooms?.reduce((acc, r) => acc + (r.totalCapacity || 1), 0) || 1;
-        const availCap = propToUse.rooms?.reduce((acc, r) => acc + (r.remainingSpaces != null ? r.remainingSpaces : (r.totalCapacity || 1)), 0) || totalCap;
+        const totalCap = (propToUse.rooms && propToUse.rooms.length > 0)
+            ? propToUse.rooms.reduce((acc, r) => acc + (r.totalCapacity || 1), 0)
+            : (propToUse.totalCapacity || propToUse.bedsCount || 1);
+        const occCap = (propToUse.rooms && propToUse.rooms.length > 0)
+            ? propToUse.rooms.reduce((acc, r) => acc + (r.occupied != null ? r.occupied : Math.max(0, (r.totalCapacity || 1) - (r.remainingSpaces != null ? r.remainingSpaces : 0))), 0)
+            : (propToUse.totalOccupied != null ? propToUse.totalOccupied : 0);
+        const availCap = Math.max(0, totalCap - occCap);
 
         setCurrentProperty({
             id: propToUse.id,
@@ -66,14 +71,22 @@ export default function OwnerPropertyDetailScreen({
             try {
                 const latest = await api.properties.getById(property.id);
                 if (isMounted) {
+                    const lTotal = (latest.rooms && latest.rooms.length > 0)
+                        ? latest.rooms.reduce((acc, r) => acc + (r.totalCapacity || 1), 0)
+                        : (latest.totalCapacity || latest.bedsCount || 1);
+                    const lOcc = (latest.rooms && latest.rooms.length > 0)
+                        ? latest.rooms.reduce((acc, r) => acc + (r.occupied != null ? r.occupied : Math.max(0, (r.totalCapacity || 1) - (r.remainingSpaces != null ? r.remainingSpaces : 0))), 0)
+                        : (latest.totalOccupied != null ? latest.totalOccupied : 0);
+                    const lAvail = Math.max(0, lTotal - lOcc);
+
                     const mapped = {
                         id: latest.id,
                         title: latest.title,
                         address: latest.address,
                         city: latest.city,
                         price: latest.monthlyRent || 0,
-                        totalRooms: latest.rooms?.reduce((acc, r) => acc + (r.totalCapacity || 1), 0) || 1,
-                        availableRooms: latest.rooms?.reduce((acc, r) => acc + (r.remainingSpaces != null ? r.remainingSpaces : (r.totalCapacity || 1)), 0) || 1,
+                        totalRooms: lTotal,
+                        availableRooms: lAvail,
                         rooms: latest.rooms || [],
                         amenities: latest.amenities || [],
                         raw: latest,

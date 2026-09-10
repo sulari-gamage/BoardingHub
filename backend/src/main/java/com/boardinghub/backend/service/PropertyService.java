@@ -46,6 +46,7 @@ public class PropertyService {
                 .bedsCount(request.getBedsCount())
                 .bathsCount(request.getBathsCount())
                 .totalCapacity(computeTotalCapacity(request))
+                .totalOccupied(computeTotalOccupied(request))
                 .hasKitchen(request.getHasKitchen())
                 .isFurnished(request.getIsFurnished())
                 .isElectricityIncluded(request.getIsElectricityIncluded())
@@ -79,7 +80,8 @@ public class PropertyService {
                         .roomType(roomReq.getRoomType())
                         .monthlyPrice(roomReq.getMonthlyPrice())
                         .totalCapacity(roomReq.getTotalCapacity())
-                        .remainingSpaces(roomReq.getRemainingSpaces() != null ? roomReq.getRemainingSpaces() : roomReq.getTotalCapacity())
+                        .occupied(roomReq.getOccupied() != null ? roomReq.getOccupied() : 0)
+                        .remainingSpaces(roomReq.getRemainingSpaces() != null ? roomReq.getRemainingSpaces() : Math.max(0, roomReq.getTotalCapacity() - (roomReq.getOccupied() != null ? roomReq.getOccupied() : 0)))
                         .beds(roomReq.getBeds())
                         .washrooms(roomReq.getWashrooms())
                         .washroomType(roomReq.getWashroomType())
@@ -121,6 +123,7 @@ public class PropertyService {
         property.setBedsCount(request.getBedsCount());
         property.setBathsCount(request.getBathsCount());
         property.setTotalCapacity(computeTotalCapacity(request));
+        property.setTotalOccupied(computeTotalOccupied(request));
         property.setHasKitchen(request.getHasKitchen());
         property.setIsFurnished(request.getIsFurnished());
         property.setIsElectricityIncluded(request.getIsElectricityIncluded());
@@ -303,6 +306,7 @@ public class PropertyService {
                         .monthlyPrice(r.getMonthlyPrice())
                         .totalCapacity(r.getTotalCapacity())
                         .remainingSpaces(r.getRemainingSpaces())
+                        .occupied(r.getOccupied() != null ? r.getOccupied() : Math.max(0, (r.getTotalCapacity() != null ? r.getTotalCapacity() : 1) - (r.getRemainingSpaces() != null ? r.getRemainingSpaces() : 0)))
                         .beds(r.getBeds())
                         .washrooms(r.getWashrooms())
                         .washroomType(r.getWashroomType())
@@ -336,6 +340,7 @@ public class PropertyService {
                 .bedsCount(p.getBedsCount())
                 .bathsCount(p.getBathsCount())
                 .totalCapacity(p.getTotalCapacity() != null ? p.getTotalCapacity() : (p.getRooms() != null && !p.getRooms().isEmpty() ? p.getRooms().stream().mapToInt(r -> r.getTotalCapacity() != null ? r.getTotalCapacity() : 1).sum() : p.getBedsCount()))
+                .totalOccupied(p.getTotalOccupied() != null ? p.getTotalOccupied() : (p.getRooms() != null && !p.getRooms().isEmpty() ? p.getRooms().stream().mapToInt(r -> r.getOccupied() != null ? r.getOccupied() : Math.max(0, (r.getTotalCapacity() != null ? r.getTotalCapacity() : 1) - (r.getRemainingSpaces() != null ? r.getRemainingSpaces() : 0))).sum() : 0))
                 .hasKitchen(p.getHasKitchen())
                 .isFurnished(p.getIsFurnished())
                 .isElectricityIncluded(p.getIsElectricityIncluded())
@@ -408,5 +413,14 @@ public class PropertyService {
             return request.getTotalCapacity();
         }
         return request.getBedsCount() != null ? request.getBedsCount() : 1;
+    }
+
+    private Integer computeTotalOccupied(PropertyRequest request) {
+        if (request.getRooms() != null && !request.getRooms().isEmpty()) {
+            return request.getRooms().stream()
+                    .mapToInt(r -> r.getOccupied() != null ? r.getOccupied() : Math.max(0, (r.getTotalCapacity() != null ? r.getTotalCapacity() : 1) - (r.getRemainingSpaces() != null ? r.getRemainingSpaces() : 0)))
+                    .sum();
+        }
+        return request.getTotalOccupied() != null ? request.getTotalOccupied() : 0;
     }
 }

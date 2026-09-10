@@ -44,11 +44,11 @@ export default function OwnerPropertiesScreen({
     const properties = apiProperties.map(p => {
         const totalCap = p.rooms && p.rooms.length > 0
             ? Math.max(0, p.rooms.reduce((acc, r) => acc + (r.totalCapacity || r.totalSpaces || 0), 0))
-            : Math.max(0, (p.totalCapacity || p.totalSpaces || 0));
-        const availCap = p.rooms && p.rooms.length > 0
-            ? Math.max(0, p.rooms.reduce((acc, r) => acc + (r.remainingSpaces || 0), 0))
-            : Math.max(0, (p.remainingSpaces || p.availableSpaces || 0));
-        const occCap = Math.max(0, totalCap - availCap);
+            : Math.max(0, (p.totalCapacity || p.bedsCount || p.totalSpaces || 1));
+        const occCap = p.rooms && p.rooms.length > 0
+            ? Math.max(0, p.rooms.reduce((acc, r) => acc + (r.occupied != null ? r.occupied : Math.max(0, (r.totalCapacity || 1) - (r.remainingSpaces != null ? r.remainingSpaces : 0))), 0))
+            : Math.max(0, (p.totalOccupied != null ? p.totalOccupied : 0));
+        const availCap = Math.max(0, totalCap - occCap);
 
         return {
             id: p.id ? p.id.toString() : Math.random().toString(),

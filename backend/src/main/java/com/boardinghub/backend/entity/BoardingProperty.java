@@ -77,6 +77,9 @@ public class BoardingProperty {
     @Column(name = "total_capacity")
     private Integer totalCapacity;
 
+    @Column(name = "total_occupied")
+    private Integer totalOccupied;
+
     @Column(name = "has_kitchen")
     private Boolean hasKitchen;
 

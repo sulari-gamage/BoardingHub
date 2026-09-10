@@ -15,6 +15,7 @@ public class RoomResponse {
     private Double monthlyPrice;
     private Integer totalCapacity;
     private Integer remainingSpaces;
+    private Integer occupied;
     private Integer beds;
     private Integer washrooms;
     private String washroomType;

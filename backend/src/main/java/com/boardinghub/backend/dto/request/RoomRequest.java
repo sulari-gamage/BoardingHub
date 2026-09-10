@@ -28,6 +28,8 @@ public class RoomRequest {
     @NotNull(message = "Remaining spaces is required")
     private Integer remainingSpaces;
 
+    private Integer occupied;
+
     private String roomName;
     private Integer beds;
     private Integer washrooms;

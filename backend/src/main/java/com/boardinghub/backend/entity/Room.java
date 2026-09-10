@@ -38,6 +38,9 @@ public class Room {
     @Column(name = "remaining_spaces", nullable = false)
     private Integer remainingSpaces;
 
+    @Column(name = "occupied")
+    private Integer occupied;
+
     @Column(name = "room_name")
     private String roomName;
 

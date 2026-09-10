@@ -40,6 +40,7 @@ public class PropertyResponse {
     private Integer bedsCount;
     private Integer bathsCount;
     private Integer totalCapacity;
+    private Integer totalOccupied;
     private Boolean hasKitchen;
     private Boolean isFurnished;
     private Boolean isElectricityIncluded;
