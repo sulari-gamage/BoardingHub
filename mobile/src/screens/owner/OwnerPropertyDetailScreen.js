@@ -55,6 +55,7 @@ export default function OwnerPropertyDetailScreen({
             address: propToUse.address,
             city: propToUse.city,
             price: propToUse.monthlyRent || propToUse.price || 0,
+            propertyNature: propToUse.propertyNature,
             totalRooms: totalCap,
             availableRooms: availCap,
             rooms: propToUse.rooms || [],
@@ -170,16 +171,18 @@ export default function OwnerPropertyDetailScreen({
                 {/* Quick Actions Title */}
                 <Text style={styles.sectionTitle}>Quick Actions</Text>
                 <View style={styles.quickGrid}>
-                    {/* Rooms Card */}
-                    <TouchableOpacity style={styles.actionCard} onPress={onOpenRooms} activeOpacity={0.85}>
-                        <View style={styles.iconCircle}>
-                            <Ionicons name="bed-outline" size={24} color="#133E32" />
-                        </View>
-                        <Text style={styles.actionCardTitle}>Rooms</Text>
-                    </TouchableOpacity>
+                    {/* Rooms Card - Only for ROOM_BASED boarding properties */}
+                    {!(currentProperty?.propertyNature === 'WHOLE_HOUSE' || currentProperty?.raw?.propertyNature === 'WHOLE_HOUSE' || currentProperty?.propertyNature === 'ANNEX' || currentProperty?.raw?.propertyNature === 'ANNEX') && (
+                        <TouchableOpacity style={styles.actionCard} onPress={onOpenRooms} activeOpacity={0.85}>
+                            <View style={styles.iconCircle}>
+                                <Ionicons name="bed-outline" size={24} color="#133E32" />
+                            </View>
+                            <Text style={styles.actionCardTitle}>Rooms</Text>
+                        </TouchableOpacity>
+                    )}
 
                     {/* Images Card */}
-                    <TouchableOpacity style={styles.actionCard} onPress={onOpenGallery} activeOpacity={0.85}>
+                    <TouchableOpacity style={styles.actionCard} onPress={() => onOpenGallery && onOpenGallery(currentProperty)} activeOpacity={0.85}>
                         <View style={styles.iconCircle}>
                             <Ionicons name="images-outline" size={24} color="#133E32" />
                         </View>

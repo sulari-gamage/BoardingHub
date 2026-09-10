@@ -91,7 +91,10 @@ export default function App() {
   };
 
   const handleOpenGallery = (boarding) => {
-    if (boarding) setSelectedBoarding(boarding);
+    if (boarding) {
+      setSelectedBoarding(boarding);
+      if (userRole === 'OWNER') setSelectedOwnerProperty(boarding);
+    }
     setPreviousScreen(currentScreen);
     setCurrentScreen('IMAGE_GALLERY');
   };
@@ -371,8 +374,13 @@ export default function App() {
         />
       ) : currentScreen === 'IMAGE_GALLERY' ? (
         <ImageGalleryScreen
-          boarding={selectedBoarding || {}}
-          onBack={() => setCurrentScreen(previousScreen || 'DETAILS')}
+          boarding={selectedBoarding || selectedOwnerProperty || {}}
+          isOwner={userRole === 'OWNER'}
+          onBack={() => setCurrentScreen(previousScreen || (userRole === 'OWNER' ? 'OWNER_PROPERTY_DETAIL' : 'DETAILS'))}
+          onPropertyUpdated={(updated) => {
+            setSelectedOwnerProperty(updated);
+            setSelectedBoarding(updated);
+          }}
         />
       ) : currentScreen === 'MAP_VIEW' ? (
         <MapViewScreen

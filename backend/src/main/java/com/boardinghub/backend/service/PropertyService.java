@@ -208,7 +208,7 @@ public class PropertyService {
             }
         }
 
-        BoardingProperty updatedProperty = propertyRepository.save(property);
+        BoardingProperty updatedProperty = propertyRepository.saveAndFlush(property);
         return mapToPropertyResponse(updatedProperty);
     }
 

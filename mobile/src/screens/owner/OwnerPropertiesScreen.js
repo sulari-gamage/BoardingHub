@@ -25,7 +25,7 @@ export default function OwnerPropertiesScreen({
 
     useEffect(() => {
         loadOwnerProperties();
-    }, []);
+    }, [activeTab]);
 
     const loadOwnerProperties = async () => {
         try {
@@ -50,6 +50,12 @@ export default function OwnerPropertiesScreen({
             : Math.max(0, (p.totalOccupied != null ? p.totalOccupied : 0));
         const availCap = Math.max(0, totalCap - occCap);
 
+        const extractedImageUrls = (p.imageUrls && p.imageUrls.length > 0)
+            ? p.imageUrls
+            : (p.images && p.images.length > 0)
+                ? p.images.map(i => typeof i === 'string' ? i : i?.imageUrl).filter(Boolean)
+                : (p.imageUrl ? [p.imageUrl] : []);
+
         return {
             id: p.id ? p.id.toString() : Math.random().toString(),
             title: p.title || 'Boarding Property',
@@ -66,11 +72,9 @@ export default function OwnerPropertiesScreen({
             rating: p.rating || 4.8,
             rooms: p.rooms || [],
             raw: p,
-            imageUrl: (p.imageUrls && p.imageUrls.length > 0)
-                ? p.imageUrls[0]
-                : (p.images && p.images.length > 0)
-                    ? (typeof p.images[0] === 'string' ? p.images[0] : p.images[0].imageUrl)
-                    : null
+            imageUrls: extractedImageUrls,
+            images: p.images || [],
+            imageUrl: extractedImageUrls.length > 0 ? extractedImageUrls[0] : null
         };
     });
 
