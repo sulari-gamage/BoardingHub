@@ -36,6 +36,7 @@ public class PropertyService {
                 .description(request.getDescription())
                 .address(request.getAddress())
                 .city(request.getCity())
+                .district(request.getDistrict())
                 .genderPreference(request.getGenderPreference())
                 .monthlyRent(request.getMonthlyRent())
                 .latitude(request.getLatitude())
@@ -44,6 +45,7 @@ public class PropertyService {
                 .roomsCount(request.getRoomsCount())
                 .bedsCount(request.getBedsCount())
                 .bathsCount(request.getBathsCount())
+                .totalCapacity(computeTotalCapacity(request))
                 .hasKitchen(request.getHasKitchen())
                 .isFurnished(request.getIsFurnished())
                 .isElectricityIncluded(request.getIsElectricityIncluded())
@@ -109,6 +111,7 @@ public class PropertyService {
         property.setDescription(request.getDescription());
         property.setAddress(request.getAddress());
         property.setCity(request.getCity());
+        property.setDistrict(request.getDistrict());
         property.setGenderPreference(request.getGenderPreference());
         property.setMonthlyRent(request.getMonthlyRent());
         property.setLatitude(request.getLatitude());
@@ -117,6 +120,7 @@ public class PropertyService {
         property.setRoomsCount(request.getRoomsCount());
         property.setBedsCount(request.getBedsCount());
         property.setBathsCount(request.getBathsCount());
+        property.setTotalCapacity(computeTotalCapacity(request));
         property.setHasKitchen(request.getHasKitchen());
         property.setIsFurnished(request.getIsFurnished());
         property.setIsElectricityIncluded(request.getIsElectricityIncluded());
@@ -318,6 +322,7 @@ public class PropertyService {
                 .description(p.getDescription())
                 .address(p.getAddress())
                 .city(p.getCity())
+                .district(p.getDistrict())
                 .genderPreference(p.getGenderPreference())
                 .monthlyRent(p.getMonthlyRent())
                 .status(p.getStatus())
@@ -330,6 +335,7 @@ public class PropertyService {
                 .roomsCount(p.getRoomsCount())
                 .bedsCount(p.getBedsCount())
                 .bathsCount(p.getBathsCount())
+                .totalCapacity(p.getTotalCapacity() != null ? p.getTotalCapacity() : (p.getRooms() != null && !p.getRooms().isEmpty() ? p.getRooms().stream().mapToInt(r -> r.getTotalCapacity() != null ? r.getTotalCapacity() : 1).sum() : p.getBedsCount()))
                 .hasKitchen(p.getHasKitchen())
                 .isFurnished(p.getIsFurnished())
                 .isElectricityIncluded(p.getIsElectricityIncluded())
@@ -390,5 +396,17 @@ public class PropertyService {
             pa.setHasAttachedBathroom(list.contains("Attached Bathroom") ? true : null);
             pa.setHasBalcony(list.contains("Private Balcony") ? true : null);
         }
+    }
+
+    private Integer computeTotalCapacity(PropertyRequest request) {
+        if (request.getRooms() != null && !request.getRooms().isEmpty()) {
+            return request.getRooms().stream()
+                    .mapToInt(r -> r.getTotalCapacity() != null ? r.getTotalCapacity() : 1)
+                    .sum();
+        }
+        if (request.getTotalCapacity() != null && request.getTotalCapacity() > 0) {
+            return request.getTotalCapacity();
+        }
+        return request.getBedsCount() != null ? request.getBedsCount() : 1;
     }
 }

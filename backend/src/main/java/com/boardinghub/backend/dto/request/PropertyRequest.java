@@ -26,6 +26,8 @@ public class PropertyRequest {
     @NotBlank(message = "City is required")
     private String city;
 
+    private String district;
+
     @NotNull(message = "Gender preference is required (ANY, MALE_ONLY, or FEMALE_ONLY)")
     private GenderPreference genderPreference;
 
@@ -44,6 +46,7 @@ public class PropertyRequest {
     private Integer roomsCount;
     private Integer bedsCount;
     private Integer bathsCount;
+    private Integer totalCapacity;
     private Boolean hasKitchen;
     private Boolean isFurnished;
     private Boolean isElectricityIncluded;

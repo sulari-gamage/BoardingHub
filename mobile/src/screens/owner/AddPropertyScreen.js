@@ -120,6 +120,8 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
     const handleOpenAddRoomModal = () => {
         setCurrentRoom({
             id: `room_${Date.now()}`,
+            isEditMode: false,
+            isNew: true,
             name: `Room ${rooms.length + 1}`,
             rent: '',
             capacity: '1',
@@ -139,6 +141,8 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
     const handleOpenEditRoomModal = (room) => {
         setCurrentRoom({
             ...room,
+            isEditMode: true,
+            isNew: false,
             number: room.name,
             price: room.rent,
         });
@@ -229,6 +233,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
     const [searchAddress, setSearchAddress] = useState(dbSource.address || '');
     const [streetAddress, setStreetAddress] = useState(dbSource.address || '');
     const [city, setCity] = useState(dbSource.city || '');
+    const [district, setDistrict] = useState(dbSource.district || '');
     const [postalCode, setPostalCode] = useState('');
     const [mapCoords, setMapCoords] = useState({
         lat: dbSource.latitude || 6.9271,
@@ -461,6 +466,18 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                 Alert.alert('Required Field', 'Please enter a property name.');
                 return;
             }
+            if (!streetAddress.trim() && !searchAddress.trim()) {
+                Alert.alert('Required Field', 'Please enter property address.');
+                return;
+            }
+            if (!city.trim()) {
+                Alert.alert('Required Field', 'Please enter city / town.');
+                return;
+            }
+            if (!district.trim()) {
+                Alert.alert('Required Field', 'Please enter district.');
+                return;
+            }
             if (propertyNature === 'ROOM_BASED') {
                 if (rooms.length === 0) {
                     Alert.alert('Room Required', 'Please add at least one room to your room-based property inventory before continuing.');
@@ -473,20 +490,10 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                 }
             }
         }
-        if (currentStep === 2) {
-            if (!streetAddress.trim() && !searchAddress.trim()) {
-                Alert.alert('Required Field', 'Please enter a street address or search location.');
-                return;
-            }
-            if (!city.trim()) {
-                Alert.alert('Required Field', 'Please enter a city.');
-                return;
-            }
-        }
-        if (currentStep < 4) {
+        if (currentStep < 3) {
             setCurrentStep(currentStep + 1);
         } else {
-            // Step 4: Publish Property
+            // Step 3: Publish Property
             if (isSubmitting || submitLock.current) return;
             if (!coverImage) {
                 Alert.alert('Cover Photo Required', 'Please select a cover photo from your device gallery before publishing.');
@@ -575,6 +582,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                     description: description || 'Boarding house property.',
                     address: streetAddress || searchAddress,
                     city: city,
+                    district: district,
                     genderPreference: mappedGender,
                     monthlyRent: parsedRent,
                     latitude: mapCoords.lat,
@@ -586,6 +594,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                     roomsCount: propertyNature === 'WHOLE_HOUSE' ? (parseInt(wholeHouseRooms || '') || 1) : rooms.length,
                     bedsCount: propertyNature === 'WHOLE_HOUSE' ? (parseInt(wholeHouseBeds || '') || 1) : null,
                     bathsCount: propertyNature === 'WHOLE_HOUSE' ? (parseInt(wholeHouseWashrooms || '') || 1) : null,
+                    totalCapacity: propertyNature === 'WHOLE_HOUSE' ? (parseInt(wholeHouseBeds || '') || 1) : parsedCapacity,
                     hasKitchen: propertyNature === 'WHOLE_HOUSE' ? hasKitchen : true,
                     isFurnished: propertyNature === 'WHOLE_HOUSE' ? isFurnished : false,
                     isElectricityIncluded: isElectricityIncluded,
@@ -644,7 +653,6 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
     const renderStepHeader = () => {
         const stepTitles = [
             'Property Information',
-            'Location',
             'Property Amenities',
             'Property Photos'
         ];
@@ -669,22 +677,20 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                 <View style={styles.titleSection}>
                     <Text style={styles.mainTitle}>
                         {currentStep === 1 && (isEditMode ? 'Edit Property' : 'Add New Property')}
-                        {currentStep === 2 && 'Location'}
-                        {currentStep === 3 && 'Select Property Amenities'}
-                        {currentStep === 4 && 'Upload Property Photos'}
+                        {currentStep === 2 && 'Select Property Amenities'}
+                        {currentStep === 3 && 'Upload Property Photos'}
                     </Text>
                     <Text style={styles.stepSubtitle}>
-                        Step {currentStep} of 4: {stepTitles[currentStep - 1]}
+                        Step {currentStep} of 3: {stepTitles[currentStep - 1]}
                     </Text>
                 </View>
 
-                {/* Number Stepper Circles (1, 2, 3, 4) */}
+                {/* Number Stepper Circles (1, 2, 3) */}
                 <View style={styles.stepperRow}>
                     {[
                         { num: 1, label: 'Info' },
-                        { num: 2, label: 'Location' },
-                        { num: 3, label: 'Amenities' },
-                        { num: 4, label: 'Photos' },
+                        { num: 2, label: 'Amenities' },
+                        { num: 3, label: 'Photos' },
                     ].map((step, idx) => {
                         const isActive = currentStep === step.num;
                         const isPassed = currentStep > step.num;
@@ -722,7 +728,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
 
                 {/* Top Progress Bar */}
                 <View style={styles.progressBarTrack}>
-                    <View style={[styles.progressBarFill, { width: `${(currentStep / 4) * 100}%` }]} />
+                    <View style={[styles.progressBarFill, { width: `${(currentStep / 3) * 100}%` }]} />
                 </View>
             </View>
         );
@@ -760,6 +766,43 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                             value={propertyName}
                             onChangeText={setPropertyName}
                         />
+
+                        {/* Address */}
+                        <Text style={styles.fieldLabel}>Property Address *</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="e.g. No. 45, Temple Road, Bambalapitiya"
+                            placeholderTextColor="#94A3B8"
+                            value={streetAddress}
+                            onChangeText={(text) => {
+                                setStreetAddress(text);
+                                setSearchAddress(text);
+                            }}
+                        />
+
+                        {/* City and District Row */}
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.fieldLabel}>City / Town *</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="e.g. Malabe, Moratuwa"
+                                    placeholderTextColor="#94A3B8"
+                                    value={city}
+                                    onChangeText={setCity}
+                                />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.fieldLabel}>District *</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="e.g. Colombo, Kandy"
+                                    placeholderTextColor="#94A3B8"
+                                    value={district}
+                                    onChangeText={setDistrict}
+                                />
+                            </View>
+                        </View>
 
                         {/* Property Nature (Room-Based vs Whole House) */}
                         <Text style={styles.fieldLabel}>Property Nature / Type *</Text>
@@ -1320,120 +1363,8 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                     </View>
                 )}
 
-                {/* STEP 2: LOCATION */}
+                {/* STEP 2: AMENITIES */}
                 {currentStep === 2 && (
-                    <View style={styles.stepTwoContainer}>
-                        {/* Interactive React Native Maps */}
-                        <View style={styles.mapCard}>
-                            <MapView
-                                style={StyleSheet.absoluteFillObject}
-                                region={{
-                                    latitude: mapCoords.lat || 6.9271,
-                                    longitude: mapCoords.lng || 79.8612,
-                                    latitudeDelta: 0.02,
-                                    longitudeDelta: 0.02,
-                                }}
-                                onPress={(e) => {
-                                    setMapCoords({
-                                        lat: e.nativeEvent.coordinate.latitude,
-                                        lng: e.nativeEvent.coordinate.longitude
-                                    });
-                                }}
-                            >
-                                <Marker
-                                    coordinate={{
-                                        latitude: mapCoords.lat || 6.9271,
-                                        longitude: mapCoords.lng || 79.8612,
-                                    }}
-                                    title={streetAddress || city || 'Selected Location'}
-                                    description="Property Pin Location"
-                                    draggable
-                                    onDragEnd={(e) => {
-                                        setMapCoords({
-                                            lat: e.nativeEvent.coordinate.latitude,
-                                            lng: e.nativeEvent.coordinate.longitude
-                                        });
-                                    }}
-                                />
-                            </MapView>
-
-                            {/* Floating Address Search Input */}
-                            <View style={styles.mapSearchOverlay}>
-                                <Ionicons name="search" size={18} color="#133E32" style={{ marginRight: 8 }} />
-                                <TextInput
-                                    style={styles.mapSearchInput}
-                                    placeholder="Search location, address, or city..."
-                                    placeholderTextColor="#94A3B8"
-                                    value={searchAddress}
-                                    onChangeText={handleSearchChange}
-                                />
-                            </View>
-
-                            {/* Device Location Provider Button */}
-                            <TouchableOpacity
-                                style={{ position: 'absolute', right: 12, top: 70, backgroundColor: '#FFFFFF', padding: 8, borderRadius: 20, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3 }}
-                                onPress={handleGetCurrentLocation}
-                            >
-                                <Ionicons name="locate" size={24} color="#133E32" />
-                            </TouchableOpacity>
-
-                            {/* Bottom Info Touch Prompt */}
-                            <View style={{ position: 'absolute', bottom: 10, alignSelf: 'center', backgroundColor: 'rgba(15, 23, 42, 0.85)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
-                                <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>
-                                    👇 Tap or drag pin to accurately adjust
-                                </Text>
-                            </View>
-                        </View>
-
-                        {/* Address, City & Postal Code Inputs */}
-                        <View style={styles.cardContainer}>
-                            <Text style={styles.fieldLabel}>Street Address *</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="e.g. 99 Kaduwela Road, Malabe"
-                                placeholderTextColor="#94A3B8"
-                                value={streetAddress}
-                                onChangeText={handleStreetAddressChange}
-                            />
-
-                            <Text style={styles.fieldLabel}>City / Area *</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="e.g. Malabe / Moratuwa"
-                                placeholderTextColor="#94A3B8"
-                                value={city}
-                                onChangeText={setCity}
-                            />
-
-                            <Text style={styles.fieldLabel}>Postal Code</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="e.g. 10115 / 10400"
-                                placeholderTextColor="#94A3B8"
-                                value={postalCode}
-                                onChangeText={setPostalCode}
-                                keyboardType="numeric"
-                            />
-
-                            {/* Primary Management Hub Toggle Checkbox */}
-                            <TouchableOpacity
-                                style={styles.checkboxRow}
-                                onPress={() => setIsPrimaryHub(!isPrimaryHub)}
-                                activeOpacity={0.8}
-                            >
-                                <View style={[styles.checkbox, isPrimaryHub && styles.checkboxActive]}>
-                                    {isPrimaryHub && <Ionicons name="checkmark" size={14} color="#FFD700" />}
-                                </View>
-                                <Text style={styles.checkboxLabel}>Set as primary management hub</Text>
-                            </TouchableOpacity>
-                        </View>
-
-
-                    </View>
-                )}
-
-                {/* STEP 3: AMENITIES */}
-                {currentStep === 3 && (
                     <View style={styles.stepThreeContainer}>
 
                         <View style={styles.cardContainer}>
@@ -1612,8 +1543,8 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                     </View>
                 )}
 
-                {/* STEP 4: PHOTOS */}
-                {currentStep === 4 && (
+                {/* STEP 3: PHOTOS */}
+                {currentStep === 3 && (
                     <View style={styles.stepFourContainer}>
                         {/* Cover Image Box */}
                         <View style={styles.photoCard}>
@@ -1692,7 +1623,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                 {currentStep > 1 ? (
                     <TouchableOpacity style={styles.outlinedBackBtn} onPress={handlePrev} activeOpacity={0.8}>
                         <Text style={styles.outlinedBackBtnText}>
-                            {currentStep === 3 ? 'Back to Location' : 'Back'}
+                            {currentStep === 2 ? 'Back to Info' : 'Back to Amenities'}
                         </Text>
                     </TouchableOpacity>
                 ) : (
@@ -1702,17 +1633,17 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                 )}
 
                 <TouchableOpacity
-                    style={[styles.primaryNextBtn, currentStep === 4 && isSubmitting && { opacity: 0.7 }]}
+                    style={[styles.primaryNextBtn, currentStep === 3 && isSubmitting && { opacity: 0.7 }]}
                     onPress={handleNext}
                     activeOpacity={0.85}
-                    disabled={currentStep === 4 && isSubmitting}
+                    disabled={currentStep === 3 && isSubmitting}
                 >
-                    {currentStep === 4 && isSubmitting ? (
+                    {currentStep === 3 && isSubmitting ? (
                         <ActivityIndicator color="#FFFFFF" size="small" />
                     ) : (
                         <>
                             <Text style={styles.primaryNextBtnText}>
-                                {currentStep === 4 ? 'Publish Listing' : 'Next Step'}
+                                {currentStep === 3 ? 'Publish Listing' : 'Next Step'}
                             </Text>
                             <Ionicons name="arrow-forward" size={18} color="#FFD700" style={{ marginLeft: 6 }} />
                         </>

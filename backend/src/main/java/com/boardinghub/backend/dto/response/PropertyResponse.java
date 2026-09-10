@@ -19,6 +19,7 @@ public class PropertyResponse {
     private String description;
     private String address;
     private String city;
+    private String district;
     private GenderPreference genderPreference;
     private Double monthlyRent;
     private PropertyStatus status;
@@ -38,6 +39,7 @@ public class PropertyResponse {
     private Integer roomsCount;
     private Integer bedsCount;
     private Integer bathsCount;
+    private Integer totalCapacity;
     private Boolean hasKitchen;
     private Boolean isFurnished;
     private Boolean isElectricityIncluded;

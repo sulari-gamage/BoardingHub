@@ -39,6 +39,9 @@ public class BoardingProperty {
     @Column(nullable = false)
     private String city;
 
+    @Column(name = "district")
+    private String district;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "gender_preference", nullable = false)
     private GenderPreference genderPreference;
@@ -70,6 +73,9 @@ public class BoardingProperty {
 
     @Column(name = "baths_count")
     private Integer bathsCount;
+
+    @Column(name = "total_capacity")
+    private Integer totalCapacity;
 
     @Column(name = "has_kitchen")
     private Boolean hasKitchen;

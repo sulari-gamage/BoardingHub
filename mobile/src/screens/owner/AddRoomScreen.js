@@ -15,7 +15,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
-export default function AddRoomScreen({ onBack, onSaveRoom, initialRoomData = null }) {
+export default function AddRoomScreen({ onBack, onSaveRoom, initialRoomData = null, isEditMode = false }) {
+    const isEditing = isEditMode || (initialRoomData && initialRoomData.isEditMode === true) || (initialRoomData && !!initialRoomData.rawId && !initialRoomData.isNew);
+
     // Form state matching Image 2 mockup
     const [roomNumber, setRoomNumber] = useState('');
     const [roomType, setRoomType] = useState('Single');
@@ -26,6 +28,13 @@ export default function AddRoomScreen({ onBack, onSaveRoom, initialRoomData = nu
     const [beds, setBeds] = useState('1');
     const [washrooms, setWashrooms] = useState('1');
     const [washroomType, setWashroomType] = useState('Common');
+
+    const [isElectricityIncluded, setIsElectricityIncluded] = useState(
+        initialRoomData?.isElectricityIncluded !== undefined ? initialRoomData.isElectricityIncluded : true
+    );
+    const [isWaterIncluded, setIsWaterIncluded] = useState(
+        initialRoomData?.isWaterIncluded !== undefined ? initialRoomData.isWaterIncluded : true
+    );
 
     // Room Amenities state
     const [amenities, setAmenities] = useState({
@@ -53,6 +62,12 @@ export default function AddRoomScreen({ onBack, onSaveRoom, initialRoomData = nu
             setWashrooms(initialRoomData.washrooms ? initialRoomData.washrooms.toString() : '1');
             setWashroomType(initialRoomData.washroomType || 'Common');
             setRentType(initialRoomData.rentType || 'PER_PERSON');
+            if (initialRoomData.isElectricityIncluded !== undefined) {
+                setIsElectricityIncluded(initialRoomData.isElectricityIncluded);
+            }
+            if (initialRoomData.isWaterIncluded !== undefined) {
+                setIsWaterIncluded(initialRoomData.isWaterIncluded);
+            }
             if (initialRoomData.amenities) {
                 if (typeof initialRoomData.amenities === 'string') {
                     const str = initialRoomData.amenities;
@@ -125,6 +140,8 @@ export default function AddRoomScreen({ onBack, onSaveRoom, initialRoomData = nu
             rentType: rentType,
             totalCapacity: maxOccupants,
             remainingSpaces: maxOccupants,
+            isElectricityIncluded: isElectricityIncluded,
+            isWaterIncluded: isWaterIncluded,
             // UI compatibility fields
             number: roomNumber,
             type: `${roomType} Type | ${facilityStr}`,
@@ -146,14 +163,14 @@ export default function AddRoomScreen({ onBack, onSaveRoom, initialRoomData = nu
                 <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
                     <Ionicons name="arrow-back" size={20} color="#133E32" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{initialRoomData?.id || initialRoomData?.rawId ? 'Edit Room' : 'Add New Room'}</Text>
+                <Text style={styles.headerTitle}>{isEditing ? 'Edit Room' : 'Add New Room'}</Text>
                 <View style={{ width: 36 }} />
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {/* Title Section */}
                 <View style={styles.titleSection}>
-                    <Text style={styles.mainTitle}>{initialRoomData?.id || initialRoomData?.rawId ? 'Edit Room Details' : 'Add New Room'}</Text>
+                    <Text style={styles.mainTitle}>{isEditing ? 'Edit Room Details' : 'Add New Room'}</Text>
                     <Text style={styles.subtitle}>Configure room details, pricing, and amenities.</Text>
                 </View>
 
@@ -331,6 +348,154 @@ export default function AddRoomScreen({ onBack, onSaveRoom, initialRoomData = nu
                             </TouchableOpacity>
                         );
                     })}
+                </View>
+
+                {/* Card 3.5: Utility Bills Inclusion */}
+                <View style={styles.cardContainer}>
+                    <Text style={styles.cardTitle}>⚡ Utility Bills Inclusion</Text>
+                    <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 12 }}>
+                        Specify whether utility bills are included in this room's rent or paid separately by occupants.
+                    </Text>
+                    <View style={styles.titleDivider} />
+
+                    {/* Electricity */}
+                    <Text style={[styles.fieldLabel, { marginBottom: 6 }]}>⚡ Electricity Bill</Text>
+                    <View style={{
+                        flexDirection: 'row',
+                        backgroundColor: '#F1F5F9',
+                        borderRadius: 12,
+                        padding: 3,
+                        borderWidth: 1,
+                        borderColor: '#E2E8F0',
+                        marginBottom: 14
+                    }}>
+                        <TouchableOpacity
+                            style={{
+                                flex: 1,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                paddingVertical: 10,
+                                borderRadius: 9,
+                                backgroundColor: isElectricityIncluded ? '#133E32' : 'transparent',
+                                elevation: isElectricityIncluded ? 1 : 0
+                            }}
+                            onPress={() => setIsElectricityIncluded(true)}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons
+                                name={isElectricityIncluded ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                                size={15}
+                                color={isElectricityIncluded ? '#FFD700' : '#64748B'}
+                                style={{ marginRight: 6 }}
+                            />
+                            <Text style={{
+                                fontSize: 12,
+                                fontWeight: isElectricityIncluded ? '800' : '600',
+                                color: isElectricityIncluded ? '#FFFFFF' : '#475569'
+                            }}>
+                                Included in Rent
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={{
+                                flex: 1,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                paddingVertical: 10,
+                                borderRadius: 9,
+                                backgroundColor: !isElectricityIncluded ? '#133E32' : 'transparent',
+                                elevation: !isElectricityIncluded ? 1 : 0
+                            }}
+                            onPress={() => setIsElectricityIncluded(false)}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons
+                                name={!isElectricityIncluded ? 'flash' : 'flash-outline'}
+                                size={14}
+                                color={!isElectricityIncluded ? '#FFD700' : '#64748B'}
+                                style={{ marginRight: 6 }}
+                            />
+                            <Text style={{
+                                fontSize: 12,
+                                fontWeight: !isElectricityIncluded ? '800' : '600',
+                                color: !isElectricityIncluded ? '#FFFFFF' : '#475569'
+                            }}>
+                                Paid by Occupant
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Water */}
+                    <Text style={[styles.fieldLabel, { marginBottom: 6 }]}>💧 Water Bill</Text>
+                    <View style={{
+                        flexDirection: 'row',
+                        backgroundColor: '#F1F5F9',
+                        borderRadius: 12,
+                        padding: 3,
+                        borderWidth: 1,
+                        borderColor: '#E2E8F0'
+                    }}>
+                        <TouchableOpacity
+                            style={{
+                                flex: 1,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                paddingVertical: 10,
+                                borderRadius: 9,
+                                backgroundColor: isWaterIncluded ? '#133E32' : 'transparent',
+                                elevation: isWaterIncluded ? 1 : 0
+                            }}
+                            onPress={() => setIsWaterIncluded(true)}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons
+                                name={isWaterIncluded ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                                size={15}
+                                color={isWaterIncluded ? '#FFD700' : '#64748B'}
+                                style={{ marginRight: 6 }}
+                            />
+                            <Text style={{
+                                fontSize: 12,
+                                fontWeight: isWaterIncluded ? '800' : '600',
+                                color: isWaterIncluded ? '#FFFFFF' : '#475569'
+                            }}>
+                                Included in Rent
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={{
+                                flex: 1,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                paddingVertical: 10,
+                                borderRadius: 9,
+                                backgroundColor: !isWaterIncluded ? '#133E32' : 'transparent',
+                                elevation: !isWaterIncluded ? 1 : 0
+                            }}
+                            onPress={() => setIsWaterIncluded(false)}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons
+                                name={!isWaterIncluded ? 'water' : 'water-outline'}
+                                size={14}
+                                color={!isWaterIncluded ? '#FFD700' : '#64748B'}
+                                style={{ marginRight: 6 }}
+                            />
+                            <Text style={{
+                                fontSize: 12,
+                                fontWeight: !isWaterIncluded ? '800' : '600',
+                                color: !isWaterIncluded ? '#FFFFFF' : '#475569'
+                            }}>
+                                Paid by Occupant
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {/* Card 4: Room Photos */}
