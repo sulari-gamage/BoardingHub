@@ -41,4 +41,31 @@ public class PropertyRequest {
     private List<String> imageUrls;
     private List<RoomRequest> rooms;
     private String propertyNature;
+    private Integer roomsCount;
+    private Integer bedsCount;
+    private Integer bathsCount;
+    private Boolean hasKitchen;
+    private Boolean isFurnished;
+    private Boolean isElectricityIncluded;
+    private Boolean isWaterIncluded;
+
+    private Boolean hasWifi;
+    private Boolean hasWater;
+    private Boolean hasElectricity;
+    private Boolean hasGas;
+    private Boolean hasLaundry;
+    private Boolean hasParking;
+    private Boolean hasKitchenAmenity;
+    private Boolean hasCommonArea;
+    private Boolean hasPool;
+    private Boolean hasFitness;
+    private Boolean hasCctv;
+    private Boolean hasGate;
+    private Boolean hasFireExtinguisher;
+    private Boolean hasFirstAid;
+    private Boolean hasAc;
+    private Boolean hasGenerator;
+    private Boolean hasAttachedBathroom;
+    private Boolean hasBalcony;
+    private String customAmenities;
 }

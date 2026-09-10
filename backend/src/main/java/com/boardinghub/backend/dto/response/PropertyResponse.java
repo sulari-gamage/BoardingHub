@@ -35,6 +35,13 @@ public class PropertyResponse {
     private List<String> imageUrls;
     private List<RoomResponse> rooms;
     private String propertyNature;
+    private Integer roomsCount;
+    private Integer bedsCount;
+    private Integer bathsCount;
+    private Boolean hasKitchen;
+    private Boolean isFurnished;
+    private Boolean isElectricityIncluded;
+    private Boolean isWaterIncluded;
 
     private LocalDateTime createdAt;
 }

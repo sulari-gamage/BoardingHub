@@ -218,6 +218,69 @@ export default function OwnerPropertyDetailScreen({
                             <Text style={styles.infoValue}>Total LKR {(currentProperty.price || 0).toLocaleString()} / month</Text>
                         </View>
                     </View>
+
+                    {/* House Layout Specifications if Whole House */}
+                    {(currentProperty.raw?.roomsCount > 0 || currentProperty.raw?.bedsCount > 0 || currentProperty.raw?.hasKitchen !== undefined) && (
+                        <>
+                            <View style={styles.divider} />
+                            <View style={styles.infoRow}>
+                                <View style={styles.infoIconWrapper}>
+                                    <Ionicons name="home-outline" size={20} color="#133E32" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.infoLabel}>HOUSE SPECIFICATIONS</Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                                        {currentProperty.raw?.roomsCount > 0 && (
+                                            <View style={{ backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FEF08A', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center' }}>
+                                                <Ionicons name="bed-outline" size={12} color="#D97706" style={{ marginRight: 4 }} />
+                                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#B45309' }}>{currentProperty.raw.roomsCount} Rooms</Text>
+                                            </View>
+                                        )}
+                                        {currentProperty.raw?.bedsCount > 0 && (
+                                            <View style={{ backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#CBD5E1', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center' }}>
+                                                <Ionicons name="ios-bed" size={12} color="#334155" style={{ marginRight: 4 }} />
+                                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>{currentProperty.raw.bedsCount} Beds</Text>
+                                            </View>
+                                        )}
+                                        {currentProperty.raw?.bathsCount > 0 && (
+                                            <View style={{ backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#CBD5E1', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center' }}>
+                                                <Ionicons name="water-outline" size={12} color="#334155" style={{ marginRight: 4 }} />
+                                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>{currentProperty.raw.bathsCount} Baths</Text>
+                                            </View>
+                                        )}
+                                        {currentProperty.raw?.hasKitchen && (
+                                            <View style={{ backgroundColor: '#E6F0EC', borderWidth: 1, borderColor: '#C3DCD4', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center' }}>
+                                                <Ionicons name="restaurant-outline" size={12} color="#133E32" style={{ marginRight: 4 }} />
+                                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#133E32' }}>Kitchen Included</Text>
+                                            </View>
+                                        )}
+                                        {currentProperty.raw?.isFurnished !== undefined && (
+                                            <View style={{ backgroundColor: '#E6F0EC', borderWidth: 1, borderColor: '#C3DCD4', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center' }}>
+                                                <Ionicons name="checkmark-circle-outline" size={12} color="#133E32" style={{ marginRight: 4 }} />
+                                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#133E32' }}>{currentProperty.raw.isFurnished ? 'Furnished' : 'Unfurnished'}</Text>
+                                            </View>
+                                        )}
+                                        {currentProperty.raw?.isElectricityIncluded !== undefined && (
+                                            <View style={{ backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center' }}>
+                                                <Ionicons name="flash-outline" size={12} color="#133E32" style={{ marginRight: 4 }} />
+                                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#133E32' }}>
+                                                    {currentProperty.raw.isElectricityIncluded ? '⚡ Electricity Included' : '⚡ Occupants Pay Electricity'}
+                                                </Text>
+                                            </View>
+                                        )}
+                                        {currentProperty.raw?.isWaterIncluded !== undefined && (
+                                            <View style={{ backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center' }}>
+                                                <Ionicons name="water-outline" size={12} color="#133E32" style={{ marginRight: 4 }} />
+                                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#133E32' }}>
+                                                    {currentProperty.raw.isWaterIncluded ? '💧 Water Included' : '💧 Occupants Pay Water'}
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                </View>
+                            </View>
+                        </>
+                    )}
                 </View>
 
                 {/* Amenities Section */}

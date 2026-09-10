@@ -58,4 +58,10 @@ public class Room {
 
     @Column(name = "image_url", length = 1000)
     private String imageUrl;
+
+    @Column(name = "is_electricity_included")
+    private Boolean isElectricityIncluded;
+
+    @Column(name = "is_water_included")
+    private Boolean isWaterIncluded;
 }

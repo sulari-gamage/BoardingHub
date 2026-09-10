@@ -193,6 +193,11 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                 latitude: rawProp.latitude || property.latitude,
                 longitude: rawProp.longitude || property.longitude,
                 propertyNature: rawProp.propertyNature || property.propertyNature,
+                roomsCount: rawProp.roomsCount || property.roomsCount,
+                bedsCount: rawProp.bedsCount || property.bedsCount,
+                bathsCount: rawProp.bathsCount || property.bathsCount,
+                hasKitchen: rawProp.hasKitchen !== undefined ? rawProp.hasKitchen : property.hasKitchen,
+                isFurnished: rawProp.isFurnished !== undefined ? rawProp.isFurnished : property.isFurnished,
                 amenities: rawProp.amenities || property.amenities || [],
                 imageUrls: rawProp.imageUrls || property.imageUrls || [],
                 rooms: updatedRooms

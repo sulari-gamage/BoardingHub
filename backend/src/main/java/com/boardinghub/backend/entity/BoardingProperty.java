@@ -62,14 +62,29 @@ public class BoardingProperty {
     @Column(name = "property_nature")
     private String propertyNature;
 
-    @ManyToMany
-    @JoinTable(
-        name = "property_amenities",
-        joinColumns = @JoinColumn(name = "property_id"),
-        inverseJoinColumns = @JoinColumn(name = "amenity_id")
-    )
-    @Builder.Default
-    private List<Amenity> amenities = new ArrayList<>();
+    @Column(name = "rooms_count")
+    private Integer roomsCount;
+
+    @Column(name = "beds_count")
+    private Integer bedsCount;
+
+    @Column(name = "baths_count")
+    private Integer bathsCount;
+
+    @Column(name = "has_kitchen")
+    private Boolean hasKitchen;
+
+    @Column(name = "is_furnished")
+    private Boolean isFurnished;
+
+    @Column(name = "is_electricity_included")
+    private Boolean isElectricityIncluded;
+
+    @Column(name = "is_water_included")
+    private Boolean isWaterIncluded;
+
+    @OneToOne(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true)
+    private PropertyAmenity amenity;
 
     @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

@@ -63,13 +63,19 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
         });
     }
 
-    // Nearest Locations & Extra Facilities
+    // Nearest Locations & House Layout Specifications (for Whole House / Annex)
     const [nearestPlaces, setNearestPlaces] = useState('');
-    const [wholeHouseBeds, setWholeHouseBeds] = useState('');
-    const [wholeHouseWashrooms, setWholeHouseWashrooms] = useState('');
+    const [wholeHouseRooms, setWholeHouseRooms] = useState(dbSource.roomsCount ? dbSource.roomsCount.toString() : '');
+    const [wholeHouseBeds, setWholeHouseBeds] = useState(dbSource.bedsCount ? dbSource.bedsCount.toString() : '');
+    const [wholeHouseWashrooms, setWholeHouseWashrooms] = useState(dbSource.bathsCount ? dbSource.bathsCount.toString() : '');
+    const [hasKitchen, setHasKitchen] = useState(dbSource.hasKitchen !== undefined ? dbSource.hasKitchen : true);
+    const [isFurnished, setIsFurnished] = useState(dbSource.isFurnished !== undefined ? dbSource.isFurnished : false);
     const [hasFridge, setHasFridge] = useState(false);
     const [hasOven, setHasOven] = useState(false);
     const [hasAC, setHasAC] = useState(false);
+    const [isElectricityIncluded, setIsElectricityIncluded] = useState(dbSource.isElectricityIncluded !== undefined ? dbSource.isElectricityIncluded : true);
+    const [isWaterIncluded, setIsWaterIncluded] = useState(dbSource.isWaterIncluded !== undefined ? dbSource.isWaterIncluded : true);
+
 
     // Step 1 Form State (Property Info & Dynamic Room Inventory)
     const [propertyName, setPropertyName] = useState(dbSource.title || dbSource.name || propertyToEdit?.title || '');
@@ -81,10 +87,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
         dbSource.genderPreference === 'FEMALE_ONLY' ? 'Female Only' :
             dbSource.genderPreference === 'MALE_ONLY' ? 'Male Only' : 'Mixed'
     );
-    const [certifications, setCertifications] = useState(dbSource.certifications || []);
-    const [uploadedCertPhotos, setUploadedCertPhotos] = useState([]);
-    const [newCertText, setNewCertText] = useState('');
-    const [isCertModalVisible, setIsCertModalVisible] = useState(false);
+
 
     // Dynamic Room Inventory State (for ROOM_BASED properties)
     const [rooms, setRooms] = useState(
@@ -428,18 +431,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
         }
     };
 
-    const handlePickCertPhoto = () => {
-        openDeviceGalleryPicker((file) => {
-            const certItem = {
-                id: `cert_${Date.now()}`,
-                name: file.name || `Certificate_${Date.now()}.jpg`,
-                title: file.name ? file.name.replace(/\.[^/.]+$/, "") : 'Phone Gallery Document',
-                uri: file.uri,
-                size: file.size ? `${(file.size / 1024).toFixed(1)} KB` : 'Real Photo'
-            };
-            setUploadedCertPhotos((prev) => [...prev, certItem]);
-        }, 'image/*,.pdf');
-    };
+
 
     const handlePickCoverPhoto = () => {
         openDeviceGalleryPicker((file) => {
@@ -555,17 +547,11 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                             remainingSpaces: parseInt(r.capacity) || 1,
                             rentType: r.rentType || 'PER_PERSON',
                             genderPreference: r.genderPreference || mappedGender,
+                            isElectricityIncluded: r.isElectricityIncluded !== undefined ? r.isElectricityIncluded : true,
+                            isWaterIncluded: r.isWaterIncluded !== undefined ? r.isWaterIncluded : true,
                             imageUrls: uploadedRoomPhotos
                         });
                     }
-                } else {
-                    payloadRooms.push({
-                        roomType: roomTypeLabel,
-                        monthlyPrice: parsedRent,
-                        totalCapacity: parsedCapacity,
-                        remainingSpaces: parsedCapacity,
-                        rentType: 'PER_ROOM'
-                    });
                 }
 
                 // 5. Build amenities string array
@@ -595,7 +581,34 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                     longitude: mapCoords.lng,
                     amenities: selectedAmenityNamesList,
                     imageUrls: imagesList,
-                    rooms: payloadRooms
+                    rooms: payloadRooms,
+                    propertyNature: propertyNature,
+                    roomsCount: propertyNature === 'WHOLE_HOUSE' ? (parseInt(wholeHouseRooms || '') || 1) : rooms.length,
+                    bedsCount: propertyNature === 'WHOLE_HOUSE' ? (parseInt(wholeHouseBeds || '') || 1) : null,
+                    bathsCount: propertyNature === 'WHOLE_HOUSE' ? (parseInt(wholeHouseWashrooms || '') || 1) : null,
+                    hasKitchen: propertyNature === 'WHOLE_HOUSE' ? hasKitchen : true,
+                    isFurnished: propertyNature === 'WHOLE_HOUSE' ? isFurnished : false,
+                    isElectricityIncluded: isElectricityIncluded,
+                    isWaterIncluded: isWaterIncluded,
+                    hasWifi: selectedAmenities.wifi ? true : null,
+                    hasWater: selectedAmenities.water ? true : null,
+                    hasElectricity: selectedAmenities.electricity ? true : null,
+                    hasGas: selectedAmenities.gas ? true : null,
+                    hasLaundry: selectedAmenities.laundry ? true : null,
+                    hasParking: selectedAmenities.parking ? true : null,
+                    hasKitchenAmenity: selectedAmenities.kitchen ? true : null,
+                    hasCommonArea: selectedAmenities.common ? true : null,
+                    hasPool: selectedAmenities.pool ? true : null,
+                    hasFitness: selectedAmenities.fitness ? true : null,
+                    hasCctv: selectedAmenities.cctv ? true : null,
+                    hasGate: selectedAmenities.gate ? true : null,
+                    hasFireExtinguisher: selectedAmenities.fire ? true : null,
+                    hasFirstAid: selectedAmenities.firstaid ? true : null,
+                    hasAc: (selectedAmenities.ac || hasAC) ? true : null,
+                    hasGenerator: selectedAmenities.generator ? true : null,
+                    hasAttachedBathroom: selectedAmenities.bathroom ? true : null,
+                    hasBalcony: selectedAmenities.balcony ? true : null,
+                    customAmenities: nearestPlaces.trim() || null
                 };
 
                 let savedProperty;
@@ -784,7 +797,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                                     keyboardType="numeric"
                                 />
 
-                                <Text style={styles.fieldLabel}>Total Property Capacity / Occupants</Text>
+                                <Text style={styles.fieldLabel}>Total Property Capacity / Max Occupants</Text>
                                 <TextInput
                                     style={styles.input}
                                     placeholder="e.g. 6"
@@ -793,112 +806,478 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                                     onChangeText={setTotalCapacity}
                                     keyboardType="numeric"
                                 />
-                            </>
-                        ) : (
-                            /* If ROOM_BASED selected: render dynamic Room Inventory Management card */
-                            <View style={{ marginTop: 20 }}>
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                                    <View>
-                                        <Text style={{ fontSize: 15, fontWeight: '900', color: '#0F172A' }}>
-                                            🛏️ Rooms Inventory ({rooms.length})
-                                        </Text>
-                                        <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
-                                            Specify rent, capacity, and upload specific device photos natively for each unit.
-                                        </Text>
+
+                                <View style={{ marginTop: 12, padding: 14, backgroundColor: '#F8FAFC', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A', marginBottom: 12 }}>
+                                        🏡 House Layout & Specifications
+                                    </Text>
+
+                                    <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.fieldLabel}>No. of Rooms</Text>
+                                            <TextInput
+                                                style={[styles.input, { marginBottom: 0 }]}
+                                                placeholder="e.g. 3"
+                                                placeholderTextColor="#94A3B8"
+                                                value={wholeHouseRooms}
+                                                onChangeText={setWholeHouseRooms}
+                                                keyboardType="numeric"
+                                            />
+                                        </View>
+
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.fieldLabel}>No. of Beds</Text>
+                                            <TextInput
+                                                style={[styles.input, { marginBottom: 0 }]}
+                                                placeholder="e.g. 2"
+                                                placeholderTextColor="#94A3B8"
+                                                value={wholeHouseBeds}
+                                                onChangeText={setWholeHouseBeds}
+                                                keyboardType="numeric"
+                                            />
+                                        </View>
+
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.fieldLabel}>Bathrooms</Text>
+                                            <TextInput
+                                                style={[styles.input, { marginBottom: 0 }]}
+                                                placeholder="e.g. 2"
+                                                placeholderTextColor="#94A3B8"
+                                                value={wholeHouseWashrooms}
+                                                onChangeText={setWholeHouseWashrooms}
+                                                keyboardType="numeric"
+                                            />
+                                        </View>
                                     </View>
+
+                                    {/* Kitchen Included Checkbox Tick */}
                                     <TouchableOpacity
-                                        onPress={handleOpenAddRoomModal}
-                                        style={{ backgroundColor: '#133E32', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start' }}
-                                        activeOpacity={0.85}
+                                        style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 12, paddingVertical: 4 }}
+                                        onPress={() => setHasKitchen(!hasKitchen)}
+                                        activeOpacity={0.8}
                                     >
-                                        <Ionicons name="add-circle" size={16} color="#FFD700" style={{ marginRight: 6 }} />
-                                        <Text style={{ color: '#FFD700', fontSize: 12, fontWeight: '800' }}>Add</Text>
+                                        <View style={{
+                                            width: 22,
+                                            height: 22,
+                                            borderRadius: 6,
+                                            borderWidth: 2,
+                                            borderColor: hasKitchen ? '#133E32' : '#94A3B8',
+                                            backgroundColor: hasKitchen ? '#133E32' : '#FFFFFF',
+                                            justify: 'center',
+                                            alignItems: 'center',
+                                            marginRight: 10
+                                        }}>
+                                            {hasKitchen && <Ionicons name="checkmark" size={16} color="#FFD700" />}
+                                        </View>
+                                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A' }}>
+                                            Kitchen Included
+                                        </Text>
+                                    </TouchableOpacity>
+
+                                    {/* Furnished Checkbox Tick */}
+                                    <TouchableOpacity
+                                        style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, paddingVertical: 4 }}
+                                        onPress={() => setIsFurnished(!isFurnished)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <View style={{
+                                            width: 22,
+                                            height: 22,
+                                            borderRadius: 6,
+                                            borderWidth: 2,
+                                            borderColor: isFurnished ? '#133E32' : '#94A3B8',
+                                            backgroundColor: isFurnished ? '#133E32' : '#FFFFFF',
+                                            justify: 'center',
+                                            alignItems: 'center',
+                                            marginRight: 10
+                                        }}>
+                                            {isFurnished && <Ionicons name="checkmark" size={16} color="#FFD700" />}
+                                        </View>
+                                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A' }}>
+                                            Furnished / Rent With Furniture
+                                        </Text>
                                     </TouchableOpacity>
                                 </View>
 
-                                {/* Total Aggregated Rent & Capacity Summary Badge */}
+                                {/* 💡 Utility Bill Inclusion Card (Electricity & Water) */}
+                                <View style={{ marginTop: 16, padding: 14, backgroundColor: '#F8FAFC', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A', marginBottom: 4 }}>
+                                        ⚡ Utility Bills Inclusion
+                                    </Text>
+                                    <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 12 }}>
+                                        Specify whether utility bills are included in monthly rent or paid separately by occupants.
+                                    </Text>
+
+                                    {/* ⚡ Electricity Bill Segmented Control */}
+                                    <Text style={[styles.fieldLabel, { marginTop: 4, marginBottom: 6 }]}>⚡ Electricity Bill</Text>
+                                    <View style={{
+                                        flexDirection: 'row',
+                                        backgroundColor: '#F1F5F9',
+                                        borderRadius: 12,
+                                        padding: 3,
+                                        borderWidth: 1,
+                                        borderColor: '#E2E8F0',
+                                        marginBottom: 14
+                                    }}>
+                                        <TouchableOpacity
+                                            style={{
+                                                flex: 1,
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                paddingVertical: 10,
+                                                borderRadius: 9,
+                                                backgroundColor: isElectricityIncluded ? '#133E32' : 'transparent',
+                                                shadowColor: isElectricityIncluded ? '#000' : 'transparent',
+                                                shadowOffset: { width: 0, height: 1 },
+                                                shadowOpacity: 0.1,
+                                                shadowRadius: 2,
+                                                elevation: isElectricityIncluded ? 1 : 0
+                                            }}
+                                            onPress={() => setIsElectricityIncluded(true)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Ionicons
+                                                name={isElectricityIncluded ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                                                size={15}
+                                                color={isElectricityIncluded ? '#FFD700' : '#64748B'}
+                                                style={{ marginRight: 6 }}
+                                            />
+                                            <Text style={{
+                                                fontSize: 12,
+                                                fontWeight: isElectricityIncluded ? '800' : '600',
+                                                color: isElectricityIncluded ? '#FFFFFF' : '#475569'
+                                            }}>
+                                                Included in Rent
+                                            </Text>
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={{
+                                                flex: 1,
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                paddingVertical: 10,
+                                                borderRadius: 9,
+                                                backgroundColor: !isElectricityIncluded ? '#133E32' : 'transparent',
+                                                shadowColor: !isElectricityIncluded ? '#000' : 'transparent',
+                                                shadowOffset: { width: 0, height: 1 },
+                                                shadowOpacity: 0.1,
+                                                shadowRadius: 2,
+                                                elevation: !isElectricityIncluded ? 1 : 0
+                                            }}
+                                            onPress={() => setIsElectricityIncluded(false)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Ionicons
+                                                name={!isElectricityIncluded ? 'flash' : 'flash-outline'}
+                                                size={14}
+                                                color={!isElectricityIncluded ? '#FFD700' : '#64748B'}
+                                                style={{ marginRight: 6 }}
+                                            />
+                                            <Text style={{
+                                                fontSize: 12,
+                                                fontWeight: !isElectricityIncluded ? '800' : '600',
+                                                color: !isElectricityIncluded ? '#FFFFFF' : '#475569'
+                                            }}>
+                                                Paid by Occupant
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    {/* 💧 Water Bill Segmented Control */}
+                                    <Text style={[styles.fieldLabel, { marginTop: 0, marginBottom: 6 }]}>💧 Water Bill</Text>
+                                    <View style={{
+                                        flexDirection: 'row',
+                                        backgroundColor: '#F1F5F9',
+                                        borderRadius: 12,
+                                        padding: 3,
+                                        borderWidth: 1,
+                                        borderColor: '#E2E8F0'
+                                    }}>
+                                        <TouchableOpacity
+                                            style={{
+                                                flex: 1,
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                paddingVertical: 10,
+                                                borderRadius: 9,
+                                                backgroundColor: isWaterIncluded ? '#133E32' : 'transparent',
+                                                shadowColor: isWaterIncluded ? '#000' : 'transparent',
+                                                shadowOffset: { width: 0, height: 1 },
+                                                shadowOpacity: 0.1,
+                                                shadowRadius: 2,
+                                                elevation: isWaterIncluded ? 1 : 0
+                                            }}
+                                            onPress={() => setIsWaterIncluded(true)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Ionicons
+                                                name={isWaterIncluded ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                                                size={15}
+                                                color={isWaterIncluded ? '#FFD700' : '#64748B'}
+                                                style={{ marginRight: 6 }}
+                                            />
+                                            <Text style={{
+                                                fontSize: 12,
+                                                fontWeight: isWaterIncluded ? '800' : '600',
+                                                color: isWaterIncluded ? '#FFFFFF' : '#475569'
+                                            }}>
+                                                Included in Rent
+                                            </Text>
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={{
+                                                flex: 1,
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                paddingVertical: 10,
+                                                borderRadius: 9,
+                                                backgroundColor: !isWaterIncluded ? '#133E32' : 'transparent',
+                                                shadowColor: !isWaterIncluded ? '#000' : 'transparent',
+                                                shadowOffset: { width: 0, height: 1 },
+                                                shadowOpacity: 0.1,
+                                                shadowRadius: 2,
+                                                elevation: !isWaterIncluded ? 1 : 0
+                                            }}
+                                            onPress={() => setIsWaterIncluded(false)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Ionicons
+                                                name={!isWaterIncluded ? 'water' : 'water-outline'}
+                                                size={14}
+                                                color={!isWaterIncluded ? '#FFD700' : '#64748B'}
+                                                style={{ marginRight: 6 }}
+                                            />
+                                            <Text style={{
+                                                fontSize: 12,
+                                                fontWeight: !isWaterIncluded ? '800' : '600',
+                                                color: !isWaterIncluded ? '#FFFFFF' : '#475569'
+                                            }}>
+                                                Paid by Occupant
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </>
+                        ) : (
+                            /* If ROOM_BASED selected: render dynamic Room Inventory Management card */
+                            <View style={{ marginTop: 22 }}>
+                                {/* Section Header & Action Button */}
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                    <View style={{ flex: 1, marginRight: 10 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                            <Ionicons name="bed" size={18} color="#133E32" />
+                                            <Text style={{ fontSize: 16, fontWeight: '900', color: '#0F172A' }}>
+                                                Rooms & Inventory ({rooms.length})
+                                            </Text>
+                                        </View>
+                                        <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                                            Configure pricing, occupancy capacity, and unit photos for each room.
+                                        </Text>
+                                    </View>
+
+                                    <TouchableOpacity
+                                        onPress={handleOpenAddRoomModal}
+                                        style={{
+                                            backgroundColor: '#133E32',
+                                            paddingHorizontal: 16,
+                                            paddingVertical: 9,
+                                            borderRadius: 12,
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            shadowColor: '#133E32',
+                                            shadowOffset: { width: 0, height: 2 },
+                                            shadowOpacity: 0.15,
+                                            shadowRadius: 4,
+                                            elevation: 3
+                                        }}
+                                        activeOpacity={0.85}
+                                    >
+                                        <Ionicons name="add-circle" size={16} color="#FFD700" style={{ marginRight: 6 }} />
+                                        <Text style={{ color: '#FFD700', fontSize: 13, fontWeight: '800' }}>+ Add Room</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                {/* Total Aggregated Rent & Capacity Summary Dashboard Badge */}
                                 {rooms.length > 0 && (
-                                    <View style={{ backgroundColor: '#F8FAFC', padding: 16, borderRadius: 14, flexDirection: 'row', justifyContent: 'space-between', marginVertical: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                                        <View style={{ alignItems: 'flex-start', flex: 1 }}>
-                                            <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '800', marginBottom: 2 }}>TOTAL ROOMS</Text>
-                                            <Text style={{ fontSize: 16, fontWeight: '900', color: '#0F172A' }}>{rooms.length}</Text>
+                                    <View style={{
+                                        backgroundColor: '#133E32',
+                                        borderRadius: 16,
+                                        padding: 16,
+                                        marginBottom: 16,
+                                        shadowColor: '#133E32',
+                                        shadowOffset: { width: 0, height: 3 },
+                                        shadowOpacity: 0.15,
+                                        shadowRadius: 6,
+                                        elevation: 3
+                                    }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.12)', pb: 8, paddingBottom: 8 }}>
+                                            <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFD700', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                                                📊 Inventory Analytics Summary
+                                            </Text>
+                                            <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                                                <Text style={{ fontSize: 10, color: '#FFFFFF', fontWeight: '700' }}>
+                                                    {rooms.length} Active {rooms.length === 1 ? 'Unit' : 'Units'}
+                                                </Text>
+                                            </View>
                                         </View>
-                                        <View style={{ width: 1, backgroundColor: '#E2E8F0', height: '100%', marginHorizontal: 10 }} />
-                                        <View style={{ alignItems: 'flex-start', flex: 1.5 }}>
-                                            <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '800', marginBottom: 2 }}>TOTAL RENT</Text>
-                                            <Text style={{ fontSize: 16, fontWeight: '900', color: '#10B981' }}>LKR {monthlyRent || '0'}</Text>
-                                        </View>
-                                        <View style={{ width: 1, backgroundColor: '#E2E8F0', height: '100%', marginHorizontal: 10 }} />
-                                        <View style={{ alignItems: 'flex-start', flex: 1 }}>
-                                            <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '800', marginBottom: 2 }}>TOTAL CAPACITY</Text>
-                                            <Text style={{ fontSize: 16, fontWeight: '900', color: '#0F172A' }}>{totalCapacity || '0'} Beds</Text>
+
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <View style={{ alignItems: 'flex-start', flex: 1 }}>
+                                                <Text style={{ fontSize: 10, color: '#A7F3D0', fontWeight: '700', marginBottom: 2 }}>TOTAL ROOMS</Text>
+                                                <Text style={{ fontSize: 18, fontWeight: '900', color: '#FFFFFF' }}>{rooms.length}</Text>
+                                            </View>
+                                            <View style={{ width: 1, backgroundColor: 'rgba(255, 255, 255, 0.15)', height: 32, marginHorizontal: 12 }} />
+                                            <View style={{ alignItems: 'flex-start', flex: 1.6 }}>
+                                                <Text style={{ fontSize: 10, color: '#A7F3D0', fontWeight: '700', marginBottom: 2 }}>ESTIMATED RENT / MO</Text>
+                                                <Text style={{ fontSize: 18, fontWeight: '900', color: '#FFD700' }}>LKR {monthlyRent ? parseFloat(monthlyRent).toLocaleString() : '0'}</Text>
+                                            </View>
+                                            <View style={{ width: 1, backgroundColor: 'rgba(255, 255, 255, 0.15)', height: 32, marginHorizontal: 12 }} />
+                                            <View style={{ alignItems: 'flex-start', flex: 1 }}>
+                                                <Text style={{ fontSize: 10, color: '#A7F3D0', fontWeight: '700', marginBottom: 2 }}>TOTAL CAPACITY</Text>
+                                                <Text style={{ fontSize: 18, fontWeight: '900', color: '#FFFFFF' }}>{totalCapacity || '0'} Beds</Text>
+                                            </View>
                                         </View>
                                     </View>
                                 )}
 
-                                {/* Room Cards List */}
+                                {/* Room Unit Cards List */}
                                 {rooms.length === 0 ? (
                                     <TouchableOpacity
                                         onPress={handleOpenAddRoomModal}
-                                        style={{ height: 110, borderWidth: 2, borderColor: '#CBD5E1', borderStyle: 'dashed', borderRadius: 12, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}
+                                        style={{
+                                            paddingVertical: 28,
+                                            paddingHorizontal: 20,
+                                            borderWidth: 2,
+                                            borderColor: '#A7F3D0',
+                                            borderStyle: 'dashed',
+                                            borderRadius: 16,
+                                            justify: 'center',
+                                            alignItems: 'center',
+                                            backgroundColor: '#F0FDF4'
+                                        }}
                                         activeOpacity={0.8}
                                     >
-                                        <Ionicons name="bed-outline" size={32} color="#133E32" style={{ marginBottom: 4 }} />
-                                        <Text style={{ fontSize: 13, fontWeight: '800', color: '#133E32' }}>+ Tap to Add Your First Room</Text>
-                                        <Text style={{ fontSize: 11, color: '#94A3B8' }}>Set monthly rent, capacity, and room photos</Text>
+                                        <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#133E32', justifyContent: 'center', alignItems: 'center', marginBottom: 10 }}>
+                                            <Ionicons name="bed" size={24} color="#FFD700" />
+                                        </View>
+                                        <Text style={{ fontSize: 14, fontWeight: '800', color: '#133E32' }}>+ Tap to Add Your First Room</Text>
+                                        <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4, textAlign: 'center' }}>
+                                            Define room type, occupancy rate, facilities, and upload room photos.
+                                        </Text>
                                     </TouchableOpacity>
                                 ) : (
                                     <View style={{ gap: 12 }}>
-                                        {rooms.map((room, index) => (
-                                            <View key={room.id} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}>
-                                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                    <View style={{ flexDirection: 'row', flex: 1, marginRight: 12 }}>
-                                                        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', marginRight: 10 }}>
-                                                            <Text style={{ color: '#0F172A', fontSize: 13, fontWeight: '900' }}>{index + 1}</Text>
+                                        {rooms.map((room, index) => {
+                                            const formattedPrice = room.rent ? parseFloat(room.rent).toLocaleString() : '0';
+                                            const isPerRoom = room.rentType === 'PER_ROOM';
+                                            return (
+                                                <View
+                                                    key={room.id}
+                                                    style={{
+                                                        backgroundColor: '#FFFFFF',
+                                                        borderRadius: 16,
+                                                        padding: 16,
+                                                        borderWidth: 1,
+                                                        borderColor: '#E2E8F0',
+                                                        shadowColor: '#0F172A',
+                                                        shadowOffset: { width: 0, height: 2 },
+                                                        shadowOpacity: 0.04,
+                                                        shadowRadius: 5,
+                                                        elevation: 2
+                                                    }}
+                                                >
+                                                    {/* Card Header: Unit Tag, Name & Edit/Delete */}
+                                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                                                            <View style={{
+                                                                backgroundColor: '#133E32',
+                                                                paddingHorizontal: 10,
+                                                                paddingVertical: 4,
+                                                                borderRadius: 8
+                                                            }}>
+                                                                <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '900' }}>
+                                                                    UNIT #{index + 1}
+                                                                </Text>
+                                                            </View>
+                                                            <Text style={{ fontSize: 15, fontWeight: '800', color: '#0F172A', flex: 1 }} numberOfLines={1}>
+                                                                {room.name}
+                                                            </Text>
                                                         </View>
-                                                        <View style={{ flex: 1 }}>
-                                                            <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A', marginBottom: 2 }} numberOfLines={1}>{room.name}</Text>
-                                                            <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '600' }}>
-                                                                Pref: <Text style={{ color: '#133E32', fontWeight: '800' }}>{room.genderPreference || 'Mixed'}</Text>
+
+                                                        {/* Actions */}
+                                                        <View style={{ flexDirection: 'row', gap: 6 }}>
+                                                            <TouchableOpacity
+                                                                onPress={() => handleOpenEditRoomModal(room)}
+                                                                style={{ paddingHorizontal: 10, paddingVertical: 5, backgroundColor: '#F1F5F9', borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                                                                activeOpacity={0.8}
+                                                            >
+                                                                <Ionicons name="pencil" size={13} color="#133E32" />
+                                                                <Text style={{ fontSize: 11, fontWeight: '700', color: '#133E32' }}>Edit</Text>
+                                                            </TouchableOpacity>
+                                                            <TouchableOpacity
+                                                                onPress={() => handleDeleteRoom(room.id)}
+                                                                style={{ paddingHorizontal: 8, paddingVertical: 5, backgroundColor: '#FEF2F2', borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}
+                                                                activeOpacity={0.8}
+                                                            >
+                                                                <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                    </View>
+
+                                                    {/* Key Specs Pills Grid */}
+                                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                                                        <View style={{ backgroundColor: '#ECFDF5', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#A7F3D0', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                            <Ionicons name="cash-outline" size={13} color="#047857" />
+                                                            <Text style={{ fontSize: 12, fontWeight: '800', color: '#047857' }}>
+                                                                LKR {formattedPrice} <Text style={{ fontSize: 10, fontWeight: '600' }}>{isPerRoom ? '/ room' : '/ person'}</Text>
+                                                            </Text>
+                                                        </View>
+
+                                                        <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                            <Ionicons name="people-outline" size={13} color="#475569" />
+                                                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#334155' }}>
+                                                                Max {room.capacity} {parseInt(room.capacity, 10) === 1 ? 'Occupant' : 'Occupants'}
+                                                            </Text>
+                                                        </View>
+
+                                                        <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                            <Ionicons name="body-outline" size={13} color="#475569" />
+                                                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#334155' }}>
+                                                                {room.genderPreference || 'Mixed'}
                                                             </Text>
                                                         </View>
                                                     </View>
-                                                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                                                        <TouchableOpacity onPress={() => handleOpenEditRoomModal(room)} style={{ padding: 6, backgroundColor: '#F1F5F9', borderRadius: 8 }}>
-                                                            <Ionicons name="pencil" size={16} color="#475569" />
-                                                        </TouchableOpacity>
-                                                        <TouchableOpacity onPress={() => handleDeleteRoom(room.id)} style={{ padding: 6, backgroundColor: '#FEF2F2', borderRadius: 8 }}>
-                                                            <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                                                        </TouchableOpacity>
-                                                    </View>
-                                                </View>
 
-                                                {/* Room Specs Pills */}
-                                                <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 12 }}>
-                                                    <View style={{ backgroundColor: '#ECFDF5', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 }}>
-                                                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>
-                                                            💰 LKR {parseFloat(room.rent).toLocaleString()} {room.rentType === 'PER_ROOM' ? '/ room / mo' : '/ person / mo'}
-                                                        </Text>
-                                                    </View>
-                                                    <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                                                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569' }}>
-                                                            👥 Max {room.capacity} Occupant(s)
-                                                        </Text>
-                                                    </View>
-                                                </View>
+                                                    {/* Room Facilities & Photos */}
+                                                    {(room.type || room.amenities || (room.photos && room.photos.length > 0)) && (
+                                                        <View style={{ borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 10, marginTop: 4 }}>
+                                                            {room.type && (
+                                                                <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '500', marginBottom: 6 }}>
+                                                                    ✨ {room.type}
+                                                                </Text>
+                                                            )}
 
-                                                {/* Room Gallery Thumbnails */}
-                                                {room.photos && room.photos.length > 0 && (
-                                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
-                                                        <View style={{ flexDirection: 'row', gap: 6 }}>
-                                                            {room.photos.map((p) => (
-                                                                <Image key={p.id} source={{ uri: p.uri }} style={{ width: 50, height: 50, borderRadius: 8 }} />
-                                                            ))}
+                                                            {/* Room Photos Preview */}
+                                                            {room.photos && room.photos.length > 0 && (
+                                                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }}>
+                                                                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                                                                        {room.photos.map((p) => (
+                                                                            <Image key={p.id} source={{ uri: p.uri }} style={{ width: 56, height: 56, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0' }} />
+                                                                        ))}
+                                                                    </View>
+                                                                </ScrollView>
+                                                            )}
                                                         </View>
-                                                    </ScrollView>
-                                                )}
-                                            </View>
-                                        ))}
+                                                    )}
+                                                </View>
+                                            );
+                                        })}
                                     </View>
                                 )}
                             </View>
@@ -937,76 +1316,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                             })}
                         </View>
 
-                        {/* Eco-Certifications / Optional Tags & Gallery Upload */}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
-                            <Text style={[styles.fieldLabel, { marginTop: 0 }]}>Eco-Certifications & Documents</Text>
-                            <TouchableOpacity
-                                onPress={handlePickCertPhoto}
-                                style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#CBD5E1' }}
-                                activeOpacity={0.8}
-                            >
-                                <Ionicons name="images-outline" size={15} color="#133E32" style={{ marginRight: 4 }} />
-                                <Text style={{ color: '#133E32', fontSize: 12, fontWeight: '700' }}>Upload from Gallery</Text>
-                            </TouchableOpacity>
-                        </View>
 
-                        {/* Uploaded Device Gallery Certification Documents */}
-                        {uploadedCertPhotos.length > 0 && (
-                            <View style={{ marginVertical: 8, gap: 8 }}>
-                                {uploadedCertPhotos.map((certItem) => (
-                                    <View key={certItem.id} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', padding: 8, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                                        <Image source={{ uri: certItem.uri }} style={{ width: 38, height: 38, borderRadius: 6, marginRight: 10 }} />
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }} numberOfLines={1}>
-                                                📄 {certItem.name}
-                                            </Text>
-                                            <Text style={{ fontSize: 10, color: '#133E32', fontWeight: '600' }}>
-                                                Device Gallery • Verified Document
-                                            </Text>
-                                        </View>
-                                        <TouchableOpacity onPress={() => handleRemoveCertPhoto(certItem.id)} style={{ padding: 4 }}>
-                                            <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                                        </TouchableOpacity>
-                                    </View>
-                                ))}
-                            </View>
-                        )}
-
-                        <View style={styles.tagsContainer}>
-                            {certifications.map((cert) => (
-                                <View key={cert} style={styles.certChip}>
-                                    <Text style={styles.certChipText}>{cert}</Text>
-                                    <TouchableOpacity onPress={() => removeCertification(cert)} style={{ marginLeft: 6 }}>
-                                        <Ionicons name="close-circle" size={16} color="#133E32" />
-                                    </TouchableOpacity>
-                                </View>
-                            ))}
-
-                            <TouchableOpacity
-                                style={styles.addCertChip}
-                                onPress={() => setIsCertModalVisible(!isCertModalVisible)}
-                                activeOpacity={0.8}
-                            >
-                                <Ionicons name="add" size={16} color="#133E32" style={{ marginRight: 4 }} />
-                                <Text style={styles.addCertText}>Add Certification Tag</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Add Certification Modal Input */}
-                        {isCertModalVisible && (
-                            <View style={styles.certInputRow}>
-                                <TextInput
-                                    style={styles.certInput}
-                                    placeholder="Enter certification (e.g. Solar Powered)"
-                                    placeholderTextColor="#94A3B8"
-                                    value={newCertText}
-                                    onChangeText={setNewCertText}
-                                />
-                                <TouchableOpacity style={styles.certAddBtn} onPress={handleAddCertification}>
-                                    <Text style={styles.certAddBtnText}>Add</Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
                     </View>
                 )}
 

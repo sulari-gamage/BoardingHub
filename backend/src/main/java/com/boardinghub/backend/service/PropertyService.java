@@ -9,7 +9,6 @@ import com.boardinghub.backend.entity.*;
 import com.boardinghub.backend.enums.GenderPreference;
 import com.boardinghub.backend.enums.PropertyStatus;
 import com.boardinghub.backend.enums.Role;
-import com.boardinghub.backend.repository.AmenityRepository;
 import com.boardinghub.backend.repository.BoardingPropertyRepository;
 import com.boardinghub.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +25,6 @@ public class PropertyService {
 
     private final BoardingPropertyRepository propertyRepository;
     private final UserRepository userRepository;
-    private final AmenityRepository amenityRepository;
 
     @Transactional
     public PropertyResponse createProperty(PropertyRequest request, String ownerEmail) {
@@ -43,14 +41,18 @@ public class PropertyService {
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
                 .propertyNature(request.getPropertyNature())
+                .roomsCount(request.getRoomsCount())
+                .bedsCount(request.getBedsCount())
+                .bathsCount(request.getBathsCount())
+                .hasKitchen(request.getHasKitchen())
+                .isFurnished(request.getIsFurnished())
+                .isElectricityIncluded(request.getIsElectricityIncluded())
+                .isWaterIncluded(request.getIsWaterIncluded())
                 .status(PropertyStatus.APPROVED)
                 .owner(owner)
                 .build();
 
-        List<Amenity> amenities = resolveAmenities(request);
-        if (!amenities.isEmpty()) {
-            property.setAmenities(amenities);
-        }
+        applyAmenities(property, request);
 
         if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
             List<PropertyImage> images = new ArrayList<>();
@@ -112,9 +114,15 @@ public class PropertyService {
         property.setLatitude(request.getLatitude());
         property.setLongitude(request.getLongitude());
         property.setPropertyNature(request.getPropertyNature());
+        property.setRoomsCount(request.getRoomsCount());
+        property.setBedsCount(request.getBedsCount());
+        property.setBathsCount(request.getBathsCount());
+        property.setHasKitchen(request.getHasKitchen());
+        property.setIsFurnished(request.getIsFurnished());
+        property.setIsElectricityIncluded(request.getIsElectricityIncluded());
+        property.setIsWaterIncluded(request.getIsWaterIncluded());
 
-        List<Amenity> amenities = resolveAmenities(request);
-        property.setAmenities(amenities);
+        applyAmenities(property, request);
 
         if (request.getImageUrls() != null) {
             property.getImages().clear();
@@ -157,6 +165,8 @@ public class PropertyService {
                     roomToUpdate.setWashroomType(roomReq.getWashroomType());
                     roomToUpdate.setAmenities(roomReq.getAmenities());
                     roomToUpdate.setRentType(roomReq.getRentType() != null ? roomReq.getRentType() : "PER_PERSON");
+                    roomToUpdate.setIsElectricityIncluded(roomReq.getIsElectricityIncluded());
+                    roomToUpdate.setIsWaterIncluded(roomReq.getIsWaterIncluded());
                     roomToUpdate.setImageUrl(img);
                     processedRooms.add(roomToUpdate);
                 } else {
@@ -173,6 +183,8 @@ public class PropertyService {
                             .washroomType(roomReq.getWashroomType())
                             .amenities(roomReq.getAmenities())
                             .rentType(roomReq.getRentType() != null ? roomReq.getRentType() : "PER_PERSON")
+                            .isElectricityIncluded(roomReq.getIsElectricityIncluded())
+                            .isWaterIncluded(roomReq.getIsWaterIncluded())
                             .imageUrl(img)
                             .build();
                     processedRooms.add(newRoom);
@@ -246,8 +258,31 @@ public class PropertyService {
     }
 
     private PropertyResponse mapToPropertyResponse(BoardingProperty p) {
-        List<String> amenityNames = p.getAmenities() != null ?
-                p.getAmenities().stream().map(Amenity::getName).collect(Collectors.toList()) : new ArrayList<>();
+        List<String> amenityNames = new ArrayList<>();
+        PropertyAmenity pa = p.getAmenity();
+        if (pa != null) {
+            if (Boolean.TRUE.equals(pa.getHasWifi())) amenityNames.add("High-Speed WiFi");
+            if (Boolean.TRUE.equals(pa.getHasWater())) amenityNames.add("Water Supply");
+            if (Boolean.TRUE.equals(pa.getHasElectricity())) amenityNames.add("24/7 Electricity");
+            if (Boolean.TRUE.equals(pa.getHasGas())) amenityNames.add("Gas Connection");
+            if (Boolean.TRUE.equals(pa.getHasLaundry())) amenityNames.add("Laundry Room");
+            if (Boolean.TRUE.equals(pa.getHasParking())) amenityNames.add("Covered Parking");
+            if (Boolean.TRUE.equals(pa.getHasKitchen())) amenityNames.add("Shared Kitchen");
+            if (Boolean.TRUE.equals(pa.getHasCommonArea())) amenityNames.add("Common Area");
+            if (Boolean.TRUE.equals(pa.getHasPool())) amenityNames.add("Swimming Pool");
+            if (Boolean.TRUE.equals(pa.getHasFitness())) amenityNames.add("Fitness Center");
+            if (Boolean.TRUE.equals(pa.getHasCctv())) amenityNames.add("CCTV Security");
+            if (Boolean.TRUE.equals(pa.getHasGate())) amenityNames.add("Secure Gate");
+            if (Boolean.TRUE.equals(pa.getHasFireExtinguisher())) amenityNames.add("Fire Extinguisher");
+            if (Boolean.TRUE.equals(pa.getHasFirstAid())) amenityNames.add("First Aid Kit");
+            if (Boolean.TRUE.equals(pa.getHasAc())) amenityNames.add("Air Conditioning");
+            if (Boolean.TRUE.equals(pa.getHasGenerator())) amenityNames.add("Generator Backup");
+            if (Boolean.TRUE.equals(pa.getHasAttachedBathroom())) amenityNames.add("Attached Bathroom");
+            if (Boolean.TRUE.equals(pa.getHasBalcony())) amenityNames.add("Private Balcony");
+            if (pa.getCustomAmenities() != null && !pa.getCustomAmenities().isBlank()) {
+                amenityNames.add(pa.getCustomAmenities());
+            }
+        }
 
         List<PropertyImageDTO> imageDTOs = p.getImages() != null ?
                 p.getImages().stream().map(img -> PropertyImageDTO.builder()
@@ -270,6 +305,8 @@ public class PropertyService {
                         .amenities(r.getAmenities())
                         .rentType(r.getRentType() != null ? r.getRentType() : "PER_PERSON")
                         .imageUrl(r.getImageUrl())
+                        .isElectricityIncluded(r.getIsElectricityIncluded())
+                        .isWaterIncluded(r.getIsWaterIncluded())
                         .build()).collect(Collectors.toList()) : new ArrayList<>();
 
         List<String> imageUrlList = p.getImages() != null ?
@@ -290,6 +327,13 @@ public class PropertyService {
                 .latitude(p.getLatitude())
                 .longitude(p.getLongitude())
                 .propertyNature(p.getPropertyNature())
+                .roomsCount(p.getRoomsCount())
+                .bedsCount(p.getBedsCount())
+                .bathsCount(p.getBathsCount())
+                .hasKitchen(p.getHasKitchen())
+                .isFurnished(p.getIsFurnished())
+                .isElectricityIncluded(p.getIsElectricityIncluded())
+                .isWaterIncluded(p.getIsWaterIncluded())
                 .amenities(amenityNames)
                 .images(imageDTOs)
                 .imageUrls(imageUrlList)
@@ -298,22 +342,53 @@ public class PropertyService {
                 .build();
     }
 
-    private List<Amenity> resolveAmenities(PropertyRequest request) {
-        List<Amenity> result = new ArrayList<>();
-        if (request.getAmenityIds() != null && !request.getAmenityIds().isEmpty()) {
-            result.addAll(amenityRepository.findAllById(request.getAmenityIds()));
+    private void applyAmenities(BoardingProperty property, PropertyRequest request) {
+        PropertyAmenity pa = property.getAmenity();
+        if (pa == null) {
+            pa = PropertyAmenity.builder().property(property).build();
+            property.setAmenity(pa);
         }
+
+        if (request.getHasWifi() != null) pa.setHasWifi(request.getHasWifi());
+        if (request.getHasWater() != null) pa.setHasWater(request.getHasWater());
+        if (request.getHasElectricity() != null) pa.setHasElectricity(request.getHasElectricity());
+        if (request.getHasGas() != null) pa.setHasGas(request.getHasGas());
+        if (request.getHasLaundry() != null) pa.setHasLaundry(request.getHasLaundry());
+        if (request.getHasParking() != null) pa.setHasParking(request.getHasParking());
+        if (request.getHasKitchenAmenity() != null) pa.setHasKitchen(request.getHasKitchenAmenity());
+        if (request.getHasCommonArea() != null) pa.setHasCommonArea(request.getHasCommonArea());
+        if (request.getHasPool() != null) pa.setHasPool(request.getHasPool());
+        if (request.getHasFitness() != null) pa.setHasFitness(request.getHasFitness());
+        if (request.getHasCctv() != null) pa.setHasCctv(request.getHasCctv());
+        if (request.getHasGate() != null) pa.setHasGate(request.getHasGate());
+        if (request.getHasFireExtinguisher() != null) pa.setHasFireExtinguisher(request.getHasFireExtinguisher());
+        if (request.getHasFirstAid() != null) pa.setHasFirstAid(request.getHasFirstAid());
+        if (request.getHasAc() != null) pa.setHasAc(request.getHasAc());
+        if (request.getHasGenerator() != null) pa.setHasGenerator(request.getHasGenerator());
+        if (request.getHasAttachedBathroom() != null) pa.setHasAttachedBathroom(request.getHasAttachedBathroom());
+        if (request.getHasBalcony() != null) pa.setHasBalcony(request.getHasBalcony());
+        if (request.getCustomAmenities() != null) pa.setCustomAmenities(request.getCustomAmenities());
+
         if (request.getAmenities() != null && !request.getAmenities().isEmpty()) {
-            for (String aName : request.getAmenities()) {
-                if (aName != null && !aName.isBlank()) {
-                    Amenity amenity = amenityRepository.findByName(aName)
-                            .orElseGet(() -> amenityRepository.save(Amenity.builder().name(aName).build()));
-                    if (!result.contains(amenity)) {
-                        result.add(amenity);
-                    }
-                }
-            }
+            List<String> list = request.getAmenities();
+            pa.setHasWifi(list.contains("High-Speed WiFi") || list.contains("WiFi") ? true : null);
+            pa.setHasWater(list.contains("Water Supply") || list.contains("Water") ? true : null);
+            pa.setHasElectricity(list.contains("24/7 Electricity") || list.contains("Electricity") ? true : null);
+            pa.setHasGas(list.contains("Gas Connection") || list.contains("Gas") ? true : null);
+            pa.setHasLaundry(list.contains("Laundry Room") || list.contains("Laundry") ? true : null);
+            pa.setHasParking(list.contains("Covered Parking") || list.contains("Parking") ? true : null);
+            pa.setHasKitchen(list.contains("Shared Kitchen") || list.contains("Kitchen") ? true : null);
+            pa.setHasCommonArea(list.contains("Common Area") ? true : null);
+            pa.setHasPool(list.contains("Swimming Pool") || list.contains("Pool") ? true : null);
+            pa.setHasFitness(list.contains("Fitness Center") || list.contains("Fitness") ? true : null);
+            pa.setHasCctv(list.contains("CCTV Security") || list.contains("CCTV") ? true : null);
+            pa.setHasGate(list.contains("Secure Gate") || list.contains("Gate") ? true : null);
+            pa.setHasFireExtinguisher(list.contains("Fire Extinguisher") ? true : null);
+            pa.setHasFirstAid(list.contains("First Aid Kit") ? true : null);
+            pa.setHasAc(list.contains("Air Conditioning") || list.contains("AC") ? true : null);
+            pa.setHasGenerator(list.contains("Generator Backup") || list.contains("Generator") ? true : null);
+            pa.setHasAttachedBathroom(list.contains("Attached Bathroom") ? true : null);
+            pa.setHasBalcony(list.contains("Private Balcony") ? true : null);
         }
-        return result;
     }
 }

@@ -21,4 +21,6 @@ public class RoomResponse {
     private String amenities;
     private String rentType;
     private String imageUrl;
+    private Boolean isElectricityIncluded;
+    private Boolean isWaterIncluded;
 }

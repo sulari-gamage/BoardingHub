@@ -38,4 +38,7 @@ public class RoomRequest {
 
     private String imageUrl;
     private java.util.List<String> imageUrls;
+
+    private Boolean isElectricityIncluded;
+    private Boolean isWaterIncluded;
 }
