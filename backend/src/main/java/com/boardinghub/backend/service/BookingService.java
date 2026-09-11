@@ -98,8 +98,22 @@ public class BookingService {
                     throw new IllegalArgumentException("Cannot approve request: Only " + room.getRemainingSpaces() +
                             " spaces remaining in room, but request requires " + booking.getOccupantsCount());
                 }
-                room.setRemainingSpaces(room.getRemainingSpaces() - booking.getOccupantsCount());
+                int newRem = room.getRemainingSpaces() - booking.getOccupantsCount();
+                int currentOcc = room.getOccupied() != null ? room.getOccupied() : Math.max(0, room.getTotalCapacity() - room.getRemainingSpaces());
+                int newOcc = currentOcc + booking.getOccupantsCount();
+                room.setRemainingSpaces(newRem);
+                room.setOccupied(newOcc);
                 roomRepository.save(room);
+
+                // Also sync property totalOccupied
+                BoardingProperty prop = room.getProperty();
+                if (prop != null && prop.getRooms() != null) {
+                    int totalOcc = prop.getRooms().stream()
+                            .mapToInt(r -> r.getId().equals(room.getId()) ? newOcc : (r.getOccupied() != null ? r.getOccupied() : Math.max(0, (r.getTotalCapacity() != null ? r.getTotalCapacity() : 1) - (r.getRemainingSpaces() != null ? r.getRemainingSpaces() : 0))))
+                            .sum();
+                    prop.setTotalOccupied(totalOcc);
+                    propertyRepository.save(prop);
+                }
             }
         }
 

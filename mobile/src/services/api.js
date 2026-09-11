@@ -271,6 +271,37 @@ export const api = {
             return await request(`/admin/properties/${id}/reject`, { method: 'PATCH' });
         },
     },
+
+    // User / Profile Services
+    user: {
+        getProfile: async () => {
+            return await request(`/users/profile?t=${Date.now()}`, { method: 'GET' });
+        },
+
+        updateProfile: async (userData) => {
+            const data = await request('/users/profile', {
+                method: 'PUT',
+                body: JSON.stringify(userData),
+            });
+            // Also update local cached user data if present
+            try {
+                const currentUserStr = await storage.getItem(USER_KEY);
+                if (currentUserStr) {
+                    const currentUser = JSON.parse(currentUserStr);
+                    const updatedUser = { ...currentUser, ...data };
+                    await storage.setItem(USER_KEY, JSON.stringify(updatedUser));
+                }
+            } catch (e) { }
+            return data;
+        },
+
+        changePassword: async (passwordData) => {
+            return await request('/users/change-password', {
+                method: 'PUT',
+                body: JSON.stringify(passwordData),
+            });
+        },
+    },
 };
 
 export default api;

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -8,10 +8,16 @@ import {
     ScrollView,
     Image,
     Alert,
-    Platform
+    Modal,
+    TextInput,
+    ActivityIndicator,
+    Switch,
+    StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import HeaderBar from '../../components/HeaderBar';
+import api from '../../services/api';
 
 export default function OwnerProfileScreen({
     onNavigateTab,
@@ -21,142 +27,493 @@ export default function OwnerProfileScreen({
     activeTab = 'Profile',
     currentUser
 }) {
-    const name = currentUser?.name || 'Property Owner';
-    const email = currentUser?.email || 'owner@boardinghub.lk';
+    const [profile, setProfile] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Modal Visibility States
+    const [personalModalVisible, setPersonalModalVisible] = useState(false);
+    const [contactModalVisible, setContactModalVisible] = useState(false);
+    const [securityModalVisible, setSecurityModalVisible] = useState(false);
+    const [notificationModalVisible, setNotificationModalVisible] = useState(false);
+
+    // Form Field States
+    const [editName, setEditName] = useState('');
+    const [editWhatsapp, setEditWhatsapp] = useState('');
+    const [avatarUrl, setAvatarUrl] = useState('');
+
+    // Security Form States
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPasswords, setShowPasswords] = useState(false);
+
+    // Notification Preference Toggles
+    const [notifBookingRequests, setNotifBookingRequests] = useState(true);
+    const [notifPropertyInquiries, setNotifPropertyInquiries] = useState(true);
+    const [notifMarketing, setNotifMarketing] = useState(false);
+
+    useEffect(() => {
+        loadUserProfile();
+    }, []);
+
+    const loadUserProfile = async () => {
+        setLoading(true);
+        try {
+            const data = await api.user.getProfile();
+            setProfile(data);
+            setEditName(data.name || '');
+            setEditWhatsapp(data.whatsappNumber || '');
+            setAvatarUrl(data.avatarUrl || '');
+        } catch (err) {
+            console.log('[OwnerProfile] Profile fetch fallback:', err.message);
+            // Fallback to local currentUser prop if network request fails
+            if (currentUser) {
+                setProfile({
+                    name: currentUser.name || 'Property Owner',
+                    email: currentUser.email || 'owner@boardinghub.lk',
+                    whatsappNumber: currentUser.whatsappNumber || '',
+                    avatarUrl: currentUser.avatarUrl || '',
+                    propertiesCount: 0,
+                    totalCapacity: 0,
+                    averageRating: 5.0,
+                    isVerified: true
+                });
+                setEditName(currentUser.name || '');
+                setEditWhatsapp(currentUser.whatsappNumber || '');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handle Profile Avatar Selection & Upload
+    const handlePickAvatar = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Permission to access media gallery is required!');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.7,
+                base64: true,
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                const asset = result.assets[0];
+                const pickedUri = asset.base64
+                    ? `data:image/jpeg;base64,${asset.base64}`
+                    : asset.uri;
+
+                setAvatarUrl(pickedUri);
+                await handleUpdateProfile({ avatarUrl: pickedUri });
+            }
+        } catch (err) {
+            Alert.alert('Error', 'Failed to pick image: ' + err.message);
+        }
+    };
+
+    // Save Personal & Contact Details
+    const handleUpdateProfile = async (overrideData = {}) => {
+        setIsSaving(true);
+        try {
+            const payload = {
+                name: overrideData.name !== undefined ? overrideData.name : editName,
+                whatsappNumber: overrideData.whatsappNumber !== undefined ? overrideData.whatsappNumber : editWhatsapp,
+                avatarUrl: overrideData.avatarUrl !== undefined ? overrideData.avatarUrl : avatarUrl
+            };
+
+            const updatedData = await api.user.updateProfile(payload);
+            setProfile(updatedData);
+            Alert.alert('Success 🎉', 'Profile details updated successfully!');
+            setPersonalModalVisible(false);
+            setContactModalVisible(false);
+        } catch (err) {
+            Alert.alert('Update Failed', err.message || 'Could not update profile details.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // Save Password Change
+    const handleChangePassword = async () => {
+        if (!currentPassword) {
+            Alert.alert('Required', 'Please enter your current password.');
+            return;
+        }
+        if (!newPassword || newPassword.length < 6) {
+            Alert.alert('Invalid Password', 'New password must be at least 6 characters.');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            Alert.alert('Mismatch', 'New password and confirm password do not match.');
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            await api.user.changePassword({ currentPassword, newPassword });
+            Alert.alert('Success 🔒', 'Password changed successfully!');
+            setSecurityModalVisible(false);
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+        } catch (err) {
+            Alert.alert('Password Change Failed', err.message || 'Could not update password.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const displayName = profile?.name || currentUser?.name || 'Property Owner';
+    const displayEmail = profile?.email || currentUser?.email || 'owner@boardinghub.lk';
+    const displayWhatsapp = profile?.whatsappNumber || editWhatsapp || 'Not configured';
+    const propertiesCount = profile?.propertiesCount !== undefined ? profile.propertiesCount : 0;
+    const totalCapacity = profile?.totalCapacity !== undefined ? profile.totalCapacity : 0;
+    const averageRating = profile?.averageRating !== undefined ? profile.averageRating.toFixed(1) : '5.0';
+    const isVerified = profile?.isVerified ?? true;
+    const currentAvatar = avatarUrl || profile?.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80';
 
     return (
         <SafeAreaView style={styles.container}>
-            {/* Standardized HeaderBar */}
+            <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+
+            {/* HeaderBar */}
             <HeaderBar
                 title="BoardingHub"
                 onOpenNotifications={onOpenNotifications}
                 onOpenProfile={() => onNavigateTab && onNavigateTab('Profile')}
             />
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-                {/* 1. Main Profile Card */}
-                <View style={styles.profileCard}>
-                    {/* Avatar with Verified Badge Overlay */}
-                    <View style={styles.avatarWrapper}>
-                        <Image
-                            source={{ uri: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80' }}
-                            style={styles.avatar}
-                        />
-                        <View style={styles.verifiedBadgeCircle}>
-                            <Ionicons name="shield-checkmark" size={14} color="#133E32" />
-                        </View>
-                    </View>
-
-                    {/* Name & Email */}
-                    <Text style={styles.userName}>{name}</Text>
-                    <Text style={styles.joinDate}>{email}</Text>
-
-                    {/* Property & Verification Badges */}
-                    <View style={styles.badgeRow}>
-                        <View style={styles.propertyTag}>
-                            <Ionicons name="business-outline" size={14} color="#133E32" style={{ marginRight: 6 }} />
-                            <Text style={styles.propertyTagText}>3 Properties</Text>
-                        </View>
-
-                        <View style={styles.verifiedTag}>
-                            <Ionicons name="trophy-outline" size={14} color="#B45309" style={{ marginRight: 6 }} />
-                            <Text style={styles.verifiedTagText}>Verified Owner</Text>
-                        </View>
-                    </View>
-
-                    {/* Edit Profile Button */}
-                    <TouchableOpacity
-                        style={styles.editProfileBtn}
-                        onPress={() => Alert.alert('Edit Profile', 'Opening profile settings...')}
-                        activeOpacity={0.85}
-                    >
-                        <Text style={styles.editProfileBtnText}>Edit Profile</Text>
-                    </TouchableOpacity>
+            {loading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#133E32" />
+                    <Text style={styles.loadingText}>Loading Profile...</Text>
                 </View>
-
-                {/* 2. Metrics Card (Total Capacity & Avg Rating) */}
-                <View style={styles.metricsCard}>
-                    <View style={styles.metricColumn}>
-                        <Ionicons name="bed-outline" size={20} color="#133E32" style={{ marginBottom: 6 }} />
-                        <Text style={styles.metricLabel}>Total Capacity</Text>
-                        <Text style={styles.metricValue}>15 Spaces</Text>
-                    </View>
-
-                    <View style={styles.metricDivider} />
-
-                    <View style={styles.metricColumn}>
-                        <Ionicons name="star-outline" size={20} color="#133E32" style={{ marginBottom: 6 }} />
-                        <Text style={styles.metricLabel}>Avg Rating</Text>
-                        <Text style={styles.metricValue}>4.9 / 5</Text>
-                    </View>
-                </View>
-
-                {/* 3. Settings Menu List Card */}
-                <View style={styles.menuCard}>
-                    {[
-                        {
-                            title: 'Personal Details',
-                            subtitle: 'Update your name, contact info, and address',
-                            icon: 'person-outline',
-                            action: () => Alert.alert('Personal Details', 'Manage personal information.')
-                        },
-                        {
-                            title: 'Contact Settings',
-                            subtitle: 'Manage phone and WhatsApp numbers for seekers',
-                            icon: 'call-outline',
-                            action: () => Alert.alert('Contact Settings', 'Manage phone & WhatsApp settings.')
-                        },
-                        {
-                            title: 'Notification Preferences',
-                            subtitle: 'Control alerts for bookings and requests',
-                            icon: 'notifications-outline',
-                            action: () => Alert.alert('Notifications', 'Notification preferences.')
-                        },
-                        {
-                            title: 'Security Settings',
-                            subtitle: 'Password, 2FA, and active sessions',
-                            icon: 'shield-outline',
-                            action: () => Alert.alert('Security', 'Security settings.')
-                        },
-                    ].map((item, idx, arr) => (
-                        <TouchableOpacity
-                            key={item.title}
-                            style={[styles.menuRow, idx === arr.length - 1 && styles.menuRowLast]}
-                            onPress={item.action}
-                            activeOpacity={0.7}
-                        >
-                            <View style={styles.menuIconBox}>
-                                <Ionicons name={item.icon} size={20} color="#475569" />
+            ) : (
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+                    {/* 1. Main Profile Card */}
+                    <View style={styles.profileCard}>
+                        {/* Avatar with Camera Overlay */}
+                        <TouchableOpacity style={styles.avatarWrapper} onPress={handlePickAvatar} activeOpacity={0.85}>
+                            <Image source={{ uri: currentAvatar }} style={styles.avatar} />
+                            <View style={styles.cameraCircle}>
+                                <Ionicons name="camera" size={14} color="#FFFFFF" />
                             </View>
-
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.menuTitle}>{item.title}</Text>
-                                <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
-                            </View>
-
-                            <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
                         </TouchableOpacity>
-                    ))}
-                </View>
 
-                {/* Switch View Banner */}
-                {onSwitchToSeeker && (
-                    <TouchableOpacity
-                        style={styles.switchBanner}
-                        onPress={onSwitchToSeeker}
-                        activeOpacity={0.85}
-                    >
-                        <Ionicons name="swap-horizontal" size={18} color="#133E32" style={{ marginRight: 8 }} />
-                        <Text style={styles.switchBannerText}>Switch to Seeker View</Text>
+                        {/* Name & Email */}
+                        <Text style={styles.userName}>{displayName}</Text>
+                        <Text style={styles.userEmail}>{displayEmail}</Text>
+                    </View>
+
+                    {/* 2. Metrics Card */}
+                    <View style={styles.metricsCard}>
+                        <View style={styles.metricColumn}>
+                            <Ionicons name="bed-outline" size={20} color="#133E32" style={{ marginBottom: 6 }} />
+                            <Text style={styles.metricLabel}>Total Capacity</Text>
+                            <Text style={styles.metricValue}>{totalCapacity} Spaces</Text>
+                        </View>
+
+                        <View style={styles.metricDivider} />
+
+                        <View style={styles.metricColumn}>
+                            <Ionicons name="star-outline" size={20} color="#133E32" style={{ marginBottom: 6 }} />
+                            <Text style={styles.metricLabel}>Avg Rating</Text>
+                            <Text style={styles.metricValue}>{averageRating} / 5</Text>
+                        </View>
+                    </View>
+
+                    {/* 3. Settings Menu List Card */}
+                    <View style={styles.menuCard}>
+                        {[
+                            {
+                                title: 'Personal Details',
+                                subtitle: `${displayName} • ${displayEmail}`,
+                                icon: 'person-outline',
+                                action: () => setPersonalModalVisible(true)
+                            },
+                            {
+                                title: 'Contact Settings',
+                                subtitle: `WhatsApp: ${displayWhatsapp}`,
+                                icon: 'call-outline',
+                                action: () => setContactModalVisible(true)
+                            },
+                            {
+                                title: 'Notification Preferences',
+                                subtitle: 'Control alerts for booking requests & messages',
+                                icon: 'notifications-outline',
+                                action: () => setNotificationModalVisible(true)
+                            },
+                            {
+                                title: 'Security Settings',
+                                subtitle: 'Change password & login authentication',
+                                icon: 'shield-outline',
+                                action: () => setSecurityModalVisible(true)
+                            },
+                        ].map((item, idx, arr) => (
+                            <TouchableOpacity
+                                key={item.title}
+                                style={[styles.menuRow, idx === arr.length - 1 && styles.menuRowLast]}
+                                onPress={item.action}
+                                activeOpacity={0.7}
+                            >
+                                <View style={styles.menuIconBox}>
+                                    <Ionicons name={item.icon} size={20} color="#475569" />
+                                </View>
+
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.menuTitle}>{item.title}</Text>
+                                    <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                                </View>
+
+                                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    {/* Logout Button */}
+                    <TouchableOpacity style={styles.logoutBtn} onPress={onLogout} activeOpacity={0.85}>
+                        <Ionicons name="log-out-outline" size={20} color="#DC2626" style={{ marginRight: 8 }} />
+                        <Text style={styles.logoutText}>Logout</Text>
                     </TouchableOpacity>
-                )}
+                </ScrollView>
+            )}
 
-                {/* 4. Red Outlined Logout Button */}
-                <TouchableOpacity style={styles.logoutBtn} onPress={onLogout} activeOpacity={0.85}>
-                    <Ionicons name="log-out-outline" size={20} color="#DC2626" style={{ marginRight: 8 }} />
-                    <Text style={styles.logoutText}>Logout</Text>
-                </TouchableOpacity>
-            </ScrollView>
+            {/* ── MODAL 1: PERSONAL DETAILS EDIT ────────────────────────── */}
+            <Modal visible={personalModalVisible} animationType="slide" transparent={true}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Personal Details</Text>
+                            <TouchableOpacity onPress={() => setPersonalModalVisible(false)}>
+                                <Ionicons name="close" size={24} color="#64748B" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Full Name</Text>
+                            <TextInput
+                                style={styles.textInput}
+                                value={editName}
+                                onChangeText={setEditName}
+                                placeholder="Enter full name"
+                                placeholderTextColor="#94A3B8"
+                            />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Account Email (Read-Only)</Text>
+                            <TextInput
+                                style={[styles.textInput, styles.readOnlyInput]}
+                                value={displayEmail}
+                                editable={false}
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            style={styles.saveBtn}
+                            onPress={() => handleUpdateProfile({ name: editName })}
+                            disabled={isSaving}
+                            activeOpacity={0.85}
+                        >
+                            {isSaving ? (
+                                <ActivityIndicator color="#FFFFFF" size="small" />
+                            ) : (
+                                <Text style={styles.saveBtnText}>Save Personal Details</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ── MODAL 2: CONTACT SETTINGS ─────────────────────────────── */}
+            <Modal visible={contactModalVisible} animationType="slide" transparent={true}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Contact Settings</Text>
+                            <TouchableOpacity onPress={() => setContactModalVisible(false)}>
+                                <Ionicons name="close" size={24} color="#64748B" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={styles.modalSubtitle}>
+                            Seekers will contact you on WhatsApp using this number for inquiry requests.
+                        </Text>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>WhatsApp Number</Text>
+                            <TextInput
+                                style={styles.textInput}
+                                value={editWhatsapp}
+                                onChangeText={setEditWhatsapp}
+                                placeholder="e.g. +94771234567"
+                                placeholderTextColor="#94A3B8"
+                                keyboardType="phone-pad"
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            style={styles.saveBtn}
+                            onPress={() => handleUpdateProfile({ whatsappNumber: editWhatsapp })}
+                            disabled={isSaving}
+                            activeOpacity={0.85}
+                        >
+                            {isSaving ? (
+                                <ActivityIndicator color="#FFFFFF" size="small" />
+                            ) : (
+                                <Text style={styles.saveBtnText}>Save Contact Details</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ── MODAL 3: SECURITY SETTINGS (CHANGE PASSWORD) ─────────── */}
+            <Modal visible={securityModalVisible} animationType="slide" transparent={true}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Security Settings</Text>
+                            <TouchableOpacity onPress={() => setSecurityModalVisible(false)}>
+                                <Ionicons name="close" size={24} color="#64748B" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Current Password</Text>
+                            <TextInput
+                                style={styles.textInput}
+                                value={currentPassword}
+                                onChangeText={setCurrentPassword}
+                                placeholder="Enter current password"
+                                placeholderTextColor="#94A3B8"
+                                secureTextEntry={!showPasswords}
+                            />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>New Password</Text>
+                            <TextInput
+                                style={styles.textInput}
+                                value={newPassword}
+                                onChangeText={setNewPassword}
+                                placeholder="At least 6 characters"
+                                placeholderTextColor="#94A3B8"
+                                secureTextEntry={!showPasswords}
+                            />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Confirm New Password</Text>
+                            <TextInput
+                                style={styles.textInput}
+                                value={confirmPassword}
+                                onChangeText={setConfirmPassword}
+                                placeholder="Re-enter new password"
+                                placeholderTextColor="#94A3B8"
+                                secureTextEntry={!showPasswords}
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            style={styles.showPassRow}
+                            onPress={() => setShowPasswords(!showPasswords)}
+                        >
+                            <Ionicons
+                                name={showPasswords ? 'checkbox' : 'square-outline'}
+                                size={20}
+                                color="#133E32"
+                                style={{ marginRight: 8 }}
+                            />
+                            <Text style={styles.showPassText}>Show Passwords</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.saveBtn}
+                            onPress={handleChangePassword}
+                            disabled={isSaving}
+                            activeOpacity={0.85}
+                        >
+                            {isSaving ? (
+                                <ActivityIndicator color="#FFFFFF" size="small" />
+                            ) : (
+                                <Text style={styles.saveBtnText}>Update Password</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ── MODAL 4: NOTIFICATION PREFERENCES ─────────────────────── */}
+            <Modal visible={notificationModalVisible} animationType="slide" transparent={true}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Notification Preferences</Text>
+                            <TouchableOpacity onPress={() => setNotificationModalVisible(false)}>
+                                <Ionicons name="close" size={24} color="#64748B" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.switchRow}>
+                            <View style={{ flex: 1, paddingRight: 10 }}>
+                                <Text style={styles.switchTitle}>Booking Requests</Text>
+                                <Text style={styles.switchSubtitle}>Alerts when seekers send new room requests</Text>
+                            </View>
+                            <Switch
+                                value={notifBookingRequests}
+                                onValueChange={setNotifBookingRequests}
+                                trackColor={{ false: '#CBD5E1', true: '#C3DCD4' }}
+                                thumbColor={notifBookingRequests ? '#133E32' : '#F1F5F9'}
+                            />
+                        </View>
+
+                        <View style={styles.switchRow}>
+                            <View style={{ flex: 1, paddingRight: 10 }}>
+                                <Text style={styles.switchTitle}>Property Inquiries</Text>
+                                <Text style={styles.switchSubtitle}>Direct WhatsApp messages & call alerts</Text>
+                            </View>
+                            <Switch
+                                value={notifPropertyInquiries}
+                                onValueChange={setNotifPropertyInquiries}
+                                trackColor={{ false: '#CBD5E1', true: '#C3DCD4' }}
+                                thumbColor={notifPropertyInquiries ? '#133E32' : '#F1F5F9'}
+                            />
+                        </View>
+
+                        <View style={styles.switchRow}>
+                            <View style={{ flex: 1, paddingRight: 10 }}>
+                                <Text style={styles.switchTitle}>Platform News & Tips</Text>
+                                <Text style={styles.switchSubtitle}>Updates on platform features & owner tools</Text>
+                            </View>
+                            <Switch
+                                value={notifMarketing}
+                                onValueChange={setNotifMarketing}
+                                trackColor={{ false: '#CBD5E1', true: '#C3DCD4' }}
+                                thumbColor={notifMarketing ? '#133E32' : '#F1F5F9'}
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            style={styles.saveBtn}
+                            onPress={() => {
+                                Alert.alert('Saved 🎉', 'Notification preferences updated!');
+                                setNotificationModalVisible(false);
+                            }}
+                            activeOpacity={0.85}
+                        >
+                            <Text style={styles.saveBtnText}>Save Preferences</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
 
             {/* Bottom Nav Bar */}
             <View style={styles.bottomNav}>
@@ -195,6 +552,16 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#F8FAFC',
     },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 12,
+        fontWeight: '700',
+        color: '#133E32',
+    },
     scrollContent: {
         paddingHorizontal: 20,
         paddingTop: 18,
@@ -228,6 +595,19 @@ const styles = StyleSheet.create({
         height: 86,
         borderRadius: 43,
     },
+    cameraCircle: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        backgroundColor: '#133E32',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+    },
     verifiedBadgeCircle: {
         position: 'absolute',
         bottom: 0,
@@ -253,7 +633,7 @@ const styles = StyleSheet.create({
         color: '#0F172A',
         marginBottom: 2,
     },
-    joinDate: {
+    userEmail: {
         fontSize: 13,
         color: '#64748B',
         fontWeight: '500',
@@ -297,6 +677,7 @@ const styles = StyleSheet.create({
     },
 
     editProfileBtn: {
+        flexDirection: 'row',
         width: '100%',
         height: 46,
         borderRadius: 12,
@@ -463,5 +844,100 @@ const styles = StyleSheet.create({
     navLabelActive: {
         color: '#133E32',
         fontWeight: '900',
+    },
+
+    /* Modal Component Styles */
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(15, 23, 42, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContainer: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: 24,
+        maxHeight: '85%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '900',
+        color: '#0F172A',
+    },
+    modalSubtitle: {
+        fontSize: 13,
+        color: '#64748B',
+        marginBottom: 16,
+        lineHeight: 18,
+    },
+    inputGroup: {
+        marginBottom: 16,
+    },
+    inputLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#334155',
+        marginBottom: 6,
+    },
+    textInput: {
+        height: 48,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
+        paddingHorizontal: 14,
+        fontSize: 14,
+        color: '#0F172A',
+        backgroundColor: '#F8FAFC',
+    },
+    readOnlyInput: {
+        backgroundColor: '#F1F5F9',
+        color: '#64748B',
+    },
+    showPassRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    showPassText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#133E32',
+    },
+    switchRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    switchTitle: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#0F172A',
+        marginBottom: 2,
+    },
+    switchSubtitle: {
+        fontSize: 11,
+        color: '#64748B',
+    },
+    saveBtn: {
+        height: 48,
+        borderRadius: 14,
+        backgroundColor: '#133E32',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 12,
+    },
+    saveBtnText: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#FFFFFF',
     },
 });

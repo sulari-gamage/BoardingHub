@@ -74,14 +74,20 @@ public class PropertyService {
                 String img = (roomReq.getImageUrls() != null && !roomReq.getImageUrls().isEmpty()) 
                         ? roomReq.getImageUrls().get(0) 
                         : roomReq.getImageUrl();
+                int totCap = roomReq.getTotalCapacity() != null ? roomReq.getTotalCapacity() : 1;
+                int occ = roomReq.getOccupied() != null 
+                        ? roomReq.getOccupied() 
+                        : (roomReq.getRemainingSpaces() != null ? Math.max(0, totCap - roomReq.getRemainingSpaces()) : 0);
+                int rem = Math.max(0, totCap - occ);
+
                 return Room.builder()
                         .property(property)
                         .roomName(roomReq.getRoomName())
                         .roomType(roomReq.getRoomType())
                         .monthlyPrice(roomReq.getMonthlyPrice())
-                        .totalCapacity(roomReq.getTotalCapacity())
-                        .occupied(roomReq.getOccupied() != null ? roomReq.getOccupied() : 0)
-                        .remainingSpaces(roomReq.getRemainingSpaces() != null ? roomReq.getRemainingSpaces() : Math.max(0, roomReq.getTotalCapacity() - (roomReq.getOccupied() != null ? roomReq.getOccupied() : 0)))
+                        .totalCapacity(totCap)
+                        .occupied(occ)
+                        .remainingSpaces(rem)
                         .beds(roomReq.getBeds())
                         .washrooms(roomReq.getWashrooms())
                         .washroomType(roomReq.getWashroomType())
@@ -162,11 +168,20 @@ public class PropertyService {
 
                 if (roomToUpdate != null) {
                     // Update existing entity in-place
+                    int totCap = roomReq.getTotalCapacity() != null ? roomReq.getTotalCapacity() : (roomToUpdate.getTotalCapacity() != null ? roomToUpdate.getTotalCapacity() : 1);
+                    int occ = roomReq.getOccupied() != null 
+                            ? roomReq.getOccupied() 
+                            : (roomReq.getRemainingSpaces() != null 
+                                    ? Math.max(0, totCap - roomReq.getRemainingSpaces()) 
+                                    : (roomToUpdate.getOccupied() != null ? Math.min(totCap, roomToUpdate.getOccupied()) : 0));
+                    int rem = Math.max(0, totCap - occ);
+
                     roomToUpdate.setRoomName(roomReq.getRoomName());
                     roomToUpdate.setRoomType(roomReq.getRoomType());
                     roomToUpdate.setMonthlyPrice(roomReq.getMonthlyPrice());
-                    roomToUpdate.setTotalCapacity(roomReq.getTotalCapacity());
-                    roomToUpdate.setRemainingSpaces(roomReq.getRemainingSpaces() != null ? roomReq.getRemainingSpaces() : roomReq.getTotalCapacity());
+                    roomToUpdate.setTotalCapacity(totCap);
+                    roomToUpdate.setOccupied(occ);
+                    roomToUpdate.setRemainingSpaces(rem);
                     roomToUpdate.setBeds(roomReq.getBeds());
                     roomToUpdate.setWashrooms(roomReq.getWashrooms());
                     roomToUpdate.setWashroomType(roomReq.getWashroomType());
@@ -178,13 +193,20 @@ public class PropertyService {
                     processedRooms.add(roomToUpdate);
                 } else {
                     // Create new room entity
+                    int totCap = roomReq.getTotalCapacity() != null ? roomReq.getTotalCapacity() : 1;
+                    int occ = roomReq.getOccupied() != null 
+                            ? roomReq.getOccupied() 
+                            : (roomReq.getRemainingSpaces() != null ? Math.max(0, totCap - roomReq.getRemainingSpaces()) : 0);
+                    int rem = Math.max(0, totCap - occ);
+
                     Room newRoom = Room.builder()
                             .property(property)
                             .roomName(roomReq.getRoomName())
                             .roomType(roomReq.getRoomType())
                             .monthlyPrice(roomReq.getMonthlyPrice())
-                            .totalCapacity(roomReq.getTotalCapacity())
-                            .remainingSpaces(roomReq.getRemainingSpaces() != null ? roomReq.getRemainingSpaces() : roomReq.getTotalCapacity())
+                            .totalCapacity(totCap)
+                            .occupied(occ)
+                            .remainingSpaces(rem)
                             .beds(roomReq.getBeds())
                             .washrooms(roomReq.getWashrooms())
                             .washroomType(roomReq.getWashroomType())

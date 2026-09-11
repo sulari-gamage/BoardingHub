@@ -41,7 +41,7 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
-    @Column(name = "avatar_url")
+    @Column(name = "avatar_url", columnDefinition = "TEXT")
     private String avatarUrl;
 
     @Column(name = "created_at", nullable = false, updatable = false)

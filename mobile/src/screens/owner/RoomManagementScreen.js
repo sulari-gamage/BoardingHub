@@ -131,6 +131,7 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
 
             let updatedRooms = [];
             if (isNewRoom) {
+                const newTotal = parseInt(formRoom.totalCapacity || formRoom.capacity) || 1;
                 const newRoomPayload = {
                     roomName: formRoom.roomName || formRoom.number || `Room ${rawRooms.length + 1}`,
                     roomType: formRoom.roomType || 'Single',
@@ -139,8 +140,9 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                     washroomType: formRoom.washroomType || 'Common',
                     amenities: typeof formRoom.amenities === 'string' ? formRoom.amenities : JSON.stringify(formRoom.amenities || ''),
                     monthlyPrice: parseFloat(formRoom.monthlyPrice || formRoom.price) || 15000,
-                    totalCapacity: parseInt(formRoom.totalCapacity || formRoom.capacity) || 1,
-                    remainingSpaces: parseInt(formRoom.totalCapacity || formRoom.capacity) || 1,
+                    totalCapacity: newTotal,
+                    occupied: 0,
+                    remainingSpaces: newTotal,
                     rentType: formRoom.rentType || 'PER_PERSON',
                     imageUrl: uploadedRoomPhotos.length > 0 ? uploadedRoomPhotos[0] : undefined,
                     imageUrls: uploadedRoomPhotos
@@ -157,7 +159,13 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                         (formRoom.id && (r.id?.toString() === formRoom.id.toString() || `r-${idx}` === formRoom.id));
 
                     if (matches) {
-                        const diff = Math.max(0, parseInt(formRoom.totalCapacity || formRoom.capacity) - (r.totalCapacity || 0));
+                        const newTotal = parseInt(formRoom.totalCapacity || formRoom.capacity) || r.totalCapacity || 1;
+                        const oldTotal = r.totalCapacity || 1;
+                        const oldRemaining = r.remainingSpaces != null ? r.remainingSpaces : oldTotal;
+                        const oldOccupied = r.occupied != null ? r.occupied : Math.max(0, oldTotal - oldRemaining);
+                        const newOccupied = Math.min(newTotal, oldOccupied);
+                        const newRemaining = Math.max(0, newTotal - newOccupied);
+
                         const validExistingImg = (r.imageUrl && (r.imageUrl.startsWith('http://') || r.imageUrl.startsWith('https://'))) ? r.imageUrl : undefined;
                         const finalImg = uploadedRoomPhotos.length > 0 ? uploadedRoomPhotos[0] : validExistingImg;
                         return {
@@ -170,8 +178,9 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                             washroomType: formRoom.washroomType || 'Common',
                             amenities: typeof formRoom.amenities === 'string' ? formRoom.amenities : JSON.stringify(formRoom.amenities || ''),
                             monthlyPrice: parseFloat(formRoom.monthlyPrice || formRoom.price) || r.monthlyPrice,
-                            totalCapacity: parseInt(formRoom.totalCapacity || formRoom.capacity) || r.totalCapacity,
-                            remainingSpaces: Math.min(parseInt(formRoom.totalCapacity || formRoom.capacity) || r.totalCapacity, (r.remainingSpaces || r.totalCapacity || 1) + diff),
+                            totalCapacity: newTotal,
+                            occupied: newOccupied,
+                            remainingSpaces: newRemaining,
                             rentType: formRoom.rentType || r.rentType || 'PER_PERSON',
                             imageUrl: finalImg,
                             imageUrls: uploadedRoomPhotos.length > 0 ? uploadedRoomPhotos : (finalImg ? [finalImg] : [])

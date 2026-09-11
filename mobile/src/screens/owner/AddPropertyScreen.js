@@ -594,7 +594,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                     roomsCount: propertyNature === 'WHOLE_HOUSE' ? (parseInt(wholeHouseRooms || '') || 1) : rooms.length,
                     bedsCount: propertyNature === 'WHOLE_HOUSE' ? (parseInt(wholeHouseBeds || '') || 1) : null,
                     bathsCount: propertyNature === 'WHOLE_HOUSE' ? (parseInt(wholeHouseWashrooms || '') || 1) : null,
-                    totalCapacity: propertyNature === 'WHOLE_HOUSE' ? (parseInt(wholeHouseBeds || '') || 1) : parsedCapacity,
+                    totalCapacity: propertyNature === 'WHOLE_HOUSE' ? (parseInt(totalCapacity || '') || parseInt(wholeHouseBeds || '') || 1) : parsedCapacity,
                     hasKitchen: propertyNature === 'WHOLE_HOUSE' ? hasKitchen : true,
                     isFurnished: propertyNature === 'WHOLE_HOUSE' ? isFurnished : false,
                     isElectricityIncluded: isElectricityIncluded,
