@@ -78,8 +78,38 @@ export default function BookingRequestModal({ visible, onClose, boarding = {}, o
     const ownerName = boarding.ownerName || 'Sunethra Silva';
     const ownerPhone = boarding.ownerPhone || '+94 77 123 4567';
 
+    // Calculate maximum available spaces for currently selected room or property
+    const getSelectedMaxSpaces = () => {
+        if (isWholeHouse) return annexSpaces;
+        const matchedRoom = rooms.find(r => r.id === selectedBookingType) || rooms[0];
+        const rmSpaces = matchedRoom?.remainingSpaces ?? matchedRoom?.availableSpaces ?? matchedRoom?.totalCapacity ?? 1;
+        return Math.max(1, rmSpaces);
+    };
+
+    const maxSpaces = getSelectedMaxSpaces();
+
+    // Ensure peopleCount never exceeds maxSpaces when selected room changes
+    useEffect(() => {
+        if (!isWholeHouse) {
+            const currentMax = getSelectedMaxSpaces();
+            if (peopleCount > currentMax) {
+                setPeopleCount(currentMax);
+            }
+        }
+    }, [selectedBookingType, rooms, isWholeHouse]);
+
     const handleIncrement = () => {
         if (isWholeHouse) return;
+        const currentMax = getSelectedMaxSpaces();
+        if (peopleCount >= currentMax) {
+            const matchedRoom = rooms.find(r => r.id === selectedBookingType) || rooms[0];
+            const roomNameStr = matchedRoom?.roomName || matchedRoom?.roomNumber || matchedRoom?.number || 'Selected Room';
+            Alert.alert(
+                'Vacancy Limit Reached ⚠️',
+                `Only ${currentMax} space(s) are available in ${roomNameStr}. You cannot request more occupants than the available room vacancy.`
+            );
+            return;
+        }
         setPeopleCount(prev => prev + 1);
     };
 
@@ -523,11 +553,18 @@ export default function BookingRequestModal({ visible, onClose, boarding = {}, o
                                 </TouchableOpacity>
                             </View>
 
-                            {isWholeHouse && (
+                            {isWholeHouse ? (
                                 <View style={styles.annexLockNotice}>
                                     <Ionicons name="lock-closed" size={13} color="#15803D" style={{ marginRight: 6 }} />
                                     <Text style={styles.annexLockNoticeText}>
                                         Annex type bookings rent the entire property. Spaces fixed to full Annex capacity ({annexSpaces} space{annexSpaces > 1 ? 's' : ''}).
+                                    </Text>
+                                </View>
+                            ) : (
+                                <View style={styles.annexLockNotice}>
+                                    <Ionicons name="information-circle-outline" size={14} color="#1B4D3E" style={{ marginRight: 6 }} />
+                                    <Text style={styles.annexLockNoticeText}>
+                                        Maximum request limit for selected room: {maxSpaces} available space{maxSpaces > 1 ? 's' : ''}.
                                     </Text>
                                 </View>
                             )}

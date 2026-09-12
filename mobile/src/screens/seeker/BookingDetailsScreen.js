@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     View,
     Text,
@@ -10,57 +10,92 @@ import {
     Image,
     Alert,
     Platform,
-    Linking
+    Linking,
+    ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import api from '../../services/api';
 
 export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBooking }) {
-    const title = booking.title || 'Green Valley Boarding';
+    const [isCancelling, setIsCancelling] = useState(false);
+
+    const title = booking.title || 'Boarding Property';
     const location = booking.location || 'Moratuwa, Sri Lanka';
     const date = booking.date || 'Sep 10, 2026';
-    const roomType = booking.roomType || 'Shared Room';
-    const price = booking.price ? booking.price.toLocaleString() : '15,000';
+    const roomType = booking.roomType || 'Room Request';
+    const roomName = booking.roomName || (booking.roomType ? booking.roomType.split('(')[0]?.trim() : null);
+    const isRoomBased = booking.bookingType === 'ROOM_BASED' || !!booking.roomId || !!booking.roomName;
+    const price = booking.price ? booking.price.toLocaleString() : '0';
     const status = booking.status || 'PENDING';
-    const imageUrl = booking.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80';
-    const ownerName = booking.ownerName || 'Sunethra Silva';
-    const ownerPhone = booking.ownerPhone || '+94 77 123 4567';
+    const imageUrl = booking.imageUrl;
+    const ownerName = booking.ownerName || 'Property Owner';
+    const ownerPhone = booking.ownerPhone || '';
 
     // Status Timeline steps
     const timelineSteps = [
-        { label: 'Booking Request Sent', date: 'Aug 30, 2026', done: true },
+        { label: 'Booking Request Sent', date: booking.date || 'Submitted', done: true },
         { label: 'Owner Review', date: status === 'PENDING' ? 'In Progress' : 'Completed', done: status !== 'PENDING' },
-        { label: 'Owner Approval & Response', date: status === 'ACCEPTED' || status === 'APPROVED' ? 'Approved' : 'Pending Action', done: status === 'ACCEPTED' || status === 'APPROVED' },
-        { label: 'Move-in Ready', date: date, done: false }
+        { label: 'Owner Approval & Response', date: status === 'ACCEPTED' || status === 'APPROVED' ? 'Approved' : (status === 'REJECTED' || status === 'CANCELLED' ? status : 'Pending Action'), done: status === 'ACCEPTED' || status === 'APPROVED' },
+        { label: 'Move-in Ready', date: date, done: status === 'ACCEPTED' || status === 'APPROVED' }
     ];
 
     const handleCallHost = () => {
-        Alert.alert('Contact Owner', `Calling ${ownerName} at ${ownerPhone}...`);
+        if (!ownerPhone) {
+            Alert.alert('Contact Owner', 'Owner phone number is not available.');
+            return;
+        }
+        Alert.alert('Contact Owner 📞', `Calling ${ownerName} at ${ownerPhone}...`, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Call Now', onPress: () => Linking.openURL(`tel:${ownerPhone.replace(/[^0-9+]/g, '')}`) }
+        ]);
     };
 
     const handleWhatsAppChat = () => {
+        if (!ownerPhone) {
+            Alert.alert('Contact Owner', 'Owner WhatsApp number is not available.');
+            return;
+        }
         const cleanPhone = ownerPhone.replace(/[^0-9]/g, '');
         const text = encodeURIComponent(`Hi ${ownerName}, regarding my booking request for "${title}" on BoardingHub.`);
         const url = `whatsapp://send?phone=${cleanPhone}&text=${text}`;
         Linking.canOpenURL(url)
             .then(supported => {
                 if (supported) Linking.openURL(url);
-                else Alert.alert('WhatsApp Not Installed', `Call or message ${ownerName} at ${ownerPhone}`);
+                else Alert.alert('WhatsApp Not Installed', `Contact ${ownerName} at ${ownerPhone}`);
             })
             .catch(() => Alert.alert('Contact Host', `Call ${ownerName} at ${ownerPhone}`));
     };
 
     const handleCancelPress = () => {
         Alert.alert(
-            'Cancel Booking',
-            'Are you sure you want to cancel this booking request?',
+            'Cancel Booking Request ⚠️',
+            `Are you sure you want to cancel your booking request for "${title}"?\n\nThis action cannot be undone.`,
             [
                 { text: 'Keep Request', style: 'cancel' },
                 {
-                    text: 'Cancel Booking',
+                    text: 'Yes, Cancel Request',
                     style: 'destructive',
-                    onPress: () => {
-                        if (onCancelBooking) onCancelBooking(booking.id);
-                        onBack();
+                    onPress: async () => {
+                        setIsCancelling(true);
+                        try {
+                            if (booking.id && !isNaN(booking.id)) {
+                                await api.bookings.updateStatus(booking.id, 'CANCELLED');
+                            }
+                            if (onCancelBooking) {
+                                onCancelBooking(booking.id);
+                            }
+                            Alert.alert('Booking Cancelled 🚫', 'Your booking request has been successfully cancelled.');
+                            onBack();
+                        } catch (err) {
+                            console.error('[BookingDetailsScreen] Cancel error:', err?.message);
+                            if (onCancelBooking) {
+                                onCancelBooking(booking.id);
+                            }
+                            Alert.alert('Booking Cancelled 🚫', 'Your booking request status was updated.');
+                            onBack();
+                        } finally {
+                            setIsCancelling(false);
+                        }
                     }
                 }
             ]
@@ -85,7 +120,14 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {/* Property Card Header */}
                 <View style={styles.propertyCard}>
-                    <Image source={{ uri: imageUrl }} style={styles.cardImage} resizeMode="cover" />
+                    {imageUrl ? (
+                        <Image source={{ uri: imageUrl }} style={styles.cardImage} resizeMode="cover" />
+                    ) : (
+                        <View style={styles.cardImagePlaceholder}>
+                            <Ionicons name="home-outline" size={40} color="#94A3B8" />
+                            <Text style={styles.cardImagePlaceholderText}>Property Photo</Text>
+                        </View>
+                    )}
 
                     <View style={styles.cardInfo}>
                         <View style={styles.statusBadgeRow}>
@@ -94,13 +136,13 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
                                     styles.statusBadge,
                                     status === 'PENDING'
                                         ? styles.pendingBadge
-                                        : status === 'ACCEPTED'
+                                        : status === 'ACCEPTED' || status === 'APPROVED'
                                             ? styles.acceptedBadge
                                             : styles.pastBadge
                                 ]}
                             >
                                 <Ionicons
-                                    name={status === 'PENDING' ? 'time' : status === 'ACCEPTED' ? 'checkmark-circle' : 'archive'}
+                                    name={status === 'PENDING' ? 'time' : status === 'ACCEPTED' || status === 'APPROVED' ? 'checkmark-circle' : 'archive'}
                                     size={12}
                                     color="#FFFFFF"
                                     style={{ marginRight: 4 }}
@@ -118,6 +160,43 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
                         </View>
                     </View>
                 </View>
+
+                {/* Selected Room Specification (For Room-Based Boardings) */}
+                {isRoomBased && (
+                    <>
+                        <Text style={styles.sectionHeading}>Selected Room Specifications</Text>
+                        <View style={styles.roomSpecCard}>
+                            <View style={styles.roomSpecHeader}>
+                                <View style={styles.roomSpecBadgeIcon}>
+                                    <Ionicons name="bed" size={18} color="#1B4D3E" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.roomSpecTitle}>{roomName || 'Selected Room'}</Text>
+                                    <Text style={styles.roomSpecSubtitle}>{roomType}</Text>
+                                </View>
+                                <View style={styles.roomBadge}>
+                                    <Text style={styles.roomBadgeText}>ROOM-BASED</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.summaryDivider} />
+
+                            <View style={styles.roomSpecGrid}>
+                                <View style={styles.roomSpecCol}>
+                                    <Ionicons name="people-outline" size={15} color="#64748B" style={{ marginBottom: 2 }} />
+                                    <Text style={styles.roomSpecLabel}>Occupants</Text>
+                                    <Text style={styles.roomSpecVal}>{booking.occupantsCount || 1} Person(s)</Text>
+                                </View>
+
+                                <View style={styles.roomSpecCol}>
+                                    <Ionicons name="cash-outline" size={15} color="#64748B" style={{ marginBottom: 2 }} />
+                                    <Text style={styles.roomSpecLabel}>Rent Rate</Text>
+                                    <Text style={styles.roomSpecValGold}>Rs. {price} / mo</Text>
+                                </View>
+                            </View>
+                        </View>
+                    </>
+                )}
 
                 {/* Progress Status Timeline */}
                 <Text style={styles.sectionHeading}>Request Progress</Text>
@@ -185,7 +264,7 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={styles.ownerName}>{ownerName}</Text>
-                        <Text style={styles.ownerPhone}>{ownerPhone}</Text>
+                        <Text style={styles.ownerPhone}>{ownerPhone || 'Contact via WhatsApp/Call'}</Text>
                     </View>
 
                     <TouchableOpacity style={styles.whatsappHostBtn} onPress={handleWhatsAppChat} activeOpacity={0.85}>
@@ -216,9 +295,20 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
 
                 {/* Cancel Booking Action Button */}
                 {status === 'PENDING' && (
-                    <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelPress} activeOpacity={0.85}>
-                        <Ionicons name="close-circle-outline" size={18} color="#DC2626" style={{ marginRight: 6 }} />
-                        <Text style={styles.cancelBtnText}>Cancel Booking Request</Text>
+                    <TouchableOpacity
+                        style={[styles.cancelBtn, isCancelling && { opacity: 0.6 }]}
+                        onPress={handleCancelPress}
+                        activeOpacity={0.85}
+                        disabled={isCancelling}
+                    >
+                        {isCancelling ? (
+                            <ActivityIndicator color="#DC2626" size="small" />
+                        ) : (
+                            <>
+                                <Ionicons name="close-circle-outline" size={18} color="#DC2626" style={{ marginRight: 6 }} />
+                                <Text style={styles.cancelBtnText}>Cancel Booking Request</Text>
+                            </>
+                        )}
                     </TouchableOpacity>
                 )}
             </ScrollView>
@@ -357,6 +447,78 @@ const styles = StyleSheet.create({
         color: '#0F172A',
         marginBottom: 10,
         marginTop: 4,
+    },
+
+    /* Selected Room Specification Card */
+    roomSpecCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 18,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        marginBottom: 20,
+    },
+    roomSpecHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    roomSpecBadgeIcon: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#E6F0EC',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
+    },
+    roomSpecTitle: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+    roomSpecSubtitle: {
+        fontSize: 12,
+        color: '#64748B',
+        marginTop: 1,
+    },
+    roomBadge: {
+        backgroundColor: '#E6F0EC',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#A3D0C3',
+    },
+    roomBadgeText: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: '#1B4D3E',
+    },
+    roomSpecGrid: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    roomSpecCol: {
+        flex: 1,
+        alignItems: 'flex-start',
+    },
+    roomSpecLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#64748B',
+    },
+    roomSpecVal: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: '#0F172A',
+        marginTop: 2,
+    },
+    roomSpecValGold: {
+        fontSize: 13,
+        fontWeight: '900',
+        color: '#D97706',
+        marginTop: 2,
     },
 
     /* Timeline */

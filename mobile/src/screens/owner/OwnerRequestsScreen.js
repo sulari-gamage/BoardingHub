@@ -48,22 +48,42 @@ export default function OwnerRequestsScreen({
         }
     };
 
-    const mappedRequests = apiRequests.map(r => ({
-        id: r.id.toString(),
-        tenantName: r.seekerName || 'Applicant',
-        tenantPhone: r.seekerPhone || '+94 77 000 0000',
-        avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
-        propertyTitle: r.propertyTitle || 'Property',
-        roomType: r.roomType ? `${r.roomType} Room` : 'Room Request',
-        occupantsCount: r.occupantsCount || 1,
-        remainingSpaces: r.remainingSpaces !== undefined ? r.remainingSpaces : 1,
-        moveInDate: r.moveInDate ? new Date(r.moveInDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Flexible',
-        monthlyPrice: r.monthlyPrice || 0,
-        status: r.status,
-        dateRequested: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'Recently'
-    }));
+    const mappedRequests = apiRequests.map(r => {
+        let realImageUrl = r.imageUrl;
+        if (realImageUrl && typeof realImageUrl === 'string' && realImageUrl.startsWith('/')) {
+            const baseUrl = api.getBaseUrl ? api.getBaseUrl() : 'http://192.168.1.100:8080';
+            realImageUrl = `${baseUrl}${realImageUrl}`;
+        }
 
-    const displayRequests = mappedRequests.length > 0 ? mappedRequests : (requestsList || []);
+        let realSeekerAvatar = r.seekerAvatarUrl;
+        if (realSeekerAvatar && typeof realSeekerAvatar === 'string' && realSeekerAvatar.startsWith('/')) {
+            const baseUrl = api.getBaseUrl ? api.getBaseUrl() : 'http://192.168.1.100:8080';
+            realSeekerAvatar = `${baseUrl}${realSeekerAvatar}`;
+        }
+
+        const roomDisplay = r.roomName
+            ? `${r.roomName} (${r.roomType || 'Room'})`
+            : (r.roomType ? `${r.roomType} Room` : (r.bookingType === 'ANNEX' ? 'Entire Annex' : 'Whole Property'));
+
+        return {
+            id: r.id.toString(),
+            tenantName: r.seekerName || 'Tenant Applicant',
+            tenantPhone: r.seekerPhone || '',
+            avatar: realSeekerAvatar || null,
+            propertyTitle: r.propertyTitle || 'Boarding Property',
+            roomType: roomDisplay,
+            occupantsCount: r.occupantsCount || 1,
+            remainingSpaces: r.remainingSpaces !== undefined && r.remainingSpaces !== null ? r.remainingSpaces : 1,
+            moveInDate: r.moveInDate ? new Date(r.moveInDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Flexible',
+            monthlyPrice: r.monthlyPrice || 0,
+            status: r.status,
+            dateRequested: r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recently',
+            imageUrl: realImageUrl || null,
+            notes: r.notes || null
+        };
+    });
+
+    const displayRequests = mappedRequests;
 
     const handleWhatsAppApplicant = (phone) => {
         const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
@@ -196,7 +216,15 @@ export default function OwnerRequestsScreen({
                             activeOpacity={0.88}
                         >
                             <View style={styles.cardHeader}>
-                                <Image source={{ uri: item.avatar }} style={styles.avatar} />
+                                {item.avatar ? (
+                                    <Image source={{ uri: item.avatar }} style={styles.avatar} />
+                                ) : (
+                                    <View style={styles.avatarInitialCircle}>
+                                        <Text style={styles.avatarInitialText}>
+                                            {(item.tenantName || 'T').charAt(0).toUpperCase()}
+                                        </Text>
+                                    </View>
+                                )}
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.tenantName}>{item.tenantName}</Text>
                                     <Text style={styles.dateRequested}>{item.dateRequested}</Text>
@@ -257,6 +285,13 @@ export default function OwnerRequestsScreen({
 
                                 <Text style={styles.priceVal}>Rs. {item.monthlyPrice.toLocaleString()} / month</Text>
                             </View>
+
+                            {item.notes ? (
+                                <View style={styles.notesBox}>
+                                    <Ionicons name="chatbubble-ellipses-outline" size={14} color="#64748B" style={{ marginRight: 6 }} />
+                                    <Text style={styles.notesText}>"{item.notes}"</Text>
+                                </View>
+                            ) : null}
 
                             {/* Direct Contact Buttons for Applicant */}
                             <View style={styles.applicantContactRow}>
@@ -422,6 +457,22 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         marginRight: 12,
     },
+    avatarInitialCircle: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#E6F0EC',
+        borderWidth: 1,
+        borderColor: '#A3D0C3',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    avatarInitialText: {
+        fontSize: 18,
+        fontWeight: '900',
+        color: '#133E32',
+    },
     tenantName: {
         fontSize: 16,
         fontWeight: '800',
@@ -515,6 +566,23 @@ const styles = StyleSheet.create({
     },
     spacesChipTextRed: {
         color: '#DC2626',
+    },
+
+    /* Seeker Notes Box */
+    notesBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F1F5F9',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 10,
+        marginBottom: 12,
+    },
+    notesText: {
+        fontSize: 12,
+        fontStyle: 'italic',
+        color: '#475569',
+        flex: 1,
     },
 
     /* Applicant Contact Row */

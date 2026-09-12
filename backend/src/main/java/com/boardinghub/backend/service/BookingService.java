@@ -174,6 +174,15 @@ public class BookingService {
             }
         }
 
+        Integer remainingSpaces = null;
+        if (b.getRoom() != null) {
+            remainingSpaces = b.getRoom().getRemainingSpaces();
+        } else if (b.getProperty() != null) {
+            int capacity = b.getProperty().getTotalCapacity() != null ? b.getProperty().getTotalCapacity() : 0;
+            int occupied = b.getProperty().getTotalOccupied() != null ? b.getProperty().getTotalOccupied() : 0;
+            remainingSpaces = Math.max(0, capacity - occupied);
+        }
+
         return BookingResponse.builder()
                 .id(b.getId())
                 .propertyId(b.getProperty().getId())
@@ -186,6 +195,8 @@ public class BookingService {
                 .seekerId(b.getSeeker().getId())
                 .seekerName(b.getSeeker().getName())
                 .seekerPhone(b.getSeeker().getWhatsappNumber())
+                .seekerAvatarUrl(b.getSeeker().getAvatarUrl())
+                .remainingSpaces(remainingSpaces)
                 .occupantsCount(b.getOccupantsCount())
                 .moveInDate(b.getMoveInDate())
                 .monthlyPrice(monthlyPrice)
