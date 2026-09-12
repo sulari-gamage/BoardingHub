@@ -43,7 +43,7 @@ const AMENITY_MAP = {
     balcony: 'Private Balcony',
 };
 
-export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEdit = null }) {
+export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEdit = null, currentUser = null }) {
     const isEditMode = !!propertyToEdit;
     const dbSource = propertyToEdit?.raw || propertyToEdit || {};
 
@@ -273,11 +273,20 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
         batticaloa: { lat: 7.7170, lng: 81.7000, city: 'Batticaloa' },
     };
 
+    const formatAddressLineByLine = (addrStr) => {
+        if (!addrStr) return '';
+        return addrStr
+            .split(/[\r\n]+/)
+            .map(line => line.trim())
+            .filter(line => line.length > 0)
+            .join(', ');
+    };
+
     const cleanAddressForGeocoding = (addressStr, cityStr) => {
-        let raw = `${addressStr || ''} ${cityStr || ''}`.trim();
+        const lineCleaned = formatAddressLineByLine(addressStr);
+        let raw = `${lineCleaned} ${cityStr || ''}`.trim();
         if (!raw) return '';
-        raw = raw.replace(/[\r\n]+/g, ', ')
-            .replace(/\s+/g, ' ')
+        raw = raw.replace(/\s+/g, ' ')
             .replace(/,\s*,/g, ',')
             .replace(/\.\s*$/, '')
             .trim();
@@ -594,10 +603,12 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                     if (hasAC) selectedAmenityNamesList.push('Air Conditioning');
                 }
 
+                const cleanedAddressStr = formatAddressLineByLine(streetAddress || searchAddress);
+
                 const propertyPayload = {
                     title: propertyName,
                     description: description || 'Boarding house property.',
-                    address: streetAddress || searchAddress,
+                    address: cleanedAddressStr,
                     city: city,
                     district: district,
                     genderPreference: mappedGender,
@@ -608,6 +619,10 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                     imageUrls: imagesList,
                     rooms: payloadRooms,
                     propertyNature: propertyNature,
+                    ownerName: currentUser?.fullName || currentUser?.name || dbSource.ownerName || 'Owner',
+                    ownerPhone: currentUser?.whatsappNumber || currentUser?.phone || dbSource.ownerPhone || '',
+                    ownerAvatar: currentUser?.avatarUrl || dbSource.ownerAvatar || null,
+                    ownerId: currentUser?.id || dbSource.ownerId || null,
                     roomsCount: propertyNature === 'WHOLE_HOUSE' ? (parseInt(wholeHouseRooms || '') || 1) : rooms.length,
                     bedsCount: propertyNature === 'WHOLE_HOUSE' ? (parseInt(wholeHouseBeds || '') || 1) : null,
                     bathsCount: propertyNature === 'WHOLE_HOUSE' ? (parseInt(wholeHouseWashrooms || '') || 1) : null,
@@ -787,8 +802,10 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                         {/* Address */}
                         <Text style={styles.fieldLabel}>Property Address *</Text>
                         <TextInput
-                            style={styles.input}
-                            placeholder="e.g. No. 45, Temple Road, Bambalapitiya"
+                            style={[styles.input, { height: 75, textAlignVertical: 'top', paddingTop: 10 }]}
+                            multiline
+                            numberOfLines={3}
+                            placeholder="e.g. No. 45&#10;Temple Road&#10;Bambalapitiya"
                             placeholderTextColor="#94A3B8"
                             value={streetAddress}
                             onChangeText={(text) => {

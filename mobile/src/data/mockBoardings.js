@@ -7,7 +7,11 @@ export const NEAR_LOCATION_BOARDINGS = [
     pricePeriod: "month",
     imageUrl: "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80",
     rating: 4.7,
-    isSaved: true
+    isSaved: true,
+    ownerName: "Sunethra Silva",
+    ownerPhone: "+94771234567",
+    ownerWhatsapp: "+94771234567",
+    ownerAvatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80"
   },
   {
     id: "n2",
@@ -17,7 +21,11 @@ export const NEAR_LOCATION_BOARDINGS = [
     pricePeriod: "month",
     imageUrl: "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80",
     rating: 4.6,
-    isSaved: false
+    isSaved: false,
+    ownerName: "Kamal Fernando",
+    ownerPhone: "+94719876543",
+    ownerWhatsapp: "+94719876543",
+    ownerAvatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=200&q=80"
   },
   {
     id: "n3",
@@ -27,7 +35,11 @@ export const NEAR_LOCATION_BOARDINGS = [
     pricePeriod: "month",
     imageUrl: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80",
     rating: 4.9,
-    isSaved: false
+    isSaved: false,
+    ownerName: "Nimal Perera",
+    ownerPhone: "+94754443322",
+    ownerWhatsapp: "+94754443322",
+    ownerAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
   }
 ];
 
@@ -46,7 +58,9 @@ export const POPULAR_BOARDINGS = [
     amenities: ["Wi-Fi", "Attached Bath", "Study Desk", "3 Meals Daily"],
     description: "Peaceful environment for female students and workers in Moratuwa. 5 mins walk to bus stand.",
     ownerName: "Sunethra Silva",
-    ownerPhone: "+94 77 123 4567"
+    ownerPhone: "+94 77 123 4567",
+    ownerWhatsapp: "+94771234567",
+    ownerAvatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80"
   },
   {
     id: "p2",
@@ -62,7 +76,9 @@ export const POPULAR_BOARDINGS = [
     amenities: ["AC Available", "Attached Bath", "Kitchenette", "Hot Water"],
     description: "Modern furnished studio apartments in Dehiwala close to Galle Road.",
     ownerName: "Kamal Fernando",
-    ownerPhone: "+94 71 987 6543"
+    ownerPhone: "+94 71 987 6543",
+    ownerWhatsapp: "+94719876543",
+    ownerAvatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=200&q=80"
   },
   {
     id: "p3",
@@ -78,7 +94,9 @@ export const POPULAR_BOARDINGS = [
     amenities: ["High-speed Wi-Fi", "Study Area", "Parking", "Water Filter"],
     description: "Ideal boarding place for University of Moratuwa undergraduates. 300m to main gate.",
     ownerName: "Nimal Perera",
-    ownerPhone: "+94 75 444 3322"
+    ownerPhone: "+94 75 444 3322",
+    ownerWhatsapp: "+94754443322",
+    ownerAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
   }
 ];
 

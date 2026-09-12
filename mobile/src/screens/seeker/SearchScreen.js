@@ -16,8 +16,8 @@ import FilterModal from '../../components/FilterModal';
 import HeaderBar from '../../components/HeaderBar';
 import api from '../../services/api';
 
-export default function SearchScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications, currentUser }) {
-    const [searchQuery, setSearchQuery] = useState('');
+export default function SearchScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications, currentUser, initialSearchQuery = '' }) {
+    const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
     const [activeFilters, setActiveFilters] = useState([]);
     const [activeTab, setActiveTab] = useState('SEARCH');
     const [savedStatus, setSavedStatus] = useState({});
@@ -28,6 +28,12 @@ export default function SearchScreen({ onSelectBoarding, onNavigateTab, onOpenNo
     useEffect(() => {
         loadProperties();
     }, []);
+
+    useEffect(() => {
+        if (initialSearchQuery !== undefined) {
+            setSearchQuery(initialSearchQuery);
+        }
+    }, [initialSearchQuery]);
 
     const loadProperties = async () => {
         try {
@@ -51,10 +57,12 @@ export default function SearchScreen({ onSelectBoarding, onNavigateTab, onOpenNo
     };
 
     const mappedProperties = apiProperties.map(p => ({
+        ...p,
         id: p.id ? p.id.toString() : Math.random().toString(),
         title: p.title || 'Boarding Property',
-        location: (p.city || '') + (p.address ? ' • ' + p.address : ''),
-        price: p.monthlyRent || 0,
+        address: p.address || (p.raw && p.raw.address) || '',
+        location: p.address || (p.city ? `${p.city}` : 'Location Not Set'),
+        price: p.monthlyRent || p.price || 0,
         pricePeriod: 'month',
         rating: p.rating || 4.8,
         isVerified: true,
@@ -64,16 +72,19 @@ export default function SearchScreen({ onSelectBoarding, onNavigateTab, onOpenNo
             : (p.images && p.images.length > 0)
                 ? (typeof p.images[0] === 'string' ? p.images[0] : p.images[0].imageUrl)
                 : 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
-        description: p.description || 'Boarding property listing',
-        ownerName: p.ownerName || 'Owner',
-        ownerPhone: p.ownerPhone || ''
+        description: p.description || (p.raw && p.raw.description) || 'Boarding property listing',
+        ownerName: p.ownerName || (p.owner && p.owner.name) || (p.raw && p.raw.ownerName) || 'Sunethra Silva',
+        ownerPhone: p.ownerWhatsapp || p.ownerPhone || (p.owner && (p.owner.whatsappNumber || p.owner.phone)) || (p.raw && (p.raw.ownerWhatsapp || p.raw.ownerPhone)) || '',
+        ownerAvatar: p.ownerAvatar || (p.owner && p.owner.avatarUrl) || (p.raw && p.raw.ownerAvatar) || null,
+        ownerId: p.ownerId || (p.owner && p.owner.id) || (p.raw && p.raw.ownerId) || null,
     }));
 
     const searchResults = mappedProperties.filter((item) => {
         const query = searchQuery.toLowerCase();
         const matchesSearch = !searchQuery ||
-            item.location.toLowerCase().includes(query) ||
-            item.title.toLowerCase().includes(query);
+            (item.location && item.location.toLowerCase().includes(query)) ||
+            (item.title && item.title.toLowerCase().includes(query)) ||
+            (item.ownerName && item.ownerName.toLowerCase().includes(query));
         return matchesSearch;
     });
 

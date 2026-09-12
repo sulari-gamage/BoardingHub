@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, SafeAreaView, StatusBar } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Auth Screens
 import LoginScreen from './src/screens/auth/LoginScreen';
@@ -54,16 +55,48 @@ export default function App() {
   const [userBookings, setUserBookings] = useState([]);
   const [ownerRequests, setOwnerRequests] = useState([]);
   const [savedBoardings, setSavedBoardings] = useState([]);
+  const [searchInitialQuery, setSearchInitialQuery] = useState('');
+
+  // Load saved boardings from AsyncStorage on app mount / user login
+  useEffect(() => {
+    const loadSavedBoardings = async () => {
+      try {
+        const storageKey = currentUser?.id ? `@saved_boardings_${currentUser.id}` : '@saved_boardings_default';
+        const savedData = await AsyncStorage.getItem(storageKey);
+        if (savedData) {
+          const parsed = JSON.parse(savedData);
+          if (Array.isArray(parsed)) {
+            setSavedBoardings(parsed);
+            return;
+          }
+        }
+        const genericData = await AsyncStorage.getItem('@saved_boardings_default');
+        if (genericData) {
+          const parsedGeneric = JSON.parse(genericData);
+          if (Array.isArray(parsedGeneric)) {
+            setSavedBoardings(parsedGeneric);
+          }
+        }
+      } catch (error) {
+        console.log('[App] Error loading saved boardings from AsyncStorage:', error);
+      }
+    };
+    loadSavedBoardings();
+  }, [currentUser]);
 
   const handleToggleSaveBoarding = (boarding) => {
     if (!boarding || !boarding.id) return;
     setSavedBoardings((prev) => {
       const exists = prev.some((b) => b.id === boarding.id);
-      if (exists) {
-        return prev.filter((b) => b.id !== boarding.id);
-      } else {
-        return [...prev, boarding];
-      }
+      const updated = exists ? prev.filter((b) => b.id !== boarding.id) : [...prev, boarding];
+
+      const storageKey = currentUser?.id ? `@saved_boardings_${currentUser.id}` : '@saved_boardings_default';
+      AsyncStorage.setItem(storageKey, JSON.stringify(updated)).catch((err) =>
+        console.log('[App] Error saving boardings to AsyncStorage:', err)
+      );
+      AsyncStorage.setItem('@saved_boardings_default', JSON.stringify(updated)).catch(() => { });
+
+      return updated;
     });
   };
 
@@ -304,6 +337,7 @@ export default function App() {
         />
       ) : currentScreen === 'ADD_PROPERTY' ? (
         <AddPropertyScreen
+          currentUser={currentUser}
           propertyToEdit={selectedOwnerProperty}
           onBack={() => setCurrentScreen('OWNER_PROPERTIES')}
           onSaveProperty={() => {
@@ -365,10 +399,14 @@ export default function App() {
       ) : currentScreen === 'SEARCH' ? (
         <SearchScreen
           currentUser={currentUser}
+          initialSearchQuery={searchInitialQuery}
           savedBoardings={savedBoardings}
           onToggleSaveBoarding={handleToggleSaveBoarding}
           onSelectBoarding={(b) => handleSelectBoarding(b, 'SEARCH')}
-          onNavigateTab={handleNavigateTab}
+          onNavigateTab={(tab) => {
+            setSearchInitialQuery('');
+            handleNavigateTab(tab);
+          }}
         />
       ) : currentScreen === 'FAVORITES' ? (
         <FavoritesScreen
@@ -405,6 +443,11 @@ export default function App() {
           onOpenGallery={() => handleOpenGallery(selectedBoarding)}
           onOpenReviews={() => handleOpenReviews(selectedBoarding)}
           onOpenMap={() => handleOpenMap(selectedBoarding)}
+          onViewOwnerProperties={(ownerName) => {
+            setSearchInitialQuery(ownerName);
+            setPreviousScreen('DETAILS');
+            setCurrentScreen('SEARCH');
+          }}
         />
       ) : currentScreen === 'IMAGE_GALLERY' ? (
         <ImageGalleryScreen

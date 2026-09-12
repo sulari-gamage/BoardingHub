@@ -27,6 +27,7 @@ public class PropertyResponse {
     private Long ownerId;
     private String ownerName;
     private String ownerWhatsapp;
+    private String ownerAvatar;
 
     private Double latitude;
     private Double longitude;

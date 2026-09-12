@@ -355,6 +355,7 @@ public class PropertyService {
                 .ownerId(p.getOwner().getId())
                 .ownerName(p.getOwner().getName())
                 .ownerWhatsapp(p.getOwner().getWhatsappNumber())
+                .ownerAvatar(p.getOwner().getAvatarUrl())
                 .latitude(p.getLatitude())
                 .longitude(p.getLongitude())
                 .propertyNature(p.getPropertyNature())

@@ -9,7 +9,7 @@ export default function BoardingCard({ item, onPress, isSaved, onToggleSave }) {
     const totalSpaces = item.totalSpaces != null ? item.totalSpaces : (item.rooms ? item.rooms.reduce((sum, r) => sum + (r.remainingSpaces != null ? r.remainingSpaces : Math.max(0, (r.totalCapacity || 1) - (r.occupied || 0))), 0) : (item.remainingSpaces || 1));
 
     return (
-        <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
+        <View style={styles.card}>
             {/* Cover Image */}
             <View style={styles.imageContainer}>
                 <Image source={{ uri: item.imageUrl }} style={styles.image} resizeMode="cover" />
@@ -78,20 +78,23 @@ export default function BoardingCard({ item, onPress, isSaved, onToggleSave }) {
                     )}
                 </View>
 
-                {/* Price & Gender Preference Row */}
+                {/* Price & Action Row */}
                 <View style={styles.priceRow}>
                     <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
                         <Text style={styles.priceVal}>Rs. {item.price?.toLocaleString() || '0'}</Text>
                         <Text style={styles.pricePeriod}> / month</Text>
                     </View>
-                    {item.genderPreference && (
-                        <View style={styles.genderChip}>
-                            <Text style={styles.genderChipText}>{item.genderPreference}</Text>
-                        </View>
-                    )}
+                    <TouchableOpacity
+                        style={styles.viewBtn}
+                        onPress={onPress}
+                        activeOpacity={0.85}
+                    >
+                        <Text style={styles.viewBtnText}>View</Text>
+                        <Ionicons name="chevron-forward" size={13} color="#FFFFFF" style={{ marginLeft: 2 }} />
+                    </TouchableOpacity>
                 </View>
             </View>
-        </TouchableOpacity>
+        </View>
     );
 }
 
@@ -263,17 +266,18 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         color: '#64748B',
     },
-    genderChip: {
-        backgroundColor: '#F1F5F9',
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 6,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
+    viewBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#133E32',
+        paddingHorizontal: 14,
+        paddingVertical: 7,
+        borderRadius: 8,
+        elevation: 1,
     },
-    genderChipText: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#475569',
+    viewBtnText: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#FFFFFF',
     },
 });
