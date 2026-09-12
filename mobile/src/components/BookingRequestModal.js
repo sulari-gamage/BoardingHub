@@ -52,40 +52,53 @@ export default function BookingRequestModal({ visible, onClose, boarding = {}, o
     };
 
     const handleSubmit = () => {
-        let roomTypeLabel = 'Whole House';
-        let roomId = null;
+        Alert.alert(
+            'Confirm Booking Request 📩',
+            `Are you sure you want to send a booking request for "${propertyTitle}" for ${peopleCount} occupant(s)?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Submit Request',
+                    style: 'default',
+                    onPress: () => {
+                        let roomTypeLabel = 'Whole House';
+                        let roomId = null;
 
-        if (!isWholeHouse) {
-            const matchedRoom = rooms.find(r => r.id === selectedBookingType);
-            if (matchedRoom) {
-                roomTypeLabel = `${matchedRoom.number} (${matchedRoom.type})`;
-                roomId = matchedRoom.id;
-            }
-        }
+                        if (!isWholeHouse) {
+                            const matchedRoom = rooms.find(r => r.id === selectedBookingType);
+                            if (matchedRoom) {
+                                roomTypeLabel = `${matchedRoom.number} (${matchedRoom.type})`;
+                                roomId = matchedRoom.id;
+                            }
+                        }
 
-        const bookingData = {
-            id: `booking_${Date.now()}`,
-            propertyId: boarding.id || 'p1',
-            title: propertyTitle,
-            location: boarding.location || 'Moratuwa, Sri Lanka',
-            date: moveInDate,
-            bookingType: isWholeHouse ? 'WHOLE_HOUSE' : 'ROOM',
-            roomId: roomId,
-            roomType: roomTypeLabel,
-            peopleCount,
-            message,
-            status: 'PENDING',
-            price: boarding.price || 15000,
-            imageUrl: boarding.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
-            description: boarding.description,
-            ownerName,
-            ownerPhone
-        };
+                        const bookingData = {
+                            id: `booking_${Date.now()}`,
+                            propertyId: boarding.id || 'p1',
+                            title: propertyTitle,
+                            location: boarding.location || 'Moratuwa, Sri Lanka',
+                            date: moveInDate,
+                            bookingType: isWholeHouse ? 'WHOLE_HOUSE' : 'ROOM',
+                            roomId: roomId,
+                            roomType: roomTypeLabel,
+                            peopleCount,
+                            message,
+                            status: 'PENDING',
+                            price: boarding.price || 15000,
+                            imageUrl: boarding.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
+                            description: boarding.description,
+                            ownerName,
+                            ownerPhone
+                        };
 
-        if (onSubmitBooking) {
-            onSubmitBooking(bookingData);
-        }
-        onClose();
+                        if (onSubmitBooking) {
+                            onSubmitBooking(bookingData);
+                        }
+                        onClose();
+                    }
+                }
+            ]
+        );
     };
 
     const getSelectedLabel = () => {

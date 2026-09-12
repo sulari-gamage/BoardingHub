@@ -91,27 +91,53 @@ export default function OwnerRequestsScreen({
             return;
         }
 
-        try {
-            await api.bookings.updateStatus(item.id, 'APPROVED');
-            Alert.alert('Request Approved 🎉', `Approved request for ${item.tenantName}!`);
-            loadOwnerRequests();
-            if (onApproveRequest) onApproveRequest(item.id);
-        } catch (error) {
-            console.log('Error approving request:', error);
-            Alert.alert('Approval Failed', error.message || 'Could not approve request.');
-        }
+        Alert.alert(
+            'Confirm Approval 🟢',
+            `Are you sure you want to approve this booking request for ${item.tenantName} (${requestedOccupants} occupant space(s))?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Approve Request',
+                    style: 'default',
+                    onPress: async () => {
+                        try {
+                            await api.bookings.updateStatus(item.id, 'APPROVED');
+                            Alert.alert('Request Approved 🎉', `Approved request for ${item.tenantName}!`);
+                            loadOwnerRequests();
+                            if (onApproveRequest) onApproveRequest(item.id);
+                        } catch (error) {
+                            console.log('Error approving request:', error);
+                            Alert.alert('Approval Failed', error.message || 'Could not approve request.');
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     const handleReject = async (id) => {
-        try {
-            await api.bookings.updateStatus(id, 'REJECTED');
-            Alert.alert('Request Declined', 'Booking request was declined.');
-            loadOwnerRequests();
-            if (onRejectRequest) onRejectRequest(id);
-        } catch (error) {
-            console.log('Error declining request:', error);
-            Alert.alert('Action Failed', error.message || 'Could not decline request.');
-        }
+        Alert.alert(
+            'Confirm Rejection 🔴',
+            'Are you sure you want to decline this booking request?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Decline Request',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await api.bookings.updateStatus(id, 'REJECTED');
+                            Alert.alert('Request Declined', 'Booking request was declined.');
+                            loadOwnerRequests();
+                            if (onRejectRequest) onRejectRequest(id);
+                        } catch (error) {
+                            console.log('Error declining request:', error);
+                            Alert.alert('Action Failed', error.message || 'Could not decline request.');
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     // Filter & Sort by highest number of requested occupants first (descending)

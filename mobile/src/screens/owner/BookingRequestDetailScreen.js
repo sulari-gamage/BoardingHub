@@ -56,13 +56,39 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
             Alert.alert('Insufficient Spaces ❌', `Only ${remaining} space(s) available, but applicant requested ${requestedOccupants} occupant space(s).`);
             return;
         }
-        if (onAccept) onAccept(currentRequest.id);
-        else Alert.alert('Request Accepted 🎉', `Booking request for ${currentRequest.tenantName} has been approved.`);
+        Alert.alert(
+            'Confirm Approval 🟢',
+            `Are you sure you want to approve this booking request for ${currentRequest.tenantName}?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Approve Request',
+                    style: 'default',
+                    onPress: () => {
+                        if (onAccept) onAccept(currentRequest.id);
+                        else Alert.alert('Request Accepted 🎉', `Booking request for ${currentRequest.tenantName} has been approved.`);
+                    }
+                }
+            ]
+        );
     };
 
     const handleRejectClick = () => {
-        if (onReject) onReject(currentRequest.id);
-        else Alert.alert('Request Declined', `Booking request for ${currentRequest.tenantName} was declined.`);
+        Alert.alert(
+            'Confirm Rejection 🔴',
+            `Are you sure you want to decline the booking request from ${currentRequest.tenantName}?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Decline Request',
+                    style: 'destructive',
+                    onPress: () => {
+                        if (onReject) onReject(currentRequest.id);
+                        else Alert.alert('Request Declined', `Booking request for ${currentRequest.tenantName} was declined.`);
+                    }
+                }
+            ]
+        );
     };
 
     return (

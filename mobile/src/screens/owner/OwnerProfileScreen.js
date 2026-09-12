@@ -294,7 +294,20 @@ export default function OwnerProfileScreen({
                     </View>
 
                     {/* Logout Button */}
-                    <TouchableOpacity style={styles.logoutBtn} onPress={onLogout} activeOpacity={0.85}>
+                    <TouchableOpacity
+                        style={styles.logoutBtn}
+                        onPress={() => {
+                            Alert.alert(
+                                'Confirm Logout 🚪',
+                                'Are you sure you want to log out of BoardingHub?',
+                                [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    { text: 'Logout', style: 'destructive', onPress: onLogout }
+                                ]
+                            );
+                        }}
+                        activeOpacity={0.85}
+                    >
                         <Ionicons name="log-out-outline" size={20} color="#DC2626" style={{ marginRight: 8 }} />
                         <Text style={styles.logoutText}>Logout</Text>
                     </TouchableOpacity>
