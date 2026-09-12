@@ -88,11 +88,14 @@ public class BookingService {
             throw new IllegalArgumentException("You are not authorized to update this booking request");
         }
 
+        BookingStatus oldStatus = booking.getStatus();
         BookingStatus newStatus = dto.getStatus();
 
-        // If status is being updated to APPROVED, enforce room capacity check & deduct remaining spaces
-        if (newStatus == BookingStatus.APPROVED && booking.getStatus() != BookingStatus.APPROVED) {
+        // If status is being updated to APPROVED, enforce capacity check & deduct remaining spaces
+        if (newStatus == BookingStatus.APPROVED && oldStatus != BookingStatus.APPROVED) {
             Room room = booking.getRoom();
+            BoardingProperty prop = booking.getProperty();
+
             if (room != null) {
                 if (room.getRemainingSpaces() < booking.getOccupantsCount()) {
                     throw new IllegalArgumentException("Cannot approve request: Only " + room.getRemainingSpaces() +
@@ -106,7 +109,6 @@ public class BookingService {
                 roomRepository.save(room);
 
                 // Also sync property totalOccupied
-                BoardingProperty prop = room.getProperty();
                 if (prop != null && prop.getRooms() != null) {
                     int totalOcc = prop.getRooms().stream()
                             .mapToInt(r -> r.getId().equals(room.getId()) ? newOcc : (r.getOccupied() != null ? r.getOccupied() : Math.max(0, (r.getTotalCapacity() != null ? r.getTotalCapacity() : 1) - (r.getRemainingSpaces() != null ? r.getRemainingSpaces() : 0))))
@@ -114,6 +116,35 @@ public class BookingService {
                     prop.setTotalOccupied(totalOcc);
                     propertyRepository.save(prop);
                 }
+            } else if (prop != null) {
+                // Whole house or property-level booking
+                int currentOcc = prop.getTotalOccupied() != null ? prop.getTotalOccupied() : 0;
+                prop.setTotalOccupied(currentOcc + booking.getOccupantsCount());
+                propertyRepository.save(prop);
+            }
+        }
+
+        // If status was APPROVED and is now being REJECTED or CANCELLED, restore capacity
+        if (oldStatus == BookingStatus.APPROVED && newStatus != BookingStatus.APPROVED) {
+            Room room = booking.getRoom();
+            BoardingProperty prop = booking.getProperty();
+
+            if (room != null) {
+                int newRem = (room.getRemainingSpaces() != null ? room.getRemainingSpaces() : 0) + booking.getOccupantsCount();
+                int newOcc = Math.max(0, (room.getOccupied() != null ? room.getOccupied() : 0) - booking.getOccupantsCount());
+                room.setRemainingSpaces(newRem);
+                room.setOccupied(newOcc);
+                roomRepository.save(room);
+
+                if (prop != null && prop.getRooms() != null) {
+                    int totalOcc = Math.max(0, (prop.getTotalOccupied() != null ? prop.getTotalOccupied() : 0) - booking.getOccupantsCount());
+                    prop.setTotalOccupied(totalOcc);
+                    propertyRepository.save(prop);
+                }
+            } else if (prop != null) {
+                int currentOcc = prop.getTotalOccupied() != null ? prop.getTotalOccupied() : 0;
+                prop.setTotalOccupied(Math.max(0, currentOcc - booking.getOccupantsCount()));
+                propertyRepository.save(prop);
             }
         }
 

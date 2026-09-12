@@ -26,8 +26,10 @@ export default function OwnerHomeScreen({
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        loadOwnerDashboardData();
-    }, []);
+        if (activeTab === 'Dashboard' || activeTab === 'Home' || activeTab === 'HOME' || !activeTab) {
+            loadOwnerDashboardData();
+        }
+    }, [activeTab]);
 
     const loadOwnerDashboardData = async () => {
         try {
@@ -66,6 +68,7 @@ export default function OwnerHomeScreen({
             {/* Standard Dark Emerald Header Bar with Logo */}
             <HeaderBar
                 title="BoardingHub"
+                userAvatar={currentUser?.avatarUrl}
                 onOpenNotifications={onOpenNotifications}
                 onOpenProfile={() => onNavigateTab && onNavigateTab('Profile')}
             />

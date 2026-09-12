@@ -13,7 +13,7 @@ import BottomNavBar from '../../components/BottomNavBar';
 import HeaderBar from '../../components/HeaderBar';
 import { POPULAR_BOARDINGS } from '../../data/mockBoardings';
 
-export default function FavoritesScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications }) {
+export default function FavoritesScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications, currentUser }) {
     const [favorites, setFavorites] = useState([
         {
             id: "f1",
@@ -47,6 +47,7 @@ export default function FavoritesScreen({ onSelectBoarding, onNavigateTab, onOpe
             {/* Standardized HeaderBar */}
             <HeaderBar
                 title="BoardingHub"
+                userAvatar={currentUser?.avatarUrl}
                 onOpenNotifications={() => {
                     if (onOpenNotifications) onOpenNotifications();
                     else if (onNavigateTab) onNavigateTab('NOTIFICATIONS');

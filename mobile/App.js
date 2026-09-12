@@ -54,6 +54,14 @@ export default function App() {
   const [userBookings, setUserBookings] = useState([]);
   const [ownerRequests, setOwnerRequests] = useState([]);
 
+  const handleUserUpdated = (updatedUserData) => {
+    if (!updatedUserData) return;
+    setCurrentUser((prev) => ({
+      ...(prev || {}),
+      ...updatedUserData,
+    }));
+  };
+
   const handleApproveRequest = (id) => {
     setOwnerRequests((prev) =>
       prev.map((req) => (req.id === id ? { ...req, status: 'APPROVED' } : req))
@@ -215,6 +223,7 @@ export default function App() {
       ) : currentScreen === 'OWNER_PROPERTIES' ? (
         <OwnerPropertiesScreen
           activeTab="Properties"
+          currentUser={currentUser}
           onNavigateTab={handleNavigateTab}
           onAddNewProperty={() => {
             setSelectedOwnerProperty(null);
@@ -248,6 +257,7 @@ export default function App() {
       ) : currentScreen === 'OWNER_REQUESTS' ? (
         <OwnerRequestsScreen
           activeTab="Requests"
+          currentUser={currentUser}
           requestsList={ownerRequests}
           onApproveRequest={handleApproveRequest}
           onRejectRequest={handleRejectRequest}
@@ -274,6 +284,7 @@ export default function App() {
         <OwnerProfileScreen
           activeTab="Profile"
           currentUser={currentUser}
+          onUserUpdated={handleUserUpdated}
           onNavigateTab={handleNavigateTab}
           onSwitchToSeeker={handleSwitchToSeeker}
           onLogout={handleLogout}
@@ -340,16 +351,19 @@ export default function App() {
         />
       ) : currentScreen === 'SEARCH' ? (
         <SearchScreen
+          currentUser={currentUser}
           onSelectBoarding={(b) => handleSelectBoarding(b, 'SEARCH')}
           onNavigateTab={handleNavigateTab}
         />
       ) : currentScreen === 'FAVORITES' ? (
         <FavoritesScreen
+          currentUser={currentUser}
           onSelectBoarding={(b) => handleSelectBoarding(b, 'FAVORITES')}
           onNavigateTab={handleNavigateTab}
         />
       ) : currentScreen === 'BOOKINGS' ? (
         <BookingsScreen
+          currentUser={currentUser}
           bookings={userBookings}
           onSelectBoarding={(b) => handleSelectBoarding(b, 'BOOKINGS')}
           onViewBookingDetails={handleViewBookingDetails}
@@ -358,6 +372,7 @@ export default function App() {
       ) : currentScreen === 'PROFILE' ? (
         <ProfileScreen
           currentUser={currentUser}
+          onUserUpdated={handleUserUpdated}
           onLogout={handleLogout}
           onNavigateTab={handleNavigateTab}
           onOpenNotifications={handleOpenNotifications}

@@ -10,17 +10,53 @@ import {
     Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import BottomNavBar from '../../components/BottomNavBar';
 import HeaderBar from '../../components/HeaderBar';
+import api from '../../services/api';
 
-export default function ProfileScreen({ onLogout, onNavigateTab, onOpenNotifications, onOpenReviews, currentUser }) {
+export default function ProfileScreen({ onLogout, onNavigateTab, onOpenNotifications, onOpenReviews, currentUser, onUserUpdated }) {
     const user = {
         name: currentUser?.name || 'User Renter',
         email: currentUser?.email || 'seeker@email.com',
-        avatarUrl: currentUser?.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
+        avatarUrl: currentUser?.avatarUrl || null,
         rating: 4.8,
         pastStays: 0,
         isVerified: true,
+    };
+    const hasAvatar = Boolean(user.avatarUrl && typeof user.avatarUrl === 'string' && user.avatarUrl.trim().length > 0);
+
+    const handlePickAvatar = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Permission to access media gallery is required!');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.7,
+                base64: true,
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                const asset = result.assets[0];
+                const pickedUri = asset.base64
+                    ? `data:image/jpeg;base64,${asset.base64}`
+                    : asset.uri;
+
+                const updatedData = await api.user.updateProfile({ avatarUrl: pickedUri });
+                if (onUserUpdated) {
+                    onUserUpdated(updatedData);
+                }
+                Alert.alert('Success 🎉', 'Profile picture updated successfully!');
+            }
+        } catch (err) {
+            Alert.alert('Error', 'Failed to update avatar: ' + err.message);
+        }
     };
 
     const menuItems = [
@@ -72,6 +108,7 @@ export default function ProfileScreen({ onLogout, onNavigateTab, onOpenNotificat
             {/* Standardized HeaderBar */}
             <HeaderBar
                 title="BoardingHub"
+                userAvatar={currentUser?.avatarUrl}
                 onOpenNotifications={() => {
                     if (onOpenNotifications) onOpenNotifications();
                     else if (onNavigateTab) onNavigateTab('NOTIFICATIONS');
@@ -88,8 +125,14 @@ export default function ProfileScreen({ onLogout, onNavigateTab, onOpenNotificat
                 {/* Profile Card */}
                 <View style={styles.profileCard}>
                     <View style={styles.avatarWrapper}>
-                        <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
-                        <TouchableOpacity style={styles.editAvatarBtn} activeOpacity={0.8}>
+                        {hasAvatar ? (
+                            <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
+                        ) : (
+                            <View style={[styles.avatarImage, styles.placeholderAvatarLarge]}>
+                                <Ionicons name="person" size={40} color="#133E32" />
+                            </View>
+                        )}
+                        <TouchableOpacity style={styles.editAvatarBtn} onPress={handlePickAvatar} activeOpacity={0.8}>
                             <Ionicons name="pencil" size={12} color="#FFFFFF" />
                         </TouchableOpacity>
                     </View>
@@ -232,6 +275,11 @@ const styles = StyleSheet.create({
         borderRadius: 40,
         borderWidth: 3,
         borderColor: '#A7F3D0',
+    },
+    placeholderAvatarLarge: {
+        backgroundColor: '#E6F0EC',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     editAvatarBtn: {
         position: 'absolute',

@@ -14,7 +14,7 @@ import BottomNavBar from '../../components/BottomNavBar';
 import HeaderBar from '../../components/HeaderBar';
 import api from '../../services/api';
 
-export default function BookingsScreen({ bookings = [], onSelectBoarding, onViewBookingDetails, onNavigateTab, onOpenNotifications }) {
+export default function BookingsScreen({ bookings = [], onSelectBoarding, onViewBookingDetails, onNavigateTab, onOpenNotifications, currentUser }) {
     const [activeTabFilter, setActiveTabFilter] = useState('Pending');
     const [activeNavTab, setActiveNavTab] = useState('BOOKINGS');
     const [apiBookings, setApiBookings] = useState([]);
@@ -109,6 +109,7 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
             {/* Standard Dark Emerald Header Bar */}
             <HeaderBar
                 title="BoardingHub"
+                userAvatar={currentUser?.avatarUrl}
                 onOpenNotifications={() => {
                     if (onOpenNotifications) onOpenNotifications();
                     else if (onNavigateTab) onNavigateTab('NOTIFICATIONS');

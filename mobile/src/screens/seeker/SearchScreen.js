@@ -15,7 +15,7 @@ import FilterModal from '../../components/FilterModal';
 import HeaderBar from '../../components/HeaderBar';
 import { POPULAR_BOARDINGS } from '../../data/mockBoardings';
 
-export default function SearchScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications }) {
+export default function SearchScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications, currentUser }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilters, setActiveFilters] = useState(['Colombo', 'Under Rs. 20,000', 'Single Room']);
     const [activeTab, setActiveTab] = useState('SEARCH');
@@ -74,6 +74,7 @@ export default function SearchScreen({ onSelectBoarding, onNavigateTab, onOpenNo
             {/* Standard Dark Emerald Header Bar */}
             <HeaderBar
                 title="BoardingHub"
+                userAvatar={currentUser?.avatarUrl}
                 onOpenNotifications={() => {
                     if (onOpenNotifications) onOpenNotifications();
                     else if (onNavigateTab) onNavigateTab('NOTIFICATIONS');

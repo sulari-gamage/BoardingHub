@@ -16,8 +16,10 @@ export default function HeaderBar({
     onOpenProfile,
     showBack = false,
     onBack,
-    userAvatar = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80'
+    userAvatar
 }) {
+    const hasAvatar = Boolean(userAvatar && typeof userAvatar === 'string' && userAvatar.trim().length > 0);
+
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="#133E32" />
@@ -59,10 +61,16 @@ export default function HeaderBar({
                         onPress={onOpenProfile}
                         activeOpacity={0.85}
                     >
-                        <Image
-                            source={{ uri: userAvatar }}
-                            style={styles.profileAvatar}
-                        />
+                        {hasAvatar ? (
+                            <Image
+                                source={{ uri: userAvatar }}
+                                style={styles.profileAvatar}
+                            />
+                        ) : (
+                            <View style={styles.placeholderAvatar}>
+                                <Ionicons name="person" size={18} color="#133E32" />
+                            </View>
+                        )}
                     </TouchableOpacity>
                 </View>
             </View>
@@ -159,5 +167,12 @@ const styles = StyleSheet.create({
     profileAvatar: {
         width: '100%',
         height: '100%',
+    },
+    placeholderAvatar: {
+        width: '100%',
+        height: '100%',
+        backgroundColor: '#E6F0EC',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });

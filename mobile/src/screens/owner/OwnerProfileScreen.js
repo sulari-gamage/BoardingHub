@@ -24,6 +24,7 @@ export default function OwnerProfileScreen({
     onSwitchToSeeker,
     onLogout,
     onOpenNotifications,
+    onUserUpdated,
     activeTab = 'Profile',
     currentUser
 }) {
@@ -65,6 +66,9 @@ export default function OwnerProfileScreen({
             setEditName(data.name || '');
             setEditWhatsapp(data.whatsappNumber || '');
             setAvatarUrl(data.avatarUrl || '');
+            if (onUserUpdated && data) {
+                onUserUpdated(data);
+            }
         } catch (err) {
             console.log('[OwnerProfile] Profile fetch fallback:', err.message);
             // Fallback to local currentUser prop if network request fails
@@ -81,6 +85,7 @@ export default function OwnerProfileScreen({
                 });
                 setEditName(currentUser.name || '');
                 setEditWhatsapp(currentUser.whatsappNumber || '');
+                setAvatarUrl(currentUser.avatarUrl || '');
             }
         } finally {
             setLoading(false);
@@ -130,6 +135,9 @@ export default function OwnerProfileScreen({
 
             const updatedData = await api.user.updateProfile(payload);
             setProfile(updatedData);
+            if (onUserUpdated) {
+                onUserUpdated(updatedData);
+            }
             Alert.alert('Success 🎉', 'Profile details updated successfully!');
             setPersonalModalVisible(false);
             setContactModalVisible(false);
@@ -177,7 +185,8 @@ export default function OwnerProfileScreen({
     const totalCapacity = profile?.totalCapacity !== undefined ? profile.totalCapacity : 0;
     const averageRating = profile?.averageRating !== undefined ? profile.averageRating.toFixed(1) : '5.0';
     const isVerified = profile?.isVerified ?? true;
-    const currentAvatar = avatarUrl || profile?.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80';
+    const currentAvatar = avatarUrl || profile?.avatarUrl || null;
+    const hasAvatar = Boolean(currentAvatar && typeof currentAvatar === 'string' && currentAvatar.trim().length > 0);
 
     return (
         <SafeAreaView style={styles.container}>
@@ -186,6 +195,7 @@ export default function OwnerProfileScreen({
             {/* HeaderBar */}
             <HeaderBar
                 title="BoardingHub"
+                userAvatar={currentAvatar}
                 onOpenNotifications={onOpenNotifications}
                 onOpenProfile={() => onNavigateTab && onNavigateTab('Profile')}
             />
@@ -201,7 +211,13 @@ export default function OwnerProfileScreen({
                     <View style={styles.profileCard}>
                         {/* Avatar with Camera Overlay */}
                         <TouchableOpacity style={styles.avatarWrapper} onPress={handlePickAvatar} activeOpacity={0.85}>
-                            <Image source={{ uri: currentAvatar }} style={styles.avatar} />
+                            {hasAvatar ? (
+                                <Image source={{ uri: currentAvatar }} style={styles.avatar} />
+                            ) : (
+                                <View style={[styles.avatar, styles.placeholderAvatarLarge]}>
+                                    <Ionicons name="person" size={44} color="#133E32" />
+                                </View>
+                            )}
                             <View style={styles.cameraCircle}>
                                 <Ionicons name="camera" size={14} color="#FFFFFF" />
                             </View>
@@ -594,6 +610,13 @@ const styles = StyleSheet.create({
         width: 86,
         height: 86,
         borderRadius: 43,
+    },
+    placeholderAvatarLarge: {
+        backgroundColor: '#E6F0EC',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: '#C3DCD4',
     },
     cameraCircle: {
         position: 'absolute',

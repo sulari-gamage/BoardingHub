@@ -95,6 +95,7 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
             {/* Standard Dark Emerald Header Bar with BoardingHub Logo */}
             <HeaderBar
                 title="BoardingHub"
+                userAvatar={currentUser?.avatarUrl}
                 onOpenNotifications={() => {
                     if (onOpenNotifications) onOpenNotifications();
                     else if (onNavigateTab) onNavigateTab('NOTIFICATIONS');

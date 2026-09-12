@@ -23,7 +23,8 @@ export default function OwnerRequestsScreen({
     onApproveRequest,
     onRejectRequest,
     requestsList,
-    activeTab = 'Requests'
+    activeTab = 'Requests',
+    currentUser
 }) {
     const [filterCategory, setFilterCategory] = useState('ALL');
     const [apiRequests, setApiRequests] = useState([]);
@@ -128,6 +129,7 @@ export default function OwnerRequestsScreen({
             {/* Standardized HeaderBar */}
             <HeaderBar
                 title="BoardingHub"
+                userAvatar={currentUser?.avatarUrl}
                 onOpenNotifications={onOpenNotifications}
                 onOpenProfile={() => onNavigateTab && onNavigateTab('Profile')}
             />

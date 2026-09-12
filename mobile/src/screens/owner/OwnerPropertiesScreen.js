@@ -17,14 +17,17 @@ export default function OwnerPropertiesScreen({
     onAddNewProperty,
     onSelectProperty,
     onOpenNotifications,
-    activeTab = 'Properties'
+    activeTab = 'Properties',
+    currentUser
 }) {
     const [filterStatus, setFilterStatus] = useState('ALL');
     const [apiProperties, setApiProperties] = useState([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        loadOwnerProperties();
+        if (activeTab === 'Properties' || activeTab === 'PROPERTIES' || !activeTab) {
+            loadOwnerProperties();
+        }
     }, [activeTab]);
 
     const loadOwnerProperties = async () => {
@@ -99,6 +102,7 @@ export default function OwnerPropertiesScreen({
             {/* Standardized HeaderBar */}
             <HeaderBar
                 title="BoardingHub"
+                userAvatar={currentUser?.avatarUrl}
                 onOpenNotifications={onOpenNotifications}
                 onOpenProfile={() => onNavigateTab && onNavigateTab('Profile')}
             />
