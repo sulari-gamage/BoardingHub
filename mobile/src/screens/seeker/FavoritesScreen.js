@@ -11,32 +11,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import BottomNavBar from '../../components/BottomNavBar';
 import HeaderBar from '../../components/HeaderBar';
-import { POPULAR_BOARDINGS } from '../../data/mockBoardings';
 
 export default function FavoritesScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications, currentUser }) {
-    const [favorites, setFavorites] = useState([
-        {
-            id: "f1",
-            title: "Green Valley Boarding",
-            location: "Moratuwa, Sri Lanka",
-            price: 15000,
-            rating: 4.8,
-            imageUrl: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80",
-            tags: ["Girls Only", "Wifi Included"],
-            description: "Quiet and peaceful boarding for female students & workers."
-        },
-        {
-            id: "f2",
-            title: "Sunrise Apartments",
-            location: "Dehiwala, Sri Lanka",
-            price: 22000,
-            rating: 4.6,
-            imageUrl: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80",
-            tags: ["AC Available", "Private Room"],
-            description: "Modern annex close to high street and university."
-        },
-        ...POPULAR_BOARDINGS.slice(0, 1)
-    ]);
+    const [favorites, setFavorites] = useState([]);
 
     const removeFavorite = (id) => {
         setFavorites(favorites.filter(item => item.id !== id));

@@ -14,7 +14,6 @@ import BoardingCard from '../../components/BoardingCard';
 import NearLocationCard from '../../components/NearLocationCard';
 import BottomNavBar from '../../components/BottomNavBar';
 import HeaderBar from '../../components/HeaderBar';
-import { NEAR_LOCATION_BOARDINGS, POPULAR_BOARDINGS } from '../../data/mockBoardings';
 import api from '../../services/api';
 
 export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications, currentUser }) {
@@ -49,14 +48,14 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
         }
     };
 
-    const displayBoardings = properties.length > 0 ? properties.map(p => ({
+    const displayBoardings = properties.map(p => ({
         id: p.id,
         title: p.title,
         location: (p.city || '') + (p.address ? ' • ' + p.address : ''),
         price: p.monthlyRent || 0,
-        rent: `Rs. ${p.monthlyRent?.toLocaleString() || '25,000'}/mo`,
+        rent: `Rs. ${p.monthlyRent?.toLocaleString() || '0'}/mo`,
         rating: p.rating || 4.8,
-        reviewsCount: p.reviewsCount || 12,
+        reviewsCount: p.reviewsCount || 0,
         roomsCount: p.rooms ? p.rooms.length : 0,
         rooms: p.rooms || [],
         genderPreference: p.genderPreference === 'MALE_ONLY' ? 'Boys Only' : p.genderPreference === 'FEMALE_ONLY' ? 'Girls Only' : 'Any Gender',
@@ -71,15 +70,12 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
                 ? (typeof p.images[0] === 'string' ? p.images[0] : p.images[0].imageUrl)
                 : 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5',
         tags: p.amenities ? p.amenities.map(a => (typeof a === 'string' ? a : a.name)) : ['Wi-Fi', 'Security'],
-    })) : POPULAR_BOARDINGS.filter((item) => {
-        const matchesSearch =
+    })).filter((item) => {
+        if (!searchQuery) return true;
+        return (
             item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.title.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesFilter =
-            selectedFilter === 'ALL' ||
-            item.genderPreference.toLowerCase().includes(selectedFilter.toLowerCase()) ||
-            (item.tags && item.tags.some((t) => t.toLowerCase().includes(selectedFilter.toLowerCase())));
-        return matchesSearch && matchesFilter;
+            item.title.toLowerCase().includes(searchQuery.toLowerCase())
+        );
     });
 
     const handleGoToSearch = () => {
@@ -151,19 +147,25 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
                     </TouchableOpacity>
                 </View>
 
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.nearLocationScroll}
-                >
-                    {NEAR_LOCATION_BOARDINGS.map((item) => (
-                        <NearLocationCard
-                            key={item.id}
-                            item={item}
-                            onPress={() => onSelectBoarding && onSelectBoarding(item)}
-                        />
-                    ))}
-                </ScrollView>
+                {displayBoardings.length > 0 ? (
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.nearLocationScroll}
+                    >
+                        {displayBoardings.slice(0, 3).map((item) => (
+                            <NearLocationCard
+                                key={item.id}
+                                item={item}
+                                onPress={() => onSelectBoarding && onSelectBoarding(item)}
+                            />
+                        ))}
+                    </ScrollView>
+                ) : (
+                    <View style={{ paddingVertical: 12, paddingHorizontal: 16, backgroundColor: '#FFFFFF', borderRadius: 14, marginVertical: 6, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                        <Text style={{ fontSize: 13, color: '#64748B', fontWeight: '500' }}>No nearby properties listed yet.</Text>
+                    </View>
+                )}
 
                 {/* "Popular Boardings" Vertical Section */}
                 <View style={styles.sectionHeaderRow}>
@@ -193,7 +195,7 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
                 <View style={styles.popularList}>
                     {loading ? (
                         <ActivityIndicator color="#133E32" size="large" style={{ marginVertical: 20 }} />
-                    ) : (
+                    ) : displayBoardings.length > 0 ? (
                         displayBoardings.map((item) => (
                             <BoardingCard
                                 key={item.id}
@@ -201,6 +203,12 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
                                 onPress={() => onSelectBoarding && onSelectBoarding(item)}
                             />
                         ))
+                    ) : (
+                        <View style={{ padding: 30, alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0', marginVertical: 10 }}>
+                            <Ionicons name="home-outline" size={40} color="#CBD5E1" style={{ marginBottom: 10 }} />
+                            <Text style={{ fontSize: 16, fontWeight: '800', color: '#133E32', marginBottom: 4 }}>No Properties Available</Text>
+                            <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 18 }}>There are no boarding properties listed at the moment. Please check back later.</Text>
+                        </View>
                     )}
                 </View>
             </ScrollView>

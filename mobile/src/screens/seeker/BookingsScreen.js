@@ -38,49 +38,6 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
         }
     };
 
-    // Initial mock bookings list if none passed via state
-    const defaultBookings = [
-        {
-            id: "b1",
-            title: "Green Valley Boarding",
-            location: "Moratuwa, Sri Lanka",
-            date: "Sep 10, 2026",
-            roomType: "Shared Room",
-            status: "PENDING",
-            price: 15000,
-            imageUrl: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80",
-            description: "Quiet and peaceful boarding for female students & workers in Moratuwa.",
-            ownerName: "Sunethra Silva",
-            ownerPhone: "+94 77 123 4567"
-        },
-        {
-            id: "b2",
-            title: "Sunrise Apartments",
-            location: "Dehiwala, Sri Lanka",
-            date: "Aug 15, 2026",
-            roomType: "Private Room",
-            status: "ACCEPTED",
-            price: 22000,
-            imageUrl: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80",
-            description: "Modern annex in Dehiwala close to high street and university campuses.",
-            ownerName: "Kamal Fernando",
-            ownerPhone: "+94 71 987 6543"
-        },
-        {
-            id: "b3",
-            title: "Royal Campus Haven",
-            location: "Katubedda, Sri Lanka",
-            date: "Jul 01, 2026",
-            roomType: "Single Room",
-            status: "PAST",
-            price: 18000,
-            imageUrl: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80",
-            description: "Comfortable room close to University of Moratuwa.",
-            ownerName: "Nimal Perera",
-            ownerPhone: "+94 77 555 1234"
-        }
-    ];
-
     const mappedApiBookings = apiBookings.map(b => ({
         id: b.id.toString(),
         title: b.propertyTitle || 'Boarding Request',
@@ -95,7 +52,7 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
         ownerPhone: ''
     }));
 
-    const allBookings = mappedApiBookings.length > 0 ? mappedApiBookings : bookings;
+    const allBookings = mappedApiBookings;
 
     const filteredBookings = allBookings.filter((b) => {
         if (activeTabFilter === 'Pending') return b.status === 'PENDING';

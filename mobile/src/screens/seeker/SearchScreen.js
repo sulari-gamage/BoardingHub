@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -8,55 +8,74 @@ import {
     SafeAreaView,
     ScrollView,
     Image,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import BottomNavBar from '../../components/BottomNavBar';
 import FilterModal from '../../components/FilterModal';
 import HeaderBar from '../../components/HeaderBar';
-import { POPULAR_BOARDINGS } from '../../data/mockBoardings';
+import api from '../../services/api';
 
 export default function SearchScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications, currentUser }) {
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeFilters, setActiveFilters] = useState(['Colombo', 'Under Rs. 20,000', 'Single Room']);
+    const [activeFilters, setActiveFilters] = useState([]);
     const [activeTab, setActiveTab] = useState('SEARCH');
-    const [savedStatus, setSavedStatus] = useState({ s1: false, s2: true });
+    const [savedStatus, setSavedStatus] = useState({});
     const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
+    const [apiProperties, setApiProperties] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        loadProperties();
+    }, []);
+
+    const loadProperties = async () => {
+        try {
+            setLoading(true);
+            const data = await api.properties.getAll();
+            if (data && data.length > 0) {
+                setApiProperties(data);
+            } else {
+                setApiProperties([]);
+            }
+        } catch (error) {
+            console.log('Error loading properties in SearchScreen:', error);
+            setApiProperties([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const toggleSave = (id) => {
         setSavedStatus((prev) => ({ ...prev, [id]: !prev[id] }));
     };
 
-    const searchResults = [
-        {
-            id: "s1",
-            title: "Green Valley Boarding",
-            location: "Moratuwa",
-            price: 15000,
-            pricePeriod: "month",
-            rating: 4.8,
-            isVerified: true,
-            tags: ["2 Rooms Available", "Meals Included"],
-            imageUrl: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80",
-            description: "Quiet and peaceful boarding for female students & workers in Moratuwa.",
-            ownerName: "Sunethra Silva",
-            ownerPhone: "+94 77 123 4567"
-        },
-        {
-            id: "s2",
-            title: "City View Boarding",
-            location: "Nugegoda",
-            price: 20000,
-            pricePeriod: "month",
-            rating: 4.5,
-            isVerified: false,
-            tags: ["Only 1 Room Left", "AC Available"],
-            imageUrl: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80",
-            description: "Modern annex in Nugegoda close to high street and university campuses.",
-            ownerName: "Kamal Fernando",
-            ownerPhone: "+94 71 987 6543"
-        },
-        ...POPULAR_BOARDINGS.filter(p => p.id !== 'p1')
-    ];
+    const mappedProperties = apiProperties.map(p => ({
+        id: p.id ? p.id.toString() : Math.random().toString(),
+        title: p.title || 'Boarding Property',
+        location: (p.city || '') + (p.address ? ' • ' + p.address : ''),
+        price: p.monthlyRent || 0,
+        pricePeriod: 'month',
+        rating: p.rating || 4.8,
+        isVerified: true,
+        tags: p.amenities ? p.amenities.map(a => typeof a === 'string' ? a : a.name) : ['Wi-Fi', 'Security'],
+        imageUrl: (p.imageUrls && p.imageUrls.length > 0)
+            ? p.imageUrls[0]
+            : (p.images && p.images.length > 0)
+                ? (typeof p.images[0] === 'string' ? p.images[0] : p.images[0].imageUrl)
+                : 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
+        description: p.description || 'Boarding property listing',
+        ownerName: p.ownerName || 'Owner',
+        ownerPhone: p.ownerPhone || ''
+    }));
+
+    const searchResults = mappedProperties.filter((item) => {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch = !searchQuery ||
+            item.location.toLowerCase().includes(query) ||
+            item.title.toLowerCase().includes(query);
+        return matchesSearch;
+    });
 
     const removeFilter = (filterName) => {
         setActiveFilters(activeFilters.filter((f) => f !== filterName));
@@ -133,76 +152,86 @@ export default function SearchScreen({ onSelectBoarding, onNavigateTab, onOpenNo
 
                 {/* Boardings Results List */}
                 <View style={styles.resultsContainer}>
-                    {searchResults.map((item) => (
-                        <TouchableOpacity
-                            key={item.id}
-                            style={styles.card}
-                            onPress={() => onSelectBoarding && onSelectBoarding(item)}
-                            activeOpacity={0.9}
-                        >
-                            {/* Image Container with Badges & Favorite Heart */}
-                            <View style={styles.imageWrapper}>
-                                <Image source={{ uri: item.imageUrl }} style={styles.cardImage} resizeMode="cover" />
+                    {loading ? (
+                        <ActivityIndicator size="large" color="#133E32" style={{ marginVertical: 30 }} />
+                    ) : searchResults.length > 0 ? (
+                        searchResults.map((item) => (
+                            <TouchableOpacity
+                                key={item.id}
+                                style={styles.card}
+                                onPress={() => onSelectBoarding && onSelectBoarding(item)}
+                                activeOpacity={0.9}
+                            >
+                                {/* Image Container with Badges & Favorite Heart */}
+                                <View style={styles.imageWrapper}>
+                                    <Image source={{ uri: item.imageUrl }} style={styles.cardImage} resizeMode="cover" />
 
-                                {item.isVerified && (
-                                    <View style={styles.verifiedBadge}>
-                                        <Ionicons name="checkmark-circle" size={12} color="#133E32" style={{ marginRight: 3 }} />
-                                        <Text style={styles.verifiedText}>Verified</Text>
-                                    </View>
-                                )}
-
-                                <TouchableOpacity
-                                    style={styles.heartBtn}
-                                    onPress={() => toggleSave(item.id)}
-                                    activeOpacity={0.8}
-                                >
-                                    <Ionicons
-                                        name={savedStatus[item.id] ? 'heart' : 'heart-outline'}
-                                        size={18}
-                                        color={savedStatus[item.id] ? '#EF4444' : '#64748B'}
-                                    />
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* Card Body */}
-                            <View style={styles.cardBody}>
-                                {/* Title & Star Rating */}
-                                <View style={styles.cardTitleRow}>
-                                    <Text style={styles.cardTitle}>{item.title}</Text>
-                                    <View style={styles.ratingBadge}>
-                                        <Ionicons name="star" size={12} color="#D97706" style={{ marginRight: 3 }} />
-                                        <Text style={styles.ratingVal}>{item.rating}</Text>
-                                    </View>
-                                </View>
-
-                                {/* Location */}
-                                <View style={styles.locationRow}>
-                                    <Ionicons name="location-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
-                                    <Text style={styles.locationText}>{item.location}</Text>
-                                </View>
-
-                                {/* Tags */}
-                                <View style={styles.tagsRow}>
-                                    {item.tags && item.tags.map((tag, idx) => (
-                                        <View key={idx} style={styles.tagChip}>
-                                            <Text style={styles.tagText}>{tag}</Text>
+                                    {item.isVerified && (
+                                        <View style={styles.verifiedBadge}>
+                                            <Ionicons name="checkmark-circle" size={12} color="#133E32" style={{ marginRight: 3 }} />
+                                            <Text style={styles.verifiedText}>Verified</Text>
                                         </View>
-                                    ))}
-                                </View>
+                                    )}
 
-                                {/* Footer Price & View Details Link */}
-                                <View style={styles.cardFooter}>
-                                    <Text style={styles.priceText}>
-                                        <Text style={styles.priceVal}>Rs. {item.price.toLocaleString()}</Text>
-                                        <Text style={styles.pricePeriod}> / month</Text>
-                                    </Text>
-                                    <TouchableOpacity onPress={() => onSelectBoarding && onSelectBoarding(item)}>
-                                        <Text style={styles.viewDetailsText}>View Details</Text>
+                                    <TouchableOpacity
+                                        style={styles.heartBtn}
+                                        onPress={() => toggleSave(item.id)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Ionicons
+                                            name={savedStatus[item.id] ? 'heart' : 'heart-outline'}
+                                            size={18}
+                                            color={savedStatus[item.id] ? '#EF4444' : '#64748B'}
+                                        />
                                     </TouchableOpacity>
                                 </View>
-                            </View>
-                        </TouchableOpacity>
-                    ))}
+
+                                {/* Card Body */}
+                                <View style={styles.cardBody}>
+                                    {/* Title & Star Rating */}
+                                    <View style={styles.cardTitleRow}>
+                                        <Text style={styles.cardTitle}>{item.title}</Text>
+                                        <View style={styles.ratingBadge}>
+                                            <Ionicons name="star" size={12} color="#D97706" style={{ marginRight: 3 }} />
+                                            <Text style={styles.ratingVal}>{item.rating}</Text>
+                                        </View>
+                                    </View>
+
+                                    {/* Location */}
+                                    <View style={styles.locationRow}>
+                                        <Ionicons name="location-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
+                                        <Text style={styles.locationText}>{item.location}</Text>
+                                    </View>
+
+                                    {/* Tags */}
+                                    <View style={styles.tagsRow}>
+                                        {item.tags && item.tags.map((tag, idx) => (
+                                            <View key={idx} style={styles.tagChip}>
+                                                <Text style={styles.tagText}>{tag}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+
+                                    {/* Footer Price & View Details Link */}
+                                    <View style={styles.cardFooter}>
+                                        <Text style={styles.priceText}>
+                                            <Text style={styles.priceVal}>Rs. {item.price.toLocaleString()}</Text>
+                                            <Text style={styles.pricePeriod}> / month</Text>
+                                        </Text>
+                                        <TouchableOpacity onPress={() => onSelectBoarding && onSelectBoarding(item)}>
+                                            <Text style={styles.viewDetailsText}>View Details</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                        ))
+                    ) : (
+                        <View style={{ padding: 30, alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0', marginVertical: 10 }}>
+                            <Ionicons name="search-outline" size={40} color="#CBD5E1" style={{ marginBottom: 10 }} />
+                            <Text style={{ fontSize: 16, fontWeight: '800', color: '#133E32', marginBottom: 4 }}>No Results Found</Text>
+                            <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 18 }}>No boarding properties match your current search query.</Text>
+                        </View>
+                    )}
                 </View>
             </ScrollView>
 

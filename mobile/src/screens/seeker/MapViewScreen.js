@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -12,14 +12,46 @@ import {
     Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { POPULAR_BOARDINGS, NEAR_LOCATION_BOARDINGS } from '../../data/mockBoardings';
+import api from '../../services/api';
 
 const { width } = Dimensions.get('window');
 
 export default function MapViewScreen({ onSelectBoarding, onBack, onToggleListView }) {
-    const allBoardings = [...NEAR_LOCATION_BOARDINGS, ...POPULAR_BOARDINGS];
-    const [selectedBoarding, setSelectedBoarding] = useState(allBoardings[0]);
+    const [properties, setProperties] = useState([]);
+    const [selectedBoarding, setSelectedBoarding] = useState(null);
     const [selectedFilter, setSelectedFilter] = useState('ALL');
+
+    useEffect(() => {
+        loadProperties();
+    }, []);
+
+    const loadProperties = async () => {
+        try {
+            const data = await api.properties.getAll();
+            if (data && data.length > 0) {
+                const mapped = data.map(p => ({
+                    id: p.id ? p.id.toString() : Math.random().toString(),
+                    title: p.title || 'Boarding Property',
+                    location: (p.city || '') + (p.address ? ' • ' + p.address : ''),
+                    price: p.monthlyRent || 0,
+                    rating: p.rating || 4.8,
+                    imageUrl: (p.imageUrls && p.imageUrls.length > 0)
+                        ? p.imageUrls[0]
+                        : (p.images && p.images.length > 0)
+                            ? (typeof p.images[0] === 'string' ? p.images[0] : p.images[0].imageUrl)
+                            : 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
+                }));
+                setProperties(mapped);
+                setSelectedBoarding(mapped[0]);
+            } else {
+                setProperties([]);
+                setSelectedBoarding(null);
+            }
+        } catch (err) {
+            console.log('Error loading map properties:', err);
+            setProperties([]);
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -72,41 +104,21 @@ export default function MapViewScreen({ onSelectBoarding, onBack, onToggleListVi
                 </View>
 
                 {/* Interactive Map Pins */}
-                <TouchableOpacity
-                    style={[styles.mapPin, selectedBoarding.id === 'n1' && styles.activePin, { top: '32%', left: '25%' }]}
-                    onPress={() => setSelectedBoarding(allBoardings[0])}
-                    activeOpacity={0.8}
-                >
-                    <Ionicons name="location" size={18} color="#FFFFFF" />
-                    <Text style={styles.pinPriceText}>Rs.14,500</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[styles.mapPin, selectedBoarding.id === 'n2' && styles.activePin, { top: '22%', right: '28%' }]}
-                    onPress={() => setSelectedBoarding(allBoardings[1] || allBoardings[0])}
-                    activeOpacity={0.8}
-                >
-                    <Ionicons name="location" size={18} color="#FFFFFF" />
-                    <Text style={styles.pinPriceText}>Rs.18,000</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[styles.mapPin, selectedBoarding.id === 'p1' && styles.activePin, { top: '48%', left: '45%' }]}
-                    onPress={() => setSelectedBoarding(allBoardings[2] || allBoardings[0])}
-                    activeOpacity={0.8}
-                >
-                    <Ionicons name="location" size={18} color="#FFFFFF" />
-                    <Text style={styles.pinPriceText}>Rs.16,000</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[styles.mapPin, selectedBoarding.id === 'p2' && styles.activePin, { top: '65%', right: '20%' }]}
-                    onPress={() => setSelectedBoarding(allBoardings[3] || allBoardings[0])}
-                    activeOpacity={0.8}
-                >
-                    <Ionicons name="location" size={18} color="#FFFFFF" />
-                    <Text style={styles.pinPriceText}>Rs.22,000</Text>
-                </TouchableOpacity>
+                {properties.map((p, idx) => (
+                    <TouchableOpacity
+                        key={p.id}
+                        style={[
+                            styles.mapPin,
+                            selectedBoarding?.id === p.id && styles.activePin,
+                            { top: `${30 + (idx * 15) % 40}%`, left: `${25 + (idx * 20) % 50}%` }
+                        ]}
+                        onPress={() => setSelectedBoarding(p)}
+                        activeOpacity={0.8}
+                    >
+                        <Ionicons name="location" size={18} color="#FFFFFF" />
+                        <Text style={styles.pinPriceText}>Rs.{p.price?.toLocaleString() || '0'}</Text>
+                    </TouchableOpacity>
+                ))}
 
                 {/* User Current Location Floating Button */}
                 <TouchableOpacity style={styles.myLocationBtn} activeOpacity={0.8}>
@@ -115,7 +127,7 @@ export default function MapViewScreen({ onSelectBoarding, onBack, onToggleListVi
             </View>
 
             {/* Bottom Card Preview Carousel */}
-            {selectedBoarding && (
+            {selectedBoarding ? (
                 <View style={styles.bottomCardWrapper}>
                     <TouchableOpacity
                         style={styles.boardingPreviewCard}
@@ -142,7 +154,7 @@ export default function MapViewScreen({ onSelectBoarding, onBack, onToggleListVi
 
                             <View style={styles.priceFooterRow}>
                                 <Text style={styles.cardPrice}>
-                                    Rs. {(selectedBoarding.price || 15000).toLocaleString()}{' '}
+                                    Rs. {(selectedBoarding.price || 0).toLocaleString()}{' '}
                                     <Text style={styles.pricePeriod}>/ month</Text>
                                 </Text>
 
@@ -156,7 +168,7 @@ export default function MapViewScreen({ onSelectBoarding, onBack, onToggleListVi
                         </View>
                     </TouchableOpacity>
                 </View>
-            )}
+            ) : null}
         </SafeAreaView>
     );
 }
