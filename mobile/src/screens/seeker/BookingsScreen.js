@@ -38,19 +38,37 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
         }
     };
 
-    const mappedApiBookings = apiBookings.map(b => ({
-        id: b.id.toString(),
-        title: b.propertyTitle || 'Boarding Request',
-        location: b.roomType ? `${b.roomType} Room` : 'Property Room',
-        date: b.moveInDate ? new Date(b.moveInDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
-        roomType: b.roomType || 'Room Request',
-        status: b.status === 'APPROVED' ? 'ACCEPTED' : b.status,
-        price: b.monthlyPrice || 0,
-        imageUrl: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80",
-        description: b.notes || 'Booking Request',
-        ownerName: 'Owner',
-        ownerPhone: ''
-    }));
+    const mappedApiBookings = apiBookings.map(b => {
+        let realImageUrl = b.imageUrl || b.propertyImageUrl;
+        if (!realImageUrl && b.images && b.images.length > 0) {
+            realImageUrl = typeof b.images[0] === 'string' ? b.images[0] : b.images[0]?.imageUrl;
+        }
+
+        // Format relative image paths with base URL if needed
+        if (realImageUrl && typeof realImageUrl === 'string' && realImageUrl.startsWith('/')) {
+            const baseUrl = api.getBaseUrl ? api.getBaseUrl() : 'http://192.168.1.100:8080';
+            realImageUrl = `${baseUrl}${realImageUrl}`;
+        }
+
+        return {
+            id: b.id.toString(),
+            propertyId: b.propertyId,
+            title: b.propertyTitle || 'Boarding Request',
+            location: b.location || 'Moratuwa, Sri Lanka',
+            date: b.moveInDate ? new Date(b.moveInDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Pending Date',
+            moveInDateRaw: b.moveInDate,
+            roomType: b.roomName ? `${b.roomName} (${b.roomType || 'Room'})` : (b.roomType ? `${b.roomType} Room` : 'Whole Property / Annex'),
+            bookingType: b.bookingType || 'ROOM_BASED',
+            status: b.status === 'APPROVED' ? 'ACCEPTED' : b.status,
+            price: b.monthlyPrice || 0,
+            occupantsCount: b.occupantsCount || 1,
+            imageUrl: realImageUrl || null,
+            description: b.notes || '',
+            notes: b.notes || '',
+            ownerName: b.ownerName || b.seekerName || 'Property Owner',
+            ownerPhone: b.seekerPhone || b.ownerPhone || ''
+        };
+    });
 
     const allBookings = mappedApiBookings;
 
@@ -107,7 +125,14 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
                         <View key={item.id} style={styles.bookingCard}>
                             {/* Image & Status Badge */}
                             <View style={styles.imageContainer}>
-                                <Image source={{ uri: item.imageUrl }} style={styles.cardImage} resizeMode="cover" />
+                                {item.imageUrl ? (
+                                    <Image source={{ uri: item.imageUrl }} style={styles.cardImage} resizeMode="cover" />
+                                ) : (
+                                    <View style={styles.cardImagePlaceholder}>
+                                        <Ionicons name="home-outline" size={42} color="#94A3B8" />
+                                        <Text style={styles.cardImagePlaceholderText}>Property Photo</Text>
+                                    </View>
+                                )}
 
                                 <View
                                     style={[
@@ -274,6 +299,19 @@ const styles = StyleSheet.create({
     cardImage: {
         width: '100%',
         height: '100%',
+    },
+    cardImagePlaceholder: {
+        width: '100%',
+        height: '100%',
+        backgroundColor: '#F1F5F9',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    cardImagePlaceholderText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#94A3B8',
+        marginTop: 4,
     },
     statusBadge: {
         position: 'absolute',

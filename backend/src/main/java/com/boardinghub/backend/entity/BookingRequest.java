@@ -1,6 +1,7 @@
 package com.boardinghub.backend.entity;
 
 import com.boardinghub.backend.enums.BookingStatus;
+import com.boardinghub.backend.enums.BookingType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -32,6 +33,10 @@ public class BookingRequest {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "seeker_id", nullable = false)
     private User seeker;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "booking_type")
+    private BookingType bookingType;
 
     @NotNull
     @Column(name = "occupants_count", nullable = false)

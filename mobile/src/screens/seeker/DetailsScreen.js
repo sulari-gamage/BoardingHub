@@ -39,9 +39,13 @@ export default function DetailsScreen({
     const [isBookingModalVisible, setIsBookingModalVisible] = useState(false);
     const [selectedRoomModalData, setSelectedRoomModalData] = useState(null);
     const [isRoomModalVisible, setIsRoomModalVisible] = useState(false);
+    const [activeRoomModalImgIndex, setActiveRoomModalImgIndex] = useState(0);
+    const [modalHeroWidth, setModalHeroWidth] = useState(380);
+    const roomImageScrollViewRef = useRef(null);
 
     const handleOpenRoomModal = (roomItem) => {
         setSelectedRoomModalData(roomItem);
+        setActiveRoomModalImgIndex(0);
         setIsRoomModalVisible(true);
     };
     const [calculatedDistance, setCalculatedDistance] = useState(boarding.distanceText || null);
@@ -614,14 +618,42 @@ export default function DetailsScreen({
                                                             <Text style={styles.roomPricePeriod}>{rentBasisLabel}</Text>
                                                         </View>
 
-                                                        <TouchableOpacity
-                                                            style={styles.viewRoomBtn}
-                                                            onPress={() => handleOpenRoomModal(roomItem)}
-                                                            activeOpacity={0.8}
-                                                        >
-                                                            <Ionicons name="eye-outline" size={14} color="#1B4D3E" style={{ marginRight: 4 }} />
-                                                            <Text style={styles.viewRoomBtnText}>View</Text>
-                                                        </TouchableOpacity>
+                                                        <View style={{ flexDirection: 'row', gap: 6 }}>
+                                                            <TouchableOpacity
+                                                                style={styles.viewRoomBtn}
+                                                                onPress={() => handleOpenRoomModal(roomItem)}
+                                                                activeOpacity={0.8}
+                                                            >
+                                                                <Ionicons name="eye-outline" size={14} color="#1B4D3E" style={{ marginRight: 4 }} />
+                                                                <Text style={styles.viewRoomBtnText}>View</Text>
+                                                            </TouchableOpacity>
+
+                                                            <TouchableOpacity
+                                                                style={[
+                                                                    styles.selectRoomCardBtn,
+                                                                    selectedRoom === (roomItem.id || roomItem.roomNumber) && styles.selectRoomCardBtnActive
+                                                                ]}
+                                                                onPress={() => {
+                                                                    const rId = roomItem.id || roomItem.roomNumber;
+                                                                    setSelectedRoom(rId);
+                                                                    setIsBookingModalVisible(true);
+                                                                }}
+                                                                activeOpacity={0.8}
+                                                            >
+                                                                <Ionicons
+                                                                    name={selectedRoom === (roomItem.id || roomItem.roomNumber) ? "checkmark-circle" : "add-circle-outline"}
+                                                                    size={14}
+                                                                    color={selectedRoom === (roomItem.id || roomItem.roomNumber) ? "#FFFFFF" : "#1B4D3E"}
+                                                                    style={{ marginRight: 4 }}
+                                                                />
+                                                                <Text style={[
+                                                                    styles.selectRoomCardBtnText,
+                                                                    selectedRoom === (roomItem.id || roomItem.roomNumber) && styles.selectRoomCardBtnTextActive
+                                                                ]}>
+                                                                    Select
+                                                                </Text>
+                                                            </TouchableOpacity>
+                                                        </View>
                                                     </View>
                                                 </View>
                                             </View>
@@ -738,6 +770,7 @@ export default function DetailsScreen({
                 visible={isBookingModalVisible}
                 onClose={() => setIsBookingModalVisible(false)}
                 boarding={boarding}
+                initialSelectedRoomId={selectedRoom}
                 onSubmitBooking={(bookingData) => {
                     if (onBookSuccess) onBookSuccess(bookingData);
                 }}
@@ -750,42 +783,225 @@ export default function DetailsScreen({
                 transparent={true}
                 onRequestClose={() => setIsRoomModalVisible(false)}
             >
-                <TouchableOpacity
-                    style={styles.modalBackdrop}
-                    activeOpacity={1}
-                    onPress={() => setIsRoomModalVisible(false)}
-                >
-                    <View style={styles.roomModalContainer} onStartShouldSetResponder={() => true}>
+                <View style={styles.roomModalOverlay}>
+                    {/* Background Backdrop Touch to Close */}
+                    <TouchableOpacity
+                        style={StyleSheet.absoluteFillObject}
+                        activeOpacity={1}
+                        onPress={() => setIsRoomModalVisible(false)}
+                    />
+
+                    {/* Room Modal Card */}
+                    <View style={styles.roomModalContainer}>
+                        {/* Modal Header */}
                         <View style={styles.roomModalHeader}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <Ionicons name="bed-outline" size={20} color="#1B4D3E" style={{ marginRight: 8 }} />
+                            <View style={{ flex: 1, paddingRight: 8 }}>
                                 <Text style={styles.roomModalTitle}>
                                     {selectedRoomModalData?.roomName || selectedRoomModalData?.roomNumber || selectedRoomModalData?.name || 'Room Details'}
                                 </Text>
+                                {selectedRoomModalData?.roomType ? (
+                                    <Text style={{ fontSize: 12, color: '#64748B', marginTop: 1, fontWeight: '600' }}>
+                                        {selectedRoomModalData.roomType} Room Type
+                                    </Text>
+                                ) : null}
                             </View>
                             <TouchableOpacity onPress={() => setIsRoomModalVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                                 <Ionicons name="close" size={22} color="#64748B" />
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
-                            {/* Rent & Price Header Card */}
+                        <ScrollView
+                            style={styles.roomModalScrollView}
+                            contentContainerStyle={{ paddingBottom: 24 }}
+                            showsVerticalScrollIndicator={true}
+                            nestedScrollEnabled={true}
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            {/* 1. Swipeable Room Image Carousel */}
+                            {(() => {
+                                const rawPhotos = (selectedRoomModalData?.photos && selectedRoomModalData.photos.length > 0)
+                                    ? selectedRoomModalData.photos
+                                    : (selectedRoomModalData?.imageUrls && selectedRoomModalData.imageUrls.length > 0)
+                                        ? selectedRoomModalData.imageUrls
+                                        : (selectedRoomModalData?.imageUrl || selectedRoomModalData?.image)
+                                            ? [selectedRoomModalData.imageUrl || selectedRoomModalData.image]
+                                            : (imagesList && imagesList.length > 0 ? imagesList : ['https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=600']);
+
+                                const modalRoomPhotos = rawPhotos.map(p => typeof p === 'string' ? p : (p?.uri || p?.imageUrl || p?.url)).filter(Boolean);
+                                const hasMultiplePhotos = modalRoomPhotos.length > 1;
+
+                                return (
+                                    <View
+                                        style={styles.modalHeroImageContainer}
+                                        onLayout={(e) => {
+                                            const w = e.nativeEvent.layout.width;
+                                            if (w > 0 && w !== modalHeroWidth) {
+                                                setModalHeroWidth(w);
+                                            }
+                                        }}
+                                    >
+                                        <ScrollView
+                                            ref={roomImageScrollViewRef}
+                                            horizontal
+                                            pagingEnabled
+                                            showsHorizontalScrollIndicator={false}
+                                            onScroll={(e) => {
+                                                const w = e.nativeEvent.layoutMeasurement.width || modalHeroWidth || 380;
+                                                const slide = Math.round(e.nativeEvent.contentOffset.x / w);
+                                                if (slide !== activeRoomModalImgIndex && slide >= 0 && slide < modalRoomPhotos.length) {
+                                                    setActiveRoomModalImgIndex(slide);
+                                                }
+                                            }}
+                                            scrollEventThrottle={16}
+                                        >
+                                            {modalRoomPhotos.map((imgUri, pIdx) => (
+                                                <Image
+                                                    key={pIdx}
+                                                    source={{ uri: imgUri }}
+                                                    style={[styles.modalCarouselImage, { width: modalHeroWidth || 380 }]}
+                                                    resizeMode="cover"
+                                                />
+                                            ))}
+                                        </ScrollView>
+
+                                        {/* Swipe Cue / Left Arrow Overlay for Multiple Images */}
+                                        {hasMultiplePhotos && (
+                                            <>
+                                                {/* Left Arrow Button */}
+                                                {activeRoomModalImgIndex > 0 && (
+                                                    <TouchableOpacity
+                                                        style={[styles.carouselNavBtn, styles.carouselNavBtnLeft]}
+                                                        onPress={() => {
+                                                            const prevIdx = activeRoomModalImgIndex - 1;
+                                                            setActiveRoomModalImgIndex(prevIdx);
+                                                            roomImageScrollViewRef.current?.scrollTo({ x: prevIdx * (modalHeroWidth || 380), animated: true });
+                                                        }}
+                                                        activeOpacity={0.8}
+                                                    >
+                                                        <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
+                                                    </TouchableOpacity>
+                                                )}
+
+                                                {/* Right Arrow Button (Swipe Left Indicator) */}
+                                                {activeRoomModalImgIndex < modalRoomPhotos.length - 1 && (
+                                                    <TouchableOpacity
+                                                        style={[styles.carouselNavBtn, styles.carouselNavBtnRight]}
+                                                        onPress={() => {
+                                                            const nextIdx = activeRoomModalImgIndex + 1;
+                                                            setActiveRoomModalImgIndex(nextIdx);
+                                                            roomImageScrollViewRef.current?.scrollTo({ x: nextIdx * (modalHeroWidth || 380), animated: true });
+                                                        }}
+                                                        activeOpacity={0.8}
+                                                    >
+                                                        <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+                                                    </TouchableOpacity>
+                                                )}
+
+                                                {/* Top Left "Swipe for More Photos" Badge */}
+                                                <View style={styles.swipeHintBadge}>
+                                                    <Ionicons name="swap-horizontal" size={12} color="#FFFFFF" style={{ marginRight: 4 }} />
+                                                    <Text style={styles.swipeHintBadgeText}>
+                                                        {activeRoomModalImgIndex + 1} / {modalRoomPhotos.length} Photos (Swipe Left)
+                                                    </Text>
+                                                </View>
+                                            </>
+                                        )}
+
+                                        {/* Pagination Dots */}
+                                        {hasMultiplePhotos && (
+                                            <View style={styles.modalImagePagination}>
+                                                {modalRoomPhotos.map((_, dotIdx) => (
+                                                    <View
+                                                        key={dotIdx}
+                                                        style={[
+                                                            styles.modalDot,
+                                                            activeRoomModalImgIndex === dotIdx && styles.modalActiveDot,
+                                                        ]}
+                                                    />
+                                                ))}
+                                            </View>
+                                        )}
+
+                                        {/* Availability Space Tag */}
+                                        {selectedRoomModalData?.remainingSpaces != null && (
+                                            <View style={styles.modalHeroBadge}>
+                                                <Ionicons name="people-outline" size={12} color="#1B4D3E" style={{ marginRight: 4 }} />
+                                                <Text style={styles.modalHeroBadgeText}>
+                                                    {selectedRoomModalData.remainingSpaces} Spaces Available
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                );
+                            })()}
+
+                            {/* 2. Monthly Rent Card */}
                             <View style={styles.modalPriceCard}>
                                 <Text style={styles.modalPriceLabel}>Monthly Rent</Text>
                                 <Text style={styles.modalPriceValue}>
-                                    Rs. {(selectedRoomModalData?.monthlyPrice || selectedRoomModalData?.price || price).toLocaleString()}
+                                    Rs. {(selectedRoomModalData?.monthlyPrice || selectedRoomModalData?.price || selectedRoomModalData?.rent || price).toLocaleString()}
                                     <Text style={styles.modalPriceBasis}>
                                         {selectedRoomModalData?.rentType === 'PER_ROOM' ? ' / Room / Month' : ' / Person / Month'}
                                     </Text>
                                 </Text>
                             </View>
 
-                            {/* Specs Grid */}
+                            {/* 3. Utility Bills Status Banner (Directly under Monthly Rent) */}
+                            <Text style={styles.modalSectionLabel}>⚡ Utility Bills Status</Text>
+                            <View style={styles.utilityBillsContainer}>
+                                <View style={styles.utilityBillRow}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <View style={[styles.utilityIconBox, { backgroundColor: '#FEF3C7' }]}>
+                                            <Ionicons name="flash-outline" size={16} color="#D97706" />
+                                        </View>
+                                        <Text style={styles.utilityTitleText}>Electricity Bill</Text>
+                                    </View>
+                                    <View style={[styles.utilityStatusTag, selectedRoomModalData?.isElectricityIncluded !== false ? styles.utilityTagIncluded : styles.utilityTagExcluded]}>
+                                        <Ionicons
+                                            name={selectedRoomModalData?.isElectricityIncluded !== false ? "checkmark-circle" : "close-circle"}
+                                            size={13}
+                                            color={selectedRoomModalData?.isElectricityIncluded !== false ? "#059669" : "#DC2626"}
+                                            style={{ marginRight: 4 }}
+                                        />
+                                        <Text style={[styles.utilityStatusTagText, { color: selectedRoomModalData?.isElectricityIncluded !== false ? "#065F46" : "#991B1B" }]}>
+                                            {selectedRoomModalData?.isElectricityIncluded !== false ? 'Included in Rent' : 'Paid by Occupant'}
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                <View style={[styles.utilityBillRow, { borderBottomWidth: 0 }]}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <View style={[styles.utilityIconBox, { backgroundColor: '#E0F2FE' }]}>
+                                            <Ionicons name="water-outline" size={16} color="#0284C7" />
+                                        </View>
+                                        <Text style={styles.utilityTitleText}>Water Supply Bill</Text>
+                                    </View>
+                                    <View style={[styles.utilityStatusTag, selectedRoomModalData?.isWaterIncluded !== false ? styles.utilityTagIncluded : styles.utilityTagExcluded]}>
+                                        <Ionicons
+                                            name={selectedRoomModalData?.isWaterIncluded !== false ? "checkmark-circle" : "close-circle"}
+                                            size={13}
+                                            color={selectedRoomModalData?.isWaterIncluded !== false ? "#059669" : "#DC2626"}
+                                            style={{ marginRight: 4 }}
+                                        />
+                                        <Text style={[styles.utilityStatusTagText, { color: selectedRoomModalData?.isWaterIncluded !== false ? "#065F46" : "#991B1B" }]}>
+                                            {selectedRoomModalData?.isWaterIncluded !== false ? 'Included in Rent' : 'Paid by Occupant'}
+                                        </Text>
+                                    </View>
+                                </View>
+                            </View>
+
+                            {/* 4. Room Specifications Section */}
                             <Text style={styles.modalSectionLabel}>Room Specifications</Text>
                             <View style={styles.modalSpecsGrid}>
+                                <View style={styles.modalSpecChipFull}>
+                                    <Ionicons name="home-outline" size={15} color="#1B4D3E" style={{ marginRight: 8 }} />
+                                    <Text style={styles.modalSpecText}>
+                                        Room Type: <Text style={{ fontWeight: '800', color: '#0F172A' }}>{selectedRoomModalData?.roomType || 'Standard Single'}</Text>
+                                    </Text>
+                                </View>
                                 <View style={styles.modalSpecChip}>
                                     <Ionicons name="people-outline" size={15} color="#1B4D3E" style={{ marginRight: 6 }} />
-                                    <Text style={styles.modalSpecText}>Capacity: {selectedRoomModalData?.totalCapacity || 1} Person(s)</Text>
+                                    <Text style={styles.modalSpecText}>Max Occupants: {selectedRoomModalData?.totalCapacity || selectedRoomModalData?.capacity || 1}</Text>
                                 </View>
                                 <View style={styles.modalSpecChip}>
                                     <Ionicons name="bed-outline" size={15} color="#1B4D3E" style={{ marginRight: 6 }} />
@@ -793,30 +1009,87 @@ export default function DetailsScreen({
                                 </View>
                                 <View style={styles.modalSpecChip}>
                                     <Ionicons name="water-outline" size={15} color="#1B4D3E" style={{ marginRight: 6 }} />
-                                    <Text style={styles.modalSpecText}>Washroom: {selectedRoomModalData?.washroomType || (selectedRoomModalData?.hasAttachedBathroom ? 'Attached' : 'Shared')}</Text>
+                                    <Text style={styles.modalSpecText}>Washrooms: {selectedRoomModalData?.washrooms || 1}</Text>
+                                </View>
+                                <View style={styles.modalSpecChip}>
+                                    <Ionicons name="location-outline" size={15} color="#1B4D3E" style={{ marginRight: 6 }} />
+                                    <Text style={styles.modalSpecText}>Type: {selectedRoomModalData?.washroomType || (selectedRoomModalData?.hasAttachedBathroom ? 'Attached' : 'Common')}</Text>
                                 </View>
                                 <View style={styles.modalSpecChip}>
                                     <Ionicons name="snow-outline" size={15} color="#1B4D3E" style={{ marginRight: 6 }} />
-                                    <Text style={styles.modalSpecText}>Air Conditioning: {selectedRoomModalData?.isAirConditioned ? 'Yes (AC)' : 'No (Non-AC)'}</Text>
+                                    <Text style={styles.modalSpecText}>AC: {selectedRoomModalData?.isAirConditioned ? 'Air Conditioned' : 'Non-AC'}</Text>
                                 </View>
                                 <View style={styles.modalSpecChip}>
                                     <Ionicons name="cube-outline" size={15} color="#1B4D3E" style={{ marginRight: 6 }} />
-                                    <Text style={styles.modalSpecText}>Furnished: {selectedRoomModalData?.isFurnished ? 'Fully Furnished' : 'Unfurnished'}</Text>
+                                    <Text style={styles.modalSpecText}>Furnishing: {selectedRoomModalData?.isFurnished ? 'Furnished' : 'Unfurnished'}</Text>
                                 </View>
-                                {selectedRoomModalData?.remainingSpaces != null && (
-                                    <View style={styles.modalSpecChip}>
-                                        <Ionicons name="time-outline" size={15} color="#15803D" style={{ marginRight: 6 }} />
-                                        <Text style={[styles.modalSpecText, { color: '#15803D', fontWeight: '800' }]}>
-                                            {selectedRoomModalData.remainingSpaces} Spaces Available
-                                        </Text>
+                                {selectedRoomModalData?.genderPreference && (
+                                    <View style={styles.modalSpecChipFull}>
+                                        <Ionicons name="man-woman-outline" size={15} color="#1B4D3E" style={{ marginRight: 8 }} />
+                                        <Text style={styles.modalSpecText}>Gender Preference: <Text style={{ fontWeight: '800', color: '#0F172A' }}>{selectedRoomModalData.genderPreference}</Text></Text>
                                     </View>
                                 )}
                             </View>
 
-                            {/* Additional Description / Notes */}
+                            {/* 5. Room Amenities Section (Separated) */}
+                            {(() => {
+                                let roomAmenityList = [];
+                                const rawAm = selectedRoomModalData?.amenities;
+                                if (Array.isArray(rawAm)) {
+                                    roomAmenityList = rawAm;
+                                } else if (typeof rawAm === 'string' && rawAm.trim()) {
+                                    try {
+                                        const parsed = JSON.parse(rawAm);
+                                        if (Array.isArray(parsed)) roomAmenityList = parsed;
+                                        else if (typeof parsed === 'object') roomAmenityList = Object.keys(parsed).filter(k => parsed[k]);
+                                        else roomAmenityList = rawAm.split(',').map(s => s.trim()).filter(Boolean);
+                                    } catch (e) {
+                                        roomAmenityList = rawAm.split(',').map(s => s.trim()).filter(Boolean);
+                                    }
+                                } else if (typeof rawAm === 'object' && rawAm !== null) {
+                                    roomAmenityList = Object.keys(rawAm).filter(k => rawAm[k]);
+                                }
+
+                                // Fallback room amenities matching AddRoomScreen defaults
+                                if (roomAmenityList.length === 0) {
+                                    roomAmenityList = ['Work Desk / Study Table', 'Ceiling Fan', 'Wardrobe / Closet'];
+                                    if (selectedRoomModalData?.isFurnished) roomAmenityList.push('Window Curtains', 'Private Lock');
+                                    if (selectedRoomModalData?.isAirConditioned) roomAmenityList.push('Remote AC Unit');
+                                }
+
+                                const getAmenityIcon = (name) => {
+                                    const lName = name.toLowerCase();
+                                    if (lName.includes('desk') || lName.includes('table')) return 'library-outline';
+                                    if (lName.includes('wardrobe') || lName.includes('cupboard') || lName.includes('closet')) return 'shirt-outline';
+                                    if (lName.includes('fridge')) return 'cube-outline';
+                                    if (lName.includes('tv') || lName.includes('television')) return 'tv-outline';
+                                    if (lName.includes('iron')) return 'cut-outline';
+                                    if (lName.includes('balcony')) return 'grid-outline';
+                                    if (lName.includes('entrance') || lName.includes('lock')) return 'lock-closed-outline';
+                                    if (lName.includes('fan')) return 'sync-outline';
+                                    if (lName.includes('wifi')) return 'wifi-outline';
+                                    return 'checkmark-circle-outline';
+                                };
+
+                                return (
+                                    <>
+                                        <Text style={styles.modalSectionLabel}>Room Features & Additional Amenities</Text>
+                                        <View style={styles.modalAmenitiesGrid}>
+                                            {roomAmenityList.map((amName, aIdx) => (
+                                                <View key={aIdx} style={styles.modalAmenityCard}>
+                                                    <Ionicons name={getAmenityIcon(amName)} size={15} color="#1B4D3E" style={{ marginRight: 6 }} />
+                                                    <Text style={styles.modalAmenityText}>{amName}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    </>
+                                );
+                            })()}
+
+                            {/* 6. Description / Notes */}
                             {selectedRoomModalData?.description ? (
                                 <>
-                                    <Text style={styles.modalSectionLabel}>Description</Text>
+                                    <Text style={styles.modalSectionLabel}>Room Description</Text>
                                     <Text style={styles.modalDescText}>{selectedRoomModalData.description}</Text>
                                 </>
                             ) : null}
@@ -827,17 +1100,19 @@ export default function DetailsScreen({
                             style={styles.modalSelectBtn}
                             onPress={() => {
                                 if (selectedRoomModalData) {
-                                    setSelectedRoom(selectedRoomModalData.id || selectedRoomModalData.roomNumber || 'shared');
+                                    const rId = selectedRoomModalData.id || selectedRoomModalData.roomNumber || 'shared';
+                                    setSelectedRoom(rId);
                                 }
                                 setIsRoomModalVisible(false);
+                                setIsBookingModalVisible(true);
                             }}
                             activeOpacity={0.85}
                         >
                             <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                            <Text style={styles.modalSelectBtnText}>Select This Room</Text>
+                            <Text style={styles.modalSelectBtnText}>Select Room & Book Now</Text>
                         </TouchableOpacity>
                     </View>
-                </TouchableOpacity>
+                </View>
             </Modal>
 
             {/* Fixed Bottom Action Bar */}
@@ -1374,6 +1649,28 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#1B4D3E',
     },
+    selectRoomCardBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#E6F0EC',
+        borderWidth: 1,
+        borderColor: '#1B4D3E',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    selectRoomCardBtnActive: {
+        backgroundColor: '#1B4D3E',
+        borderColor: '#1B4D3E',
+    },
+    selectRoomCardBtnText: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#1B4D3E',
+    },
+    selectRoomCardBtnTextActive: {
+        color: '#FFFFFF',
+    },
     selectRoomBtn: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1391,7 +1688,7 @@ const styles = StyleSheet.create({
     },
 
     /* Room Modal Styles */
-    modalBackdrop: {
+    roomModalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(15, 23, 42, 0.65)',
         justifyContent: 'center',
@@ -1401,6 +1698,7 @@ const styles = StyleSheet.create({
     roomModalContainer: {
         width: '100%',
         maxWidth: 420,
+        maxHeight: '85%',
         backgroundColor: '#FFFFFF',
         borderRadius: 20,
         padding: 20,
@@ -1409,6 +1707,9 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 15,
         elevation: 10,
+    },
+    roomModalScrollView: {
+        flexGrow: 1,
     },
     roomModalHeader: {
         flexDirection: 'row',
@@ -1455,6 +1756,140 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         marginTop: 4,
     },
+    modalHeroImageContainer: {
+        position: 'relative',
+        height: 180,
+        width: '100%',
+        borderRadius: 14,
+        overflow: 'hidden',
+        marginBottom: 16,
+        backgroundColor: '#F1F5F9',
+    },
+    modalCarouselImage: {
+        height: 180,
+    },
+    carouselNavBtn: {
+        position: 'absolute',
+        top: '40%',
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(15, 23, 42, 0.65)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 12,
+    },
+    carouselNavBtnLeft: {
+        left: 10,
+    },
+    carouselNavBtnRight: {
+        right: 10,
+    },
+    swipeHintBadge: {
+        position: 'absolute',
+        top: 10,
+        left: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(15, 23, 42, 0.75)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 10,
+        zIndex: 10,
+    },
+    swipeHintBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    modalImagePagination: {
+        position: 'absolute',
+        bottom: 10,
+        alignSelf: 'center',
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(15, 23, 42, 0.65)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        gap: 5,
+        zIndex: 10,
+    },
+    modalDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    },
+    modalActiveDot: {
+        backgroundColor: '#FFD700',
+        width: 14,
+    },
+    modalHeroBadge: {
+        position: 'absolute',
+        bottom: 10,
+        right: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        paddingHorizontal: 9,
+        paddingVertical: 4,
+        borderRadius: 8,
+        elevation: 2,
+        zIndex: 11,
+    },
+    modalHeroBadgeText: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#1B4D3E',
+    },
+    utilityBillsContainer: {
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        marginBottom: 16,
+    },
+    utilityBillRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 9,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    utilityIconBox: {
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
+    },
+    utilityTitleText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#1E293B',
+    },
+    utilityStatusTag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    utilityTagIncluded: {
+        backgroundColor: '#E6F4EA',
+    },
+    utilityTagExcluded: {
+        backgroundColor: '#FEE2E2',
+    },
+    utilityStatusTagText: {
+        fontSize: 11,
+        fontWeight: '800',
+    },
     modalSpecsGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -1470,10 +1905,42 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         paddingHorizontal: 10,
     },
+    modalSpecChipFull: {
+        width: '100%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F1F5F9',
+        borderRadius: 10,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+    },
     modalSpecText: {
         fontSize: 12,
         fontWeight: '600',
         color: '#334155',
+        flex: 1,
+    },
+    modalAmenitiesGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 16,
+    },
+    modalAmenityCard: {
+        width: '48%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 10,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+    },
+    modalAmenityText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#1E293B',
         flex: 1,
     },
     modalDescText: {

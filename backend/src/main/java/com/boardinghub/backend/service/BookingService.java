@@ -8,6 +8,7 @@ import com.boardinghub.backend.entity.BookingRequest;
 import com.boardinghub.backend.entity.Room;
 import com.boardinghub.backend.entity.User;
 import com.boardinghub.backend.enums.BookingStatus;
+import com.boardinghub.backend.enums.BookingType;
 import com.boardinghub.backend.enums.Role;
 import com.boardinghub.backend.repository.BoardingPropertyRepository;
 import com.boardinghub.backend.repository.BookingRequestRepository;
@@ -48,10 +49,16 @@ public class BookingService {
             }
         }
 
+        BookingType bookingType = request.getBookingType();
+        if (bookingType == null) {
+            bookingType = (room != null) ? BookingType.ROOM_BASED : BookingType.WHOLE_HOUSE;
+        }
+
         BookingRequest booking = BookingRequest.builder()
                 .property(property)
                 .room(room)
                 .seeker(seeker)
+                .bookingType(bookingType)
                 .occupantsCount(request.getOccupantsCount())
                 .moveInDate(request.getMoveInDate())
                 .status(BookingStatus.PENDING)
@@ -156,12 +163,26 @@ public class BookingService {
     private BookingResponse mapToBookingResponse(BookingRequest b) {
         Double monthlyPrice = b.getRoom() != null ? b.getRoom().getMonthlyPrice() : b.getProperty().getMonthlyRent();
 
+        String propImageUrl = null;
+        if (b.getProperty() != null) {
+            try {
+                if (b.getProperty().getImages() != null && !b.getProperty().getImages().isEmpty()) {
+                    propImageUrl = b.getProperty().getImages().get(0).getImageUrl();
+                }
+            } catch (Exception e) {
+                // Ignore lazy loading exception if uninitialized
+            }
+        }
+
         return BookingResponse.builder()
                 .id(b.getId())
                 .propertyId(b.getProperty().getId())
                 .propertyTitle(b.getProperty().getTitle())
+                .imageUrl(propImageUrl)
                 .roomId(b.getRoom() != null ? b.getRoom().getId() : null)
+                .roomName(b.getRoom() != null ? b.getRoom().getRoomName() : null)
                 .roomType(b.getRoom() != null ? b.getRoom().getRoomType() : null)
+                .bookingType(b.getBookingType())
                 .seekerId(b.getSeeker().getId())
                 .seekerName(b.getSeeker().getName())
                 .seekerPhone(b.getSeeker().getWhatsappNumber())

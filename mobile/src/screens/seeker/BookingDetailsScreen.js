@@ -158,22 +158,22 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
                     <View style={styles.summaryDivider} />
 
                     <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Room Type</Text>
+                        <Text style={styles.summaryLabel}>Room / Type</Text>
                         <Text style={styles.summaryVal}>{roomType}</Text>
                     </View>
 
                     <View style={styles.summaryDivider} />
 
                     <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Occupants</Text>
-                        <Text style={styles.summaryVal}>1 Person</Text>
+                        <Text style={styles.summaryLabel}>Occupants Count</Text>
+                        <Text style={styles.summaryVal}>{booking.occupantsCount || 1} {booking.occupantsCount === 1 ? 'Person' : 'People'}</Text>
                     </View>
 
                     <View style={styles.summaryDivider} />
 
                     <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Security Deposit</Text>
-                        <Text style={styles.summaryValGold}>Rs. {price}</Text>
+                        <Text style={styles.summaryLabel}>Monthly Rent</Text>
+                        <Text style={styles.summaryValGold}>Rs. {price} / mo</Text>
                     </View>
                 </View>
 

@@ -1,6 +1,7 @@
 package com.boardinghub.backend.dto.response;
 
 import com.boardinghub.backend.enums.BookingStatus;
+import com.boardinghub.backend.enums.BookingType;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -16,9 +17,12 @@ public class BookingResponse {
     private Long id;
     private Long propertyId;
     private String propertyTitle;
+    private String imageUrl;
 
     private Long roomId;
+    private String roomName;
     private String roomType;
+    private BookingType bookingType;
 
     private Long seekerId;
     private String seekerName;

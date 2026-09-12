@@ -1,5 +1,6 @@
 package com.boardinghub.backend.dto.request;
 
+import com.boardinghub.backend.enums.BookingType;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -18,6 +19,8 @@ public class BookingRequestCreateDTO {
     private Long propertyId;
 
     private Long roomId;
+
+    private BookingType bookingType;
 
     @NotNull(message = "Occupants count is required")
     @Positive(message = "Occupants count must be at least 1")
