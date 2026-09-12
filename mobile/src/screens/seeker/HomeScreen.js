@@ -16,7 +16,7 @@ import BottomNavBar from '../../components/BottomNavBar';
 import HeaderBar from '../../components/HeaderBar';
 import api from '../../services/api';
 
-export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications, currentUser }) {
+export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications, currentUser, onUserUpdated }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('ALL');
     const [activeTab, setActiveTab] = useState('HOME');
@@ -24,8 +24,20 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
+        loadUserProfile();
         loadProperties();
     }, [selectedFilter]);
+
+    const loadUserProfile = async () => {
+        try {
+            const data = await api.user.getProfile();
+            if (data && onUserUpdated) {
+                onUserUpdated(data);
+            }
+        } catch (err) {
+            console.log('[HomeScreen] Error loading user profile:', err.message);
+        }
+    };
 
     const loadProperties = async () => {
         try {
@@ -86,6 +98,14 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
 
     const userName = currentUser?.name ? currentUser.name.split(' ')[0] : 'User';
 
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour >= 5 && hour < 12) return `Good morning, ${userName}! ☀️`;
+        if (hour >= 12 && hour < 17) return `Good afternoon, ${userName}! ☀️`;
+        if (hour >= 17 && hour < 22) return `Good evening, ${userName}! 🌙`;
+        return `Good night, ${userName}! 🌙`;
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             {/* Standard Dark Emerald Header Bar with BoardingHub Logo */}
@@ -108,7 +128,7 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
             >
                 {/* Greeting Banner */}
                 <View style={styles.greetingSection}>
-                    <Text style={styles.greetingText}>Hello, {userName} 👋</Text>
+                    <Text style={styles.greetingText}>{getGreeting()}</Text>
                     <Text style={styles.subGreetingText}>Find your perfect home</Text>
                 </View>
 

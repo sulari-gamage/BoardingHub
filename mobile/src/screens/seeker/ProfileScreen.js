@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -8,6 +8,7 @@ import {
     ScrollView,
     SafeAreaView,
     Alert,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -16,15 +17,31 @@ import HeaderBar from '../../components/HeaderBar';
 import api from '../../services/api';
 
 export default function ProfileScreen({ onLogout, onNavigateTab, onOpenNotifications, onOpenReviews, currentUser, onUserUpdated }) {
-    const user = {
-        name: currentUser?.name || 'User Renter',
-        email: currentUser?.email || 'seeker@email.com',
-        avatarUrl: currentUser?.avatarUrl || null,
-        rating: 4.8,
-        pastStays: 0,
-        isVerified: true,
+    const [profile, setProfile] = useState(null);
+    const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || '');
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        loadUserProfile();
+    }, []);
+
+    const loadUserProfile = async () => {
+        try {
+            const data = await api.user.getProfile();
+            if (data) {
+                setProfile(data);
+                setAvatarUrl(data.avatarUrl || '');
+                if (onUserUpdated) onUserUpdated(data);
+            }
+        } catch (err) {
+            console.log('[ProfileScreen] Profile fetch error:', err.message);
+        }
     };
-    const hasAvatar = Boolean(user.avatarUrl && typeof user.avatarUrl === 'string' && user.avatarUrl.trim().length > 0);
+
+    const userName = profile?.name || currentUser?.name || 'User Renter';
+    const userEmail = profile?.email || currentUser?.email || 'seeker@email.com';
+    const currentAvatar = avatarUrl || profile?.avatarUrl || currentUser?.avatarUrl || null;
+    const hasAvatar = Boolean(currentAvatar && typeof currentAvatar === 'string' && currentAvatar.trim().length > 0);
 
     const handlePickAvatar = async () => {
         try {
@@ -48,7 +65,11 @@ export default function ProfileScreen({ onLogout, onNavigateTab, onOpenNotificat
                     ? `data:image/jpeg;base64,${asset.base64}`
                     : asset.uri;
 
-                const updatedData = await api.user.updateProfile({ avatarUrl: pickedUri });
+                setAvatarUrl(pickedUri);
+                setLoading(true);
+
+                const updatedData = await api.user.updateProfile({ name: userName, avatarUrl: pickedUri });
+                setProfile(updatedData);
                 if (onUserUpdated) {
                     onUserUpdated(updatedData);
                 }
@@ -56,6 +77,8 @@ export default function ProfileScreen({ onLogout, onNavigateTab, onOpenNotificat
             }
         } catch (err) {
             Alert.alert('Error', 'Failed to update avatar: ' + err.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -108,7 +131,7 @@ export default function ProfileScreen({ onLogout, onNavigateTab, onOpenNotificat
             {/* Standardized HeaderBar */}
             <HeaderBar
                 title="BoardingHub"
-                userAvatar={currentUser?.avatarUrl}
+                userAvatar={currentAvatar || currentUser?.avatarUrl}
                 onOpenNotifications={() => {
                     if (onOpenNotifications) onOpenNotifications();
                     else if (onNavigateTab) onNavigateTab('NOTIFICATIONS');
@@ -124,21 +147,21 @@ export default function ProfileScreen({ onLogout, onNavigateTab, onOpenNotificat
 
                 {/* Profile Card */}
                 <View style={styles.profileCard}>
-                    <View style={styles.avatarWrapper}>
+                    <TouchableOpacity style={styles.avatarWrapper} onPress={handlePickAvatar} activeOpacity={0.85}>
                         {hasAvatar ? (
-                            <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
+                            <Image source={{ uri: currentAvatar }} style={styles.avatarImage} />
                         ) : (
                             <View style={[styles.avatarImage, styles.placeholderAvatarLarge]}>
                                 <Ionicons name="person" size={40} color="#133E32" />
                             </View>
                         )}
-                        <TouchableOpacity style={styles.editAvatarBtn} onPress={handlePickAvatar} activeOpacity={0.8}>
-                            <Ionicons name="pencil" size={12} color="#FFFFFF" />
-                        </TouchableOpacity>
-                    </View>
+                        <View style={styles.editAvatarBtn}>
+                            <Ionicons name="camera" size={14} color="#FFFFFF" />
+                        </View>
+                    </TouchableOpacity>
 
-                    <Text style={styles.userName}>{user.name}</Text>
-                    <Text style={styles.userEmail}>{user.email}</Text>
+                    <Text style={styles.userName}>{userName}</Text>
+                    <Text style={styles.userEmail}>{userEmail}</Text>
 
                     {/* Verified Badge */}
                     <View style={styles.verifiedPill}>
@@ -161,14 +184,14 @@ export default function ProfileScreen({ onLogout, onNavigateTab, onOpenNotificat
                     {/* Rating Card */}
                     <View style={styles.statCard}>
                         <Ionicons name="star-outline" size={24} color="#133E32" style={styles.statIcon} />
-                        <Text style={styles.statVal}>{user.rating}</Text>
+                        <Text style={styles.statVal}>{profile?.rating || currentUser?.rating || 4.8}</Text>
                         <Text style={styles.statLabel}>Rating</Text>
                     </View>
 
                     {/* Past Stays Card */}
                     <View style={styles.statCard}>
                         <Ionicons name="home-outline" size={24} color="#133E32" style={styles.statIcon} />
-                        <Text style={styles.statVal}>{user.pastStays}</Text>
+                        <Text style={styles.statVal}>{profile?.pastStays || 0}</Text>
                         <Text style={styles.statLabel}>Past Stays</Text>
                     </View>
                 </View>

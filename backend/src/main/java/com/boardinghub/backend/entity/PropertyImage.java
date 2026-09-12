@@ -22,7 +22,7 @@ public class PropertyImage {
     private BoardingProperty property;
 
     @NotBlank
-    @Column(name = "image_url", nullable = false)
+    @Column(name = "image_url", nullable = false, columnDefinition = "TEXT")
     private String imageUrl;
 
     @Column(name = "is_primary", nullable = false)

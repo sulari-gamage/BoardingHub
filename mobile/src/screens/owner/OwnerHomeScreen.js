@@ -48,6 +48,15 @@ export default function OwnerHomeScreen({
     };
 
     const ownerName = currentUser?.name ? currentUser.name.split(' ')[0] : 'Owner';
+
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour >= 5 && hour < 12) return `Good morning, ${ownerName}! ☀️`;
+        if (hour >= 12 && hour < 17) return `Good afternoon, ${ownerName}! ☀️`;
+        if (hour >= 17 && hour < 22) return `Good evening, ${ownerName}! 🌙`;
+        return `Good night, ${ownerName}! 🌙`;
+    };
+
     const totalProperties = properties.length;
     const pendingRequestsCount = requests.filter(r => r.status === 'PENDING').length;
     const availableSpaces = properties.reduce((acc, p) => {
@@ -80,7 +89,7 @@ export default function OwnerHomeScreen({
             >
                 {/* Greeting Section */}
                 <View style={styles.greetingSection}>
-                    <Text style={styles.greetingTitle}>Good Day, {ownerName} 👋</Text>
+                    <Text style={styles.greetingTitle}>{getGreeting()}</Text>
                     <Text style={styles.greetingSubtitle}>
                         Here's an overview of your property operations today.
                     </Text>

@@ -431,6 +431,8 @@ export default function App() {
         />
       ) : (
         <HomeScreen
+          currentUser={currentUser}
+          onUserUpdated={handleUserUpdated}
           onSelectBoarding={(b) => handleSelectBoarding(b, 'HOME')}
           onNavigateTab={handleNavigateTab}
           onOpenNotifications={handleOpenNotifications}

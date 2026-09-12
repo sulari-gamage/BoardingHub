@@ -361,7 +361,7 @@ public class PropertyService {
                 .roomsCount(p.getRoomsCount())
                 .bedsCount(p.getBedsCount())
                 .bathsCount(p.getBathsCount())
-                .totalCapacity(p.getTotalCapacity() != null ? p.getTotalCapacity() : (p.getRooms() != null && !p.getRooms().isEmpty() ? p.getRooms().stream().mapToInt(r -> r.getTotalCapacity() != null ? r.getTotalCapacity() : 1).sum() : p.getBedsCount()))
+                .totalCapacity(p.getTotalCapacity() != null ? p.getTotalCapacity() : (p.getRooms() != null && !p.getRooms().isEmpty() ? p.getRooms().stream().mapToInt(r -> r.getTotalCapacity() != null ? r.getTotalCapacity() : 1).sum() : (p.getBedsCount() != null ? p.getBedsCount() : 1)))
                 .totalOccupied(p.getTotalOccupied() != null ? p.getTotalOccupied() : (p.getRooms() != null && !p.getRooms().isEmpty() ? p.getRooms().stream().mapToInt(r -> r.getOccupied() != null ? r.getOccupied() : Math.max(0, (r.getTotalCapacity() != null ? r.getTotalCapacity() : 1) - (r.getRemainingSpaces() != null ? r.getRemainingSpaces() : 0))).sum() : 0))
                 .hasKitchen(p.getHasKitchen())
                 .isFurnished(p.getIsFurnished())
