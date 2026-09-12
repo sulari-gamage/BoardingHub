@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -14,12 +14,39 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
+import * as Location from 'expo-location';
 import BookingRequestModal from '../../components/BookingRequestModal';
 
 export default function DetailsScreen({ boarding = {}, onBack, onBookSuccess, onOpenGallery, onOpenReviews, onOpenMap }) {
     const [isSaved, setIsSaved] = useState(false);
     const [selectedRoom, setSelectedRoom] = useState('shared');
     const [isBookingModalVisible, setIsBookingModalVisible] = useState(false);
+    const [mapCoords, setMapCoords] = useState({
+        lat: boarding.latitude || 6.9271,
+        lng: boarding.longitude || 79.8612,
+    });
+
+    useEffect(() => {
+        if (boarding.latitude && boarding.longitude) {
+            setMapCoords({ lat: boarding.latitude, lng: boarding.longitude });
+        } else {
+            let addressToGeocode = `${boarding.address || ''} ${boarding.city || ''}`.trim() || boarding.location || '';
+            if (addressToGeocode) {
+                addressToGeocode = addressToGeocode.replace(/[\r\n]+/g, ', ').replace(/\s+/g, ' ').replace(/,\s*,/g, ',').trim();
+                const fullQuery = addressToGeocode.toLowerCase().includes('sri lanka') ? addressToGeocode : `${addressToGeocode}, Sri Lanka`;
+                Location.geocodeAsync(fullQuery)
+                    .then((results) => {
+                        if (results && results.length > 0) {
+                            const { latitude, longitude } = results[0];
+                            if (latitude && longitude) {
+                                setMapCoords({ lat: latitude, lng: longitude });
+                            }
+                        }
+                    })
+                    .catch((err) => console.log('[DetailsScreen] Geocode error:', err.message));
+            }
+        }
+    }, [boarding]);
 
     const title = boarding.title || 'Green Valley Boarding';
     const location = boarding.city ? `${boarding.address}, ${boarding.city}` : (boarding.location || boarding.address || 'Location Not Set');
@@ -282,16 +309,16 @@ export default function DetailsScreen({ boarding = {}, onBack, onBookSuccess, on
                             pitchEnabled={false}
                             rotateEnabled={false}
                             region={{
-                                latitude: boarding.latitude || 6.9271,
-                                longitude: boarding.longitude || 79.8612,
-                                latitudeDelta: 0.02,
-                                longitudeDelta: 0.02,
+                                latitude: mapCoords.lat,
+                                longitude: mapCoords.lng,
+                                latitudeDelta: 0.015,
+                                longitudeDelta: 0.015,
                             }}
                         >
                             <Marker
                                 coordinate={{
-                                    latitude: boarding.latitude || 6.9271,
-                                    longitude: boarding.longitude || 79.8612,
+                                    latitude: mapCoords.lat,
+                                    longitude: mapCoords.lng,
                                 }}
                             />
                         </MapView>

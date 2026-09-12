@@ -53,6 +53,19 @@ export default function App() {
   const [previousScreen, setPreviousScreen] = useState('HOME');
   const [userBookings, setUserBookings] = useState([]);
   const [ownerRequests, setOwnerRequests] = useState([]);
+  const [savedBoardings, setSavedBoardings] = useState([]);
+
+  const handleToggleSaveBoarding = (boarding) => {
+    if (!boarding || !boarding.id) return;
+    setSavedBoardings((prev) => {
+      const exists = prev.some((b) => b.id === boarding.id);
+      if (exists) {
+        return prev.filter((b) => b.id !== boarding.id);
+      } else {
+        return [...prev, boarding];
+      }
+    });
+  };
 
   const handleUserUpdated = (updatedUserData) => {
     if (!updatedUserData) return;
@@ -352,12 +365,16 @@ export default function App() {
       ) : currentScreen === 'SEARCH' ? (
         <SearchScreen
           currentUser={currentUser}
+          savedBoardings={savedBoardings}
+          onToggleSaveBoarding={handleToggleSaveBoarding}
           onSelectBoarding={(b) => handleSelectBoarding(b, 'SEARCH')}
           onNavigateTab={handleNavigateTab}
         />
       ) : currentScreen === 'FAVORITES' ? (
         <FavoritesScreen
           currentUser={currentUser}
+          savedBoardings={savedBoardings}
+          onToggleSaveBoarding={handleToggleSaveBoarding}
           onSelectBoarding={(b) => handleSelectBoarding(b, 'FAVORITES')}
           onNavigateTab={handleNavigateTab}
         />
@@ -381,6 +398,8 @@ export default function App() {
       ) : currentScreen === 'DETAILS' && selectedBoarding ? (
         <DetailsScreen
           boarding={selectedBoarding}
+          isSaved={savedBoardings.some((b) => b.id === selectedBoarding.id)}
+          onToggleSave={() => handleToggleSaveBoarding(selectedBoarding)}
           onBack={() => setCurrentScreen(previousScreen || 'HOME')}
           onBookSuccess={handleAddBooking}
           onOpenGallery={() => handleOpenGallery(selectedBoarding)}
@@ -432,6 +451,8 @@ export default function App() {
       ) : (
         <HomeScreen
           currentUser={currentUser}
+          savedBoardings={savedBoardings}
+          onToggleSaveBoarding={handleToggleSaveBoarding}
           onUserUpdated={handleUserUpdated}
           onSelectBoarding={(b) => handleSelectBoarding(b, 'HOME')}
           onNavigateTab={handleNavigateTab}

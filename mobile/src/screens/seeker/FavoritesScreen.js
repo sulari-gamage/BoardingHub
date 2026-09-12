@@ -12,11 +12,11 @@ import { Ionicons } from '@expo/vector-icons';
 import BottomNavBar from '../../components/BottomNavBar';
 import HeaderBar from '../../components/HeaderBar';
 
-export default function FavoritesScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications, currentUser }) {
-    const [favorites, setFavorites] = useState([]);
+export default function FavoritesScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications, currentUser, savedBoardings = [], onToggleSaveBoarding }) {
+    const favorites = savedBoardings;
 
-    const removeFavorite = (id) => {
-        setFavorites(favorites.filter(item => item.id !== id));
+    const removeFavorite = (item) => {
+        if (onToggleSaveBoarding) onToggleSaveBoarding(item);
     };
 
     return (
@@ -55,7 +55,7 @@ export default function FavoritesScreen({ onSelectBoarding, onNavigateTab, onOpe
 
                                 <TouchableOpacity
                                     style={styles.heartBtn}
-                                    onPress={() => removeFavorite(item.id)}
+                                    onPress={() => removeFavorite(item)}
                                     activeOpacity={0.8}
                                 >
                                     <Ionicons name="heart" size={18} color="#EF4444" />

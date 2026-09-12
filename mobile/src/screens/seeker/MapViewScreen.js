@@ -12,6 +12,8 @@ import {
     Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import MapView, { Marker } from 'react-native-maps';
+import * as Location from 'expo-location';
 import api from '../../services/api';
 
 const { width } = Dimensions.get('window');
@@ -20,29 +22,81 @@ export default function MapViewScreen({ onSelectBoarding, onBack, onToggleListVi
     const [properties, setProperties] = useState([]);
     const [selectedBoarding, setSelectedBoarding] = useState(null);
     const [selectedFilter, setSelectedFilter] = useState('ALL');
+    const [userLocation, setUserLocation] = useState(null);
 
     useEffect(() => {
         loadProperties();
+        fetchUserLocation();
     }, []);
+
+    const fetchUserLocation = async () => {
+        try {
+            const { status } = await Location.getForegroundPermissionsAsync();
+            if (status === 'granted') {
+                const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                if (loc?.coords) {
+                    setUserLocation({
+                        latitude: loc.coords.latitude,
+                        longitude: loc.coords.longitude,
+                    });
+                }
+            }
+        } catch (err) {
+            console.log('[MapViewScreen] User location error:', err.message);
+        }
+    };
 
     const loadProperties = async () => {
         try {
             const data = await api.properties.getAll();
             if (data && data.length > 0) {
-                const mapped = data.map(p => ({
-                    id: p.id ? p.id.toString() : Math.random().toString(),
-                    title: p.title || 'Boarding Property',
-                    location: (p.city || '') + (p.address ? ' • ' + p.address : ''),
-                    price: p.monthlyRent || 0,
-                    rating: p.rating || 4.8,
-                    imageUrl: (p.imageUrls && p.imageUrls.length > 0)
-                        ? p.imageUrls[0]
-                        : (p.images && p.images.length > 0)
-                            ? (typeof p.images[0] === 'string' ? p.images[0] : p.images[0].imageUrl)
-                            : 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
-                }));
-                setProperties(mapped);
-                setSelectedBoarding(mapped[0]);
+                const mappedPromises = data.map(async (p) => {
+                    let lat = p.latitude || (p.raw && p.raw.latitude);
+                    let lng = p.longitude || (p.raw && p.raw.longitude);
+
+                    // Geocode address asynchronously if lat/lng are missing
+                    if (!lat || !lng) {
+                        let fullAddr = `${p.address || ''} ${p.city || ''}`.trim() || p.title || '';
+                        if (fullAddr) {
+                            try {
+                                fullAddr = fullAddr.replace(/[\r\n]+/g, ', ').replace(/\s+/g, ' ').replace(/,\s*,/g, ',').trim();
+                                const fullQuery = fullAddr.toLowerCase().includes('sri lanka') ? fullAddr : `${fullAddr}, Sri Lanka`;
+                                const results = await Location.geocodeAsync(fullQuery);
+                                if (results && results.length > 0) {
+                                    lat = results[0].latitude;
+                                    lng = results[0].longitude;
+                                }
+                            } catch (e) {
+                                console.log('[MapViewScreen] Geocode item error:', e.message);
+                            }
+                        }
+                    }
+
+                    // Fallback to Colombo/Kandy range if still null
+                    lat = lat || 6.9271;
+                    lng = lng || 79.8612;
+
+                    return {
+                        id: p.id ? p.id.toString() : Math.random().toString(),
+                        title: p.title || 'Boarding Property',
+                        location: (p.city || '') + (p.address ? ' • ' + p.address : ''),
+                        latitude: lat,
+                        longitude: lng,
+                        price: p.monthlyRent || 0,
+                        rating: p.rating || 4.8,
+                        imageUrl: (p.imageUrls && p.imageUrls.length > 0)
+                            ? p.imageUrls[0]
+                            : (p.images && p.images.length > 0)
+                                ? (typeof p.images[0] === 'string' ? p.images[0] : p.images[0].imageUrl)
+                                : 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
+                    };
+                });
+
+                const resolvedProperties = await Promise.all(mappedPromises);
+                setProperties(resolvedProperties);
+                if (resolvedProperties.length > 0) {
+                    setSelectedBoarding(resolvedProperties[0]);
+                }
             } else {
                 setProperties([]);
                 setSelectedBoarding(null);
@@ -51,6 +105,18 @@ export default function MapViewScreen({ onSelectBoarding, onBack, onToggleListVi
             console.log('Error loading map properties:', err);
             setProperties([]);
         }
+    };
+
+    const initialRegion = selectedBoarding ? {
+        latitude: selectedBoarding.latitude,
+        longitude: selectedBoarding.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+    } : {
+        latitude: userLocation?.latitude || 6.9271,
+        longitude: userLocation?.longitude || 79.8612,
+        latitudeDelta: 0.08,
+        longitudeDelta: 0.08,
     };
 
     return (
@@ -77,19 +143,35 @@ export default function MapViewScreen({ onSelectBoarding, onBack, onToggleListVi
                 </TouchableOpacity>
             </View>
 
-            {/* Simulated Map View Container */}
+            {/* Interactive Map View Container */}
             <View style={styles.mapContainer}>
-                {/* Map Graphic Background */}
-                <Image
-                    source={{ uri: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1200&q=80' }}
-                    style={styles.mapImage}
-                    resizeMode="cover"
-                />
+                <MapView
+                    style={StyleSheet.absoluteFillObject}
+                    initialRegion={initialRegion}
+                    showsUserLocation={true}
+                    showsMyLocationButton={false}
+                >
+                    {properties.map((p) => (
+                        <Marker
+                            key={p.id}
+                            coordinate={{ latitude: p.latitude, longitude: p.longitude }}
+                            onPress={() => setSelectedBoarding(p)}
+                        >
+                            <View style={[
+                                styles.mapPin,
+                                selectedBoarding?.id === p.id && styles.activePin
+                            ]}>
+                                <Ionicons name="location" size={16} color="#FFFFFF" />
+                                <Text style={styles.pinPriceText}>Rs.{p.price?.toLocaleString() || '0'}</Text>
+                            </View>
+                        </Marker>
+                    ))}
+                </MapView>
 
                 {/* Map Overlay Filter Chips */}
                 <View style={styles.filterChipOverlay}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                        {['ALL', 'Moratuwa', 'Nugegoda', 'Under 20k', 'Girls Only'].map((chip) => (
+                        {['ALL', 'Colombo', 'Kandy', 'Malabe', 'Moratuwa', 'Under 20k'].map((chip) => (
                             <TouchableOpacity
                                 key={chip}
                                 style={[styles.mapChip, selectedFilter === chip && styles.mapChipActive]}
@@ -103,25 +185,12 @@ export default function MapViewScreen({ onSelectBoarding, onBack, onToggleListVi
                     </ScrollView>
                 </View>
 
-                {/* Interactive Map Pins */}
-                {properties.map((p, idx) => (
-                    <TouchableOpacity
-                        key={p.id}
-                        style={[
-                            styles.mapPin,
-                            selectedBoarding?.id === p.id && styles.activePin,
-                            { top: `${30 + (idx * 15) % 40}%`, left: `${25 + (idx * 20) % 50}%` }
-                        ]}
-                        onPress={() => setSelectedBoarding(p)}
-                        activeOpacity={0.8}
-                    >
-                        <Ionicons name="location" size={18} color="#FFFFFF" />
-                        <Text style={styles.pinPriceText}>Rs.{p.price?.toLocaleString() || '0'}</Text>
-                    </TouchableOpacity>
-                ))}
-
                 {/* User Current Location Floating Button */}
-                <TouchableOpacity style={styles.myLocationBtn} activeOpacity={0.8}>
+                <TouchableOpacity
+                    style={styles.myLocationBtn}
+                    onPress={fetchUserLocation}
+                    activeOpacity={0.8}
+                >
                     <Ionicons name="locate" size={22} color="#1B4D3E" />
                 </TouchableOpacity>
             </View>

@@ -273,6 +273,36 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
         batticaloa: { lat: 7.7170, lng: 81.7000, city: 'Batticaloa' },
     };
 
+    const cleanAddressForGeocoding = (addressStr, cityStr) => {
+        let raw = `${addressStr || ''} ${cityStr || ''}`.trim();
+        if (!raw) return '';
+        raw = raw.replace(/[\r\n]+/g, ', ')
+            .replace(/\s+/g, ' ')
+            .replace(/,\s*,/g, ',')
+            .replace(/\.\s*$/, '')
+            .trim();
+        if (!raw.toLowerCase().includes('sri lanka')) {
+            raw = `${raw}, Sri Lanka`;
+        }
+        return raw;
+    };
+
+    const triggerGeocode = (addrStr, cityStr) => {
+        const query = cleanAddressForGeocoding(addrStr, cityStr);
+        if (!query || query.length < 3) return;
+
+        Location.geocodeAsync(query)
+            .then((results) => {
+                if (results && results.length > 0) {
+                    const { latitude, longitude } = results[0];
+                    if (latitude && longitude) {
+                        setMapCoords({ lat: latitude, lng: longitude });
+                    }
+                }
+            })
+            .catch((err) => console.log('[AddPropertyScreen] Geocode error:', err.message));
+    };
+
     const handleSearchChange = (text) => {
         setSearchAddress(text);
         if (!text.trim()) {
@@ -283,7 +313,6 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
 
         const lowerText = text.toLowerCase().trim();
 
-        // 1. Check if user typed a comma-separated address: e.g. "99 Kaduwela Road, Malabe"
         if (text.includes(',')) {
             const parts = text.split(',');
             const extractedCity = parts[parts.length - 1].trim();
@@ -291,7 +320,6 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
             setStreetAddress(extractedStreet || text.trim());
             setCity(extractedCity || text.trim());
         } else {
-            // 2. No comma: check if last word or full string matches a known Sri Lankan city
             const words = text.trim().split(/\s+/);
             const lastWordLower = words[words.length - 1].toLowerCase();
             const matchingCityKey = Object.keys(SRI_LANKA_CITIES).find(
@@ -301,8 +329,6 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
             if (matchingCityKey) {
                 const matchedObj = SRI_LANKA_CITIES[matchingCityKey];
                 setCity(matchedObj.city);
-
-                // Extract street address portion if more than city name was typed
                 if (words.length > 1) {
                     const streetPart = text.replace(new RegExp(matchedObj.city, 'gi'), '').replace(/,\s*$/, '').trim();
                     setStreetAddress(streetPart || text.trim());
@@ -311,34 +337,25 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                 }
             } else {
                 setStreetAddress(text.trim());
-                // Set city to the last word if multi-word, or whole text
                 setCity(words.length > 1 ? words[words.length - 1] : text.trim());
             }
         }
 
-        // 3. Precise Sri Lankan Geocoding Coordinates Sync
-        const matchedCityKey = Object.keys(SRI_LANKA_CITIES).find((k) => lowerText.includes(k));
-        if (matchedCityKey) {
-            const coords = SRI_LANKA_CITIES[matchedCityKey];
-            setMapCoords({ lat: coords.lat, lng: coords.lng });
-        } else {
-            // Hash into valid Sri Lankan lat/lng range (Lat: 6.0 to 9.5 N, Lng: 79.8 to 81.5 E)
-            const hash = text.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-            const dynamicLat = parseFloat((6.7000 + ((hash % 250) / 100)).toFixed(4));
-            const dynamicLng = parseFloat((79.8500 + ((hash % 150) / 100)).toFixed(4));
-            setMapCoords({ lat: dynamicLat, lng: dynamicLng });
-        }
+        triggerGeocode(text, city);
     };
 
     const handleStreetAddressChange = (text) => {
         setStreetAddress(text);
         setSearchAddress(text);
+        let extractedCity = city;
         if (text.trim()) {
             const parts = text.split(',');
             if (parts.length > 1) {
-                setCity(parts[parts.length - 1].trim());
+                extractedCity = parts[parts.length - 1].trim();
+                setCity(extractedCity);
             }
         }
+        triggerGeocode(text, extractedCity);
     };
 
     const handleGetCurrentLocation = async () => {
