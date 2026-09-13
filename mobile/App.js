@@ -219,7 +219,10 @@ export default function App() {
     setCurrentScreen('HOME');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await api.auth.logout();
+    } catch (e) { }
     setCurrentUser(null);
     setSavedBoardings([]);
     setUserRole('SEEKER');
@@ -436,6 +439,8 @@ export default function App() {
       ) : currentScreen === 'PROFILE' ? (
         <ProfileScreen
           currentUser={currentUser}
+          savedBoardings={savedBoardings}
+          userBookings={userBookings}
           onUserUpdated={handleUserUpdated}
           onLogout={handleLogout}
           onNavigateTab={handleNavigateTab}

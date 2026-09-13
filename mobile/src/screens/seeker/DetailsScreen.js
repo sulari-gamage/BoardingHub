@@ -767,6 +767,40 @@ export default function DetailsScreen({
                             </View>
                         </View>
                     </TouchableOpacity>
+
+                    {/* Golden Star Rating & Reviews Section */}
+                    <Text style={styles.sectionHeading}>Ratings & Reviews</Text>
+                    <View style={styles.ratingBadgeCard}>
+                        <View style={styles.ratingBadgeHeader}>
+                            <View style={styles.goldenStarContainer}>
+                                <Ionicons name="star" size={26} color="#D97706" />
+                            </View>
+                            <View style={styles.ratingBadgeTextCol}>
+                                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                                    <Text style={styles.ratingBadgeScore}>{boarding.rating || 4.8}</Text>
+                                    <Text style={styles.ratingBadgeMax}> / 5.0</Text>
+                                </View>
+
+                                <View style={styles.starsRowCompact}>
+                                    {[1, 2, 3, 4, 5].map((s) => (
+                                        <Ionicons key={s} name="star" size={13} color="#D97706" style={{ marginRight: 2 }} />
+                                    ))}
+                                    <Text style={styles.ratingsVerifiedText}>Seeker Ratings</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        <View style={styles.ratingBadgeActionsRow}>
+                            <TouchableOpacity
+                                style={styles.seeReviewsBtn}
+                                onPress={() => onOpenReviews && onOpenReviews(boarding)}
+                                activeOpacity={0.8}
+                            >
+                                <Ionicons name="chatbox-ellipses-outline" size={15} color="#1B4D3E" style={{ marginRight: 5 }} />
+                                <Text style={styles.seeReviewsBtnText}>Reviews & Ratings</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
                 </View>
             </ScrollView>
 
@@ -2045,6 +2079,75 @@ const styles = StyleSheet.create({
     },
     mapPinText: {
         fontSize: 11,
+        fontWeight: '800',
+        color: '#1B4D3E',
+    },
+
+    /* Rating & Reviews Golden Badge Section */
+    ratingBadgeCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        marginTop: 4,
+        marginBottom: 20,
+    },
+    ratingBadgeHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 14,
+    },
+    goldenStarContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: '#FEF3C7',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 14,
+        borderWidth: 1,
+        borderColor: '#FDE68A',
+    },
+    ratingBadgeTextCol: {
+        flex: 1,
+    },
+    ratingBadgeScore: {
+        fontSize: 22,
+        fontWeight: '900',
+        color: '#0F172A',
+    },
+    ratingBadgeMax: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#64748B',
+    },
+    starsRowCompact: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 2,
+    },
+    ratingsVerifiedText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#1B4D3E',
+        marginLeft: 6,
+    },
+    ratingBadgeActionsRow: {
+        flexDirection: 'row',
+        gap: 10,
+    },
+    seeReviewsBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        backgroundColor: '#E6F0EC',
+        paddingVertical: 10,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    seeReviewsBtnText: {
+        fontSize: 13,
         fontWeight: '800',
         color: '#1B4D3E',
     },

@@ -17,10 +17,17 @@ import HeaderBar from '../../components/HeaderBar';
 import BoardingCard from '../../components/BoardingCard';
 import api from '../../services/api';
 
-export default function SearchScreen({ onSelectBoarding, onNavigateTab, onOpenNotifications, currentUser, initialSearchQuery = '' }) {
+export default function SearchScreen({
+    onSelectBoarding,
+    onNavigateTab,
+    onOpenNotifications,
+    currentUser,
+    initialSearchQuery = '',
+    savedBoardings = [],
+    onToggleSaveBoarding,
+}) {
     const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
     const [activeTab, setActiveTab] = useState('SEARCH');
-    const [savedStatus, setSavedStatus] = useState({});
     const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
     const [apiProperties, setApiProperties] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -69,10 +76,6 @@ export default function SearchScreen({ onSelectBoarding, onNavigateTab, onOpenNo
         } finally {
             setLoading(false);
         }
-    };
-
-    const toggleSave = (id) => {
-        setSavedStatus((prev) => ({ ...prev, [id]: !prev[id] }));
     };
 
     const mappedProperties = apiProperties.map(p => {
@@ -409,8 +412,8 @@ export default function SearchScreen({ onSelectBoarding, onNavigateTab, onOpenNo
                             <BoardingCard
                                 key={item.id}
                                 item={item}
-                                isSaved={!!savedStatus[item.id]}
-                                onToggleSave={(b) => toggleSave(b.id)}
+                                isSaved={savedBoardings.some((b) => b.id === item.id)}
+                                onToggleSave={(b) => onToggleSaveBoarding && onToggleSaveBoarding(b)}
                                 onPress={() => onSelectBoarding && onSelectBoarding(item)}
                             />
                         ))

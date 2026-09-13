@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -11,69 +11,84 @@ import {
     Modal,
     TextInput,
     Alert,
-    Platform
+    Platform,
+    ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import api from '../../services/api';
 
-export default function ReviewsScreen({ boarding = {}, onBack }) {
-    const title = boarding.title || 'Green Valley Boarding';
-    const ratingScore = boarding.rating || 4.8;
+export default function ReviewsScreen({ boarding = {}, onBack, currentUser }) {
+    const title = boarding.title || 'Boarding Property';
 
-    const [reviews, setReviews] = useState([
-        {
-            id: 'r1',
-            author: 'Kasun Rajapaksha',
-            avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
-            rating: 5,
-            date: 'Aug 14, 2026',
-            comment: 'Super peaceful environment for students. The WiFi speed is excellent for online studies and exams!',
-            helpfulCount: 12
-        },
-        {
-            id: 'r2',
-            author: 'Anjali Perera',
-            avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80',
-            rating: 4.5,
-            date: 'Jul 28, 2026',
-            comment: 'Very clean rooms and safe locality. The landlady Sunethra is very helpful and responsive.',
-            helpfulCount: 8
-        },
-        {
-            id: 'r3',
-            author: 'Dinesh Fernando',
-            avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=200&q=80',
-            rating: 5,
-            date: 'Jun 10, 2026',
-            comment: 'Great value for money. 10 min walk to Moratuwa campus bus stop.',
-            helpfulCount: 4
-        }
-    ]);
+    const [reviews, setReviews] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     const [isWriteModalVisible, setIsWriteModalVisible] = useState(false);
     const [userRating, setUserRating] = useState(5);
     const [userComment, setUserComment] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleAddReview = () => {
+    useEffect(() => {
+        loadReviews();
+    }, [boarding?.id]);
+
+    const loadReviews = async () => {
+        if (!boarding?.id) {
+            setLoading(false);
+            return;
+        }
+        try {
+            setLoading(true);
+            const data = await api.reviews.getByPropertyId(boarding.id);
+            if (data && Array.isArray(data)) {
+                setReviews(data);
+            } else {
+                setReviews([]);
+            }
+        } catch (error) {
+            console.log('Error loading property reviews:', error);
+            setReviews([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAddReview = async () => {
         if (!userComment.trim()) {
             Alert.alert('Missing Text', 'Please enter a review comment.');
             return;
         }
 
-        const newReview = {
-            id: `r_${Date.now()}`,
-            author: 'Sulari Gamage',
-            avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
-            rating: userRating,
-            date: 'Today',
-            comment: userComment,
-            helpfulCount: 0
-        };
+        if (!boarding?.id) {
+            Alert.alert('Error', 'Property ID is missing.');
+            return;
+        }
 
-        setReviews([newReview, ...reviews]);
-        setUserComment('');
-        setIsWriteModalVisible(false);
-        Alert.alert('Review Submitted', 'Thank you for sharing your feedback!');
+        try {
+            setIsSubmitting(true);
+            const newReview = await api.reviews.create({
+                propertyId: typeof boarding.id === 'string' ? parseInt(boarding.id, 10) : boarding.id,
+                rating: userRating,
+                comment: userComment.trim(),
+            });
+
+            if (newReview) {
+                setReviews([newReview, ...reviews]);
+            }
+            setUserComment('');
+            setIsWriteModalVisible(false);
+            Alert.alert('Review Submitted ⭐', 'Thank you for sharing your feedback!');
+        } catch (error) {
+            console.log('Error submitting review:', error);
+            Alert.alert('Submission Error', error.message || 'Failed to submit review. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
+
+    const computedRating = reviews.length > 0
+        ? (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1)
+        : (boarding.rating || 4.8);
 
     return (
         <SafeAreaView style={styles.container}>
@@ -94,13 +109,13 @@ export default function ReviewsScreen({ boarding = {}, onBack }) {
                 {/* Rating Overview Card */}
                 <View style={styles.overviewCard}>
                     <View style={styles.overviewScoreCol}>
-                        <Text style={styles.bigScore}>{ratingScore}</Text>
+                        <Text style={styles.bigScore}>{computedRating}</Text>
                         <View style={styles.starsRow}>
                             {[1, 2, 3, 4, 5].map((s) => (
                                 <Ionicons key={s} name="star" size={14} color="#D97706" />
                             ))}
                         </View>
-                        <Text style={styles.totalCount}>{reviews.length + 120} Reviews</Text>
+                        <Text style={styles.totalCount}>{reviews.length} Reviews</Text>
                     </View>
 
                     <View style={styles.dividerVertical} />
@@ -133,32 +148,52 @@ export default function ReviewsScreen({ boarding = {}, onBack }) {
                 </View>
 
                 {/* Reviews List */}
-                {reviews.map((rev) => (
-                    <View key={rev.id} style={styles.reviewCard}>
-                        <View style={styles.reviewHeader}>
-                            <Image source={{ uri: rev.avatar }} style={styles.authorAvatar} />
+                {loading ? (
+                    <ActivityIndicator size="large" color="#1B4D3E" style={{ marginVertical: 30 }} />
+                ) : reviews.length > 0 ? (
+                    reviews.map((rev) => {
+                        const dateStr = rev.createdAt
+                            ? new Date(rev.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                            : 'Recently';
+                        const author = rev.seekerName || 'Anonymous Seeker';
+                        const avatar = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80';
 
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.authorName}>{rev.author}</Text>
-                                <Text style={styles.reviewDate}>{rev.date}</Text>
+                        return (
+                            <View key={rev.id || Math.random().toString()} style={styles.reviewCard}>
+                                <View style={styles.reviewHeader}>
+                                    <Image source={{ uri: avatar }} style={styles.authorAvatar} />
+
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.authorName}>{author}</Text>
+                                        <Text style={styles.reviewDate}>{dateStr}</Text>
+                                    </View>
+
+                                    <View style={styles.starBadge}>
+                                        <Ionicons name="star" size={12} color="#D97706" style={{ marginRight: 3 }} />
+                                        <Text style={styles.starBadgeText}>{rev.rating}</Text>
+                                    </View>
+                                </View>
+
+                                <Text style={styles.commentText}>{rev.comment}</Text>
+
+                                <View style={styles.reviewFooter}>
+                                    <TouchableOpacity style={styles.helpfulBtn} activeOpacity={0.8}>
+                                        <Ionicons name="thumbs-up-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
+                                        <Text style={styles.helpfulText}>Helpful</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-
-                            <View style={styles.starBadge}>
-                                <Ionicons name="star" size={12} color="#D97706" style={{ marginRight: 3 }} />
-                                <Text style={styles.starBadgeText}>{rev.rating}</Text>
-                            </View>
-                        </View>
-
-                        <Text style={styles.commentText}>{rev.comment}</Text>
-
-                        <View style={styles.reviewFooter}>
-                            <TouchableOpacity style={styles.helpfulBtn} activeOpacity={0.8}>
-                                <Ionicons name="thumbs-up-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
-                                <Text style={styles.helpfulText}>Helpful ({rev.helpfulCount})</Text>
-                            </TouchableOpacity>
-                        </View>
+                        );
+                    })
+                ) : (
+                    <View style={{ padding: 24, alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', marginVertical: 10 }}>
+                        <Ionicons name="chatbox-ellipses-outline" size={36} color="#CBD5E1" style={{ marginBottom: 8 }} />
+                        <Text style={{ fontSize: 15, fontWeight: '800', color: '#1B4D3E', marginBottom: 4 }}>No Reviews Yet</Text>
+                        <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center' }}>
+                            Be the first seeker to write a review for this boarding place!
+                        </Text>
                     </View>
-                ))}
+                )}
             </ScrollView>
 
             {/* Write Review Modal Sheet */}
@@ -211,8 +246,17 @@ export default function ReviewsScreen({ boarding = {}, onBack }) {
                         />
 
                         {/* Submit Button */}
-                        <TouchableOpacity style={styles.submitReviewBtn} onPress={handleAddReview} activeOpacity={0.85}>
-                            <Text style={styles.submitReviewText}>Submit Review</Text>
+                        <TouchableOpacity
+                            style={styles.submitReviewBtn}
+                            onPress={handleAddReview}
+                            disabled={isSubmitting}
+                            activeOpacity={0.85}
+                        >
+                            {isSubmitting ? (
+                                <ActivityIndicator color="#FFFFFF" size="small" />
+                            ) : (
+                                <Text style={styles.submitReviewText}>Submit Review</Text>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </View>

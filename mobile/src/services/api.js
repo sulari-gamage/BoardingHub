@@ -42,10 +42,18 @@ console.log('BoardingHub API Base URL initialized:', BASE_URL);
 const TOKEN_KEY = 'boardinghub_jwt_token';
 const USER_KEY = 'boardinghub_user_data';
 
-// Safe Storage helper (uses localStorage / memory storage fallback)
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Safe Storage helper (prefers AsyncStorage, fallback to window.localStorage / memory storage)
 let memoryStore = {};
 const storage = {
     getItem: async (key) => {
+        try {
+            if (AsyncStorage && AsyncStorage.getItem) {
+                const val = await AsyncStorage.getItem(key);
+                if (val !== null) return val;
+            }
+        } catch (e) { }
         try {
             if (typeof window !== 'undefined' && window.localStorage) {
                 return window.localStorage.getItem(key);
@@ -55,6 +63,11 @@ const storage = {
     },
     setItem: async (key, value) => {
         try {
+            if (AsyncStorage && AsyncStorage.setItem) {
+                await AsyncStorage.setItem(key, value);
+            }
+        } catch (e) { }
+        try {
             if (typeof window !== 'undefined' && window.localStorage) {
                 window.localStorage.setItem(key, value);
             }
@@ -62,6 +75,11 @@ const storage = {
         memoryStore[key] = value;
     },
     removeItem: async (key) => {
+        try {
+            if (AsyncStorage && AsyncStorage.removeItem) {
+                await AsyncStorage.removeItem(key);
+            }
+        } catch (e) { }
         try {
             if (typeof window !== 'undefined' && window.localStorage) {
                 window.localStorage.removeItem(key);
