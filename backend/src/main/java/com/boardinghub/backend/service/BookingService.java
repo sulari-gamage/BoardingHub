@@ -167,6 +167,52 @@ public class BookingService {
         return mapToBookingResponse(updatedBooking);
     }
 
+    @Transactional
+    public void deleteBookingRequest(Long bookingId, String userEmail) {
+        BookingRequest booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Booking request not found with ID: " + bookingId));
+
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        boolean isOwner = booking.getProperty() != null
+                && booking.getProperty().getOwner() != null
+                && booking.getProperty().getOwner().getId().equals(user.getId());
+        boolean isAdmin = user.getRole() == Role.ADMIN;
+        boolean isSeekerOwnerOfBooking = booking.getSeeker() != null
+                && booking.getSeeker().getId().equals(user.getId());
+
+        if (!isOwner && !isAdmin && !isSeekerOwnerOfBooking) {
+            throw new IllegalArgumentException("Access denied: you do not have permission to delete this booking request.");
+        }
+
+        // If booking was APPROVED, restore capacity prior to deletion
+        if (booking.getStatus() == BookingStatus.APPROVED) {
+            Room room = booking.getRoom();
+            BoardingProperty prop = booking.getProperty();
+
+            if (room != null) {
+                int newRem = (room.getRemainingSpaces() != null ? room.getRemainingSpaces() : 0) + booking.getOccupantsCount();
+                int newOcc = Math.max(0, (room.getOccupied() != null ? room.getOccupied() : 0) - booking.getOccupantsCount());
+                room.setRemainingSpaces(newRem);
+                room.setOccupied(newOcc);
+                roomRepository.save(room);
+
+                if (prop != null && prop.getRooms() != null) {
+                    int totalOcc = Math.max(0, (prop.getTotalOccupied() != null ? prop.getTotalOccupied() : 0) - booking.getOccupantsCount());
+                    prop.setTotalOccupied(totalOcc);
+                    propertyRepository.save(prop);
+                }
+            } else if (prop != null) {
+                int currentOcc = prop.getTotalOccupied() != null ? prop.getTotalOccupied() : 0;
+                prop.setTotalOccupied(Math.max(0, currentOcc - booking.getOccupantsCount()));
+                propertyRepository.save(prop);
+            }
+        }
+
+        bookingRepository.delete(booking);
+    }
+
     private BookingResponse mapToBookingResponse(BookingRequest b) {
         Double monthlyPrice = b.getRoom() != null ? b.getRoom().getMonthlyPrice() : b.getProperty().getMonthlyRent();
 

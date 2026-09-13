@@ -134,6 +134,26 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
         }
     };
 
+    const CITY_COORDINATES = {
+        'moratuwa': { latitude: 6.7951, longitude: 79.9009 },
+        'katubedda': { latitude: 6.7981, longitude: 79.9025 },
+        'colombo': { latitude: 6.9271, longitude: 79.8612 },
+        'kandy': { latitude: 7.2906, longitude: 80.6337 },
+        'galle': { latitude: 6.0535, longitude: 80.2210 },
+        'nugegoda': { latitude: 6.8649, longitude: 79.8997 },
+        'dehiwala': { latitude: 6.8511, longitude: 79.8650 },
+        'kelaniya': { latitude: 6.9553, longitude: 79.9221 },
+        'battaramulla': { latitude: 6.8974, longitude: 79.9221 },
+        'maharagama': { latitude: 6.8480, longitude: 79.9265 },
+        'malabe': { latitude: 6.9061, longitude: 79.9647 },
+        'homagama': { latitude: 6.8444, longitude: 80.0025 },
+        'gampaha': { latitude: 7.0840, longitude: 79.9925 },
+        'negombo': { latitude: 7.2008, longitude: 79.8737 },
+        'kurunegala': { latitude: 7.4863, longitude: 80.3647 },
+        'jaffna': { latitude: 9.6615, longitude: 80.0255 },
+        'matara': { latitude: 5.9549, longitude: 80.5550 },
+    };
+
     const cleanAddressForGeocoding = (addressStr, cityStr) => {
         let raw = `${addressStr || ''} ${cityStr || ''}`.trim();
         if (!raw) return '';
@@ -148,6 +168,36 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
         return raw;
     };
 
+    const safeGeocodeWithTimeout = async (query, cityStr) => {
+        const cleanCity = (cityStr || '').toLowerCase().trim();
+        if (cleanCity && CITY_COORDINATES[cleanCity]) {
+            return CITY_COORDINATES[cleanCity];
+        }
+
+        for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
+            if (query.toLowerCase().includes(key)) {
+                return coords;
+            }
+        }
+
+        try {
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Geocode Timeout')), 1500)
+            );
+            const results = await Promise.race([
+                Location.geocodeAsync(query),
+                timeoutPromise
+            ]);
+            if (results && results.length > 0) {
+                return { latitude: results[0].latitude, longitude: results[0].longitude };
+            }
+        } catch (e) {
+            // Silently fall back if native geocoding times out or fails
+        }
+
+        return { latitude: 6.7951, longitude: 79.9009 };
+    };
+
     const loadProperties = async () => {
         try {
             setLoading(true);
@@ -160,14 +210,10 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
                     if (!lat || !lng || (Math.abs(lat - 6.9271) < 0.0001 && Math.abs(lng - 79.8612) < 0.0001)) {
                         const query = cleanAddressForGeocoding(p.address, p.city);
                         if (query) {
-                            try {
-                                const results = await Location.geocodeAsync(query);
-                                if (results && results.length > 0) {
-                                    lat = results[0].latitude;
-                                    lng = results[0].longitude;
-                                }
-                            } catch (e) {
-                                console.log('[HomeScreen] Geocode item error:', e.message);
+                            const coords = await safeGeocodeWithTimeout(query, p.city);
+                            if (coords) {
+                                lat = coords.latitude;
+                                lng = coords.longitude;
                             }
                         }
                     }

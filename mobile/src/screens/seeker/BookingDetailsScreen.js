@@ -79,12 +79,17 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
                         setIsCancelling(true);
                         try {
                             if (booking.id && !isNaN(booking.id)) {
-                                await api.bookings.updateStatus(booking.id, 'CANCELLED');
+                                try {
+                                    await api.bookings.delete(booking.id);
+                                } catch (delErr) {
+                                    console.log('[BookingDetailsScreen] Delete endpoint error, falling back to CANCELLED status update:', delErr?.message);
+                                    await api.bookings.updateStatus(booking.id, 'CANCELLED');
+                                }
                             }
                             if (onCancelBooking) {
                                 onCancelBooking(booking.id);
                             }
-                            Alert.alert('Booking Cancelled 🚫', 'Your booking request has been successfully cancelled.');
+                            Alert.alert('Booking Cancelled 🚫', 'Your booking request has been successfully cancelled and removed.');
                             onBack();
                         } catch (err) {
                             console.error('[BookingDetailsScreen] Cancel error:', err?.message);

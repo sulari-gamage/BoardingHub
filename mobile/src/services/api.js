@@ -259,6 +259,10 @@ export const api = {
                 body: JSON.stringify({ status }),
             });
         },
+
+        delete: async (id) => {
+            return await request(`/bookings/${id}`, { method: 'DELETE' });
+        },
     },
 
     // Review Services
