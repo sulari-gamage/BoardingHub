@@ -1,28 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Modal,
     View,
     Text,
     StyleSheet,
     TouchableOpacity,
-    TouchableWithoutFeedback,
-    ScrollView
+    ScrollView,
+    TextInput
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function FilterModal({ visible, onClose, onApply }) {
-    const [selectedGender, setSelectedGender] = useState('Female');
+export default function FilterModal({ visible, onClose, onApply, initialFilters }) {
+    // Category 1: Boarding Types & Rent Basis
+    const [boardingCategory, setBoardingCategory] = useState('ALL'); // 'ALL', 'ROOM_BASED', 'ANNEX'
+    const [rentBasis, setRentBasis] = useState('PER_PERSON'); // 'PER_PERSON', 'PER_ROOM'
     const [roomTypes, setRoomTypes] = useState({
-        privateRoom: true,
+        privateRoom: false,
         sharedRoom: false,
     });
+
+    // Category 2: Gender Preference
+    const [selectedGender, setSelectedGender] = useState('ANY'); // 'ANY', 'MALE', 'FEMALE'
+
+    // Category 3: Price Range (UX Improved with presets & numeric min/max inputs)
+    const [priceMinInput, setPriceMinInput] = useState('0');
+    const [priceMaxInput, setPriceMaxInput] = useState('100000');
+    const [activePricePreset, setActivePricePreset] = useState('ALL'); // 'ALL', '<15k', '15k-30k', '30k-50k', '50k+'
+
+    // Category 4: Amenities & Features
     const [amenities, setAmenities] = useState({
-        wifi: true,
-        parking: true,
+        wifi: false,
+        parking: false,
         laundry: false,
+        attachedBathroom: false,
+        kitchenAccess: false,
+        airConditioning: false,
     });
-    const [priceMin, setPriceMin] = useState(10000);
-    const [priceMax, setPriceMax] = useState(30000);
+
+    // Category 5: Sort By
+    const [sortBy, setSortBy] = useState('DEFAULT'); // 'DEFAULT', 'PRICE_LOW_HIGH', 'PRICE_HIGH_LOW', 'RATING'
+
+    useEffect(() => {
+        if (initialFilters) {
+            if (initialFilters.boardingCategory) setBoardingCategory(initialFilters.boardingCategory);
+            if (initialFilters.rentBasis) setRentBasis(initialFilters.rentBasis);
+            if (initialFilters.roomTypes) setRoomTypes(initialFilters.roomTypes);
+            if (initialFilters.gender) setSelectedGender(initialFilters.gender);
+            if (initialFilters.priceMin !== undefined) setPriceMinInput(String(initialFilters.priceMin));
+            if (initialFilters.priceMax !== undefined) setPriceMaxInput(String(initialFilters.priceMax));
+            if (initialFilters.amenities) setAmenities(initialFilters.amenities);
+            if (initialFilters.sortBy) setSortBy(initialFilters.sortBy);
+        }
+    }, [initialFilters, visible]);
 
     const toggleRoomType = (key) => {
         setRoomTypes((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -32,22 +61,84 @@ export default function FilterModal({ visible, onClose, onApply }) {
         setAmenities((prev) => ({ ...prev, [key]: !prev[key] }));
     };
 
+    const handleSelectPricePreset = (preset) => {
+        setActivePricePreset(preset);
+        switch (preset) {
+            case '<15k':
+                setPriceMinInput('0');
+                setPriceMaxInput('15000');
+                break;
+            case '15k-30k':
+                setPriceMinInput('15000');
+                setPriceMaxInput('30000');
+                break;
+            case '30k-50k':
+                setPriceMinInput('30000');
+                setPriceMaxInput('50000');
+                break;
+            case '50k+':
+                setPriceMinInput('50000');
+                setPriceMaxInput('200000');
+                break;
+            case 'ALL':
+            default:
+                setPriceMinInput('0');
+                setPriceMaxInput('100000');
+                break;
+        }
+    };
+
     const handleReset = () => {
-        setSelectedGender('Female');
-        setRoomTypes({ privateRoom: true, sharedRoom: false });
-        setAmenities({ wifi: true, parking: true, laundry: false });
-        setPriceMin(10000);
-        setPriceMax(30000);
+        const defaultFilters = {
+            boardingCategory: 'ALL',
+            rentBasis: 'PER_PERSON',
+            roomTypes: { privateRoom: false, sharedRoom: false },
+            gender: 'ANY',
+            priceMin: 0,
+            priceMax: 100000,
+            amenities: {
+                wifi: false,
+                parking: false,
+                laundry: false,
+                attachedBathroom: false,
+                kitchenAccess: false,
+                airConditioning: false,
+            },
+            sortBy: 'DEFAULT',
+        };
+
+        setBoardingCategory(defaultFilters.boardingCategory);
+        setRentBasis(defaultFilters.rentBasis);
+        setRoomTypes(defaultFilters.roomTypes);
+        setSelectedGender(defaultFilters.gender);
+        setPriceMinInput('0');
+        setPriceMaxInput('100000');
+        setActivePricePreset('ALL');
+        setAmenities(defaultFilters.amenities);
+        setSortBy(defaultFilters.sortBy);
+
+        if (onApply) {
+            onApply(defaultFilters);
+        }
+        if (onClose) {
+            onClose();
+        }
     };
 
     const handleApply = () => {
+        const minVal = parseInt(priceMinInput.replace(/[^0-9]/g, ''), 10) || 0;
+        const maxVal = parseInt(priceMaxInput.replace(/[^0-9]/g, ''), 10) || 100000;
+
         if (onApply) {
             onApply({
-                gender: selectedGender,
+                boardingCategory,
+                rentBasis,
                 roomTypes,
+                gender: selectedGender,
+                priceMin: minVal,
+                priceMax: maxVal,
                 amenities,
-                priceMin,
-                priceMax,
+                sortBy,
             });
         }
         if (onClose) onClose();
@@ -60,163 +151,317 @@ export default function FilterModal({ visible, onClose, onApply }) {
             visible={visible}
             onRequestClose={onClose}
         >
-            <TouchableWithoutFeedback onPress={onClose}>
-                <View style={styles.overlay}>
-                    <TouchableWithoutFeedback>
-                        <View style={styles.modalContent}>
-                            {/* Drag Handle */}
-                            <View style={styles.handleContainer}>
-                                <View style={styles.dragHandle} />
-                            </View>
+            <View style={styles.overlay}>
+                {/* Backdrop press trigger */}
+                <TouchableOpacity
+                    style={StyleSheet.absoluteFillObject}
+                    activeOpacity={1}
+                    onPress={onClose}
+                />
 
-                            {/* Header */}
-                            <View style={styles.header}>
-                                <Text style={styles.headerTitle}>Filters</Text>
-                                <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-                                    <Ionicons name="close" size={22} color="#0F172A" />
-                                </TouchableOpacity>
-                            </View>
+                <View style={styles.modalContent}>
+                    {/* Drag Handle */}
+                    <View style={styles.handleContainer}>
+                        <View style={styles.dragHandle} />
+                    </View>
 
-                            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollBody}>
-                                {/* Price Range Section */}
-                                <View style={styles.section}>
-                                    <View style={styles.sectionHeaderRow}>
-                                        <Text style={styles.sectionTitle}>Price Range</Text>
-                                        <Text style={styles.priceValueText}>
-                                            Rs. {priceMin.toLocaleString()} - {priceMax.toLocaleString()}
-                                        </Text>
-                                    </View>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons name="options-outline" size={22} color="#133E32" style={{ marginRight: 8 }} />
+                            <Text style={styles.headerTitle}>Filter Boardings</Text>
+                        </View>
+                        <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
+                            <Ionicons name="close" size={22} color="#0F172A" />
+                        </TouchableOpacity>
+                    </View>
 
-                                    {/* Styled Range Bar */}
-                                    <View style={styles.sliderTrackContainer}>
-                                        <View style={styles.sliderTrackBackground} />
-                                        <View style={[styles.sliderTrackActive, { left: '15%', right: '25%' }]} />
-                                        <View style={[styles.sliderThumb, { left: '48%' }]} />
-                                    </View>
-                                </View>
+                    {/* Smooth Scrollable Body */}
+                    <ScrollView
+                        showsVerticalScrollIndicator={true}
+                        contentContainerStyle={styles.scrollBody}
+                        keyboardShouldPersistTaps="handled"
+                        nestedScrollEnabled={true}
+                    >
 
-                                {/* Gender Preference Section */}
-                                <View style={styles.section}>
-                                    <Text style={styles.sectionTitle}>Gender Preference</Text>
-                                    <View style={styles.segmentRow}>
-                                        {['Male', 'Female', 'Mixed'].map((item) => {
-                                            const isActive = selectedGender === item;
-                                            return (
-                                                <TouchableOpacity
-                                                    key={item}
-                                                    style={[styles.segmentBtn, isActive && styles.segmentBtnActive]}
-                                                    onPress={() => setSelectedGender(item)}
-                                                    activeOpacity={0.8}
-                                                >
-                                                    <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>
-                                                        {item}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </View>
-                                </View>
+                        {/* Category 1: Boarding Type */}
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>1. Boarding Type</Text>
+                            <Text style={styles.sectionSubtitle}>Categorized by occupancy structure</Text>
 
-                                {/* Room Type Section */}
-                                <View style={styles.section}>
-                                    <Text style={styles.sectionTitle}>Room Type</Text>
-
-                                    <TouchableOpacity
-                                        style={styles.checkboxRow}
-                                        onPress={() => toggleRoomType('privateRoom')}
-                                        activeOpacity={0.8}
-                                    >
-                                        <View style={[styles.checkbox, roomTypes.privateRoom && styles.checkboxActive]}>
-                                            {roomTypes.privateRoom && (
-                                                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-                                            )}
-                                        </View>
-                                        <Text style={styles.checkboxLabel}>Private Room</Text>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity
-                                        style={styles.checkboxRow}
-                                        onPress={() => toggleRoomType('sharedRoom')}
-                                        activeOpacity={0.8}
-                                    >
-                                        <View style={[styles.checkbox, roomTypes.sharedRoom && styles.checkboxActive]}>
-                                            {roomTypes.sharedRoom && (
-                                                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-                                            )}
-                                        </View>
-                                        <Text style={styles.checkboxLabel}>Shared Room</Text>
-                                    </TouchableOpacity>
-                                </View>
-
-                                {/* Amenities Section */}
-                                <View style={styles.section}>
-                                    <Text style={styles.sectionTitle}>Amenities</Text>
-
-                                    <TouchableOpacity
-                                        style={styles.checkboxRow}
-                                        onPress={() => toggleAmenity('wifi')}
-                                        activeOpacity={0.8}
-                                    >
-                                        <View style={[styles.checkbox, amenities.wifi && styles.checkboxActive]}>
-                                            {amenities.wifi && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
-                                        </View>
-                                        <Text style={styles.checkboxLabel}>WiFi</Text>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity
-                                        style={styles.checkboxRow}
-                                        onPress={() => toggleAmenity('parking')}
-                                        activeOpacity={0.8}
-                                    >
-                                        <View style={[styles.checkbox, amenities.parking && styles.checkboxActive]}>
-                                            {amenities.parking && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
-                                        </View>
-                                        <Text style={styles.checkboxLabel}>Parking</Text>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity
-                                        style={styles.checkboxRow}
-                                        onPress={() => toggleAmenity('laundry')}
-                                        activeOpacity={0.8}
-                                    >
-                                        <View style={[styles.checkbox, amenities.laundry && styles.checkboxActive]}>
-                                            {amenities.laundry && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
-                                        </View>
-                                        <Text style={styles.checkboxLabel}>Laundry</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </ScrollView>
-
-                            {/* Bottom Fixed Action Buttons */}
-                            <View style={styles.footerRow}>
+                            <View style={styles.categoryCardRow}>
                                 <TouchableOpacity
-                                    style={styles.resetBtn}
-                                    onPress={handleReset}
+                                    style={[
+                                        styles.categoryCard,
+                                        boardingCategory === 'ALL' && styles.categoryCardActive
+                                    ]}
+                                    onPress={() => setBoardingCategory('ALL')}
                                     activeOpacity={0.8}
                                 >
-                                    <Text style={styles.resetBtnText}>Reset</Text>
+                                    <Ionicons
+                                        name="grid-outline"
+                                        size={20}
+                                        color={boardingCategory === 'ALL' ? '#133E32' : '#64748B'}
+                                    />
+                                    <Text style={[styles.categoryCardText, boardingCategory === 'ALL' && styles.categoryCardTextActive]}>
+                                        All Types
+                                    </Text>
                                 </TouchableOpacity>
 
                                 <TouchableOpacity
-                                    style={styles.applyBtn}
-                                    onPress={handleApply}
-                                    activeOpacity={0.85}
+                                    style={[
+                                        styles.categoryCard,
+                                        boardingCategory === 'ROOM_BASED' && styles.categoryCardActive
+                                    ]}
+                                    onPress={() => setBoardingCategory('ROOM_BASED')}
+                                    activeOpacity={0.8}
                                 >
-                                    <Text style={styles.applyBtnText}>Apply Filters</Text>
+                                    <Ionicons
+                                        name="bed-outline"
+                                        size={20}
+                                        color={boardingCategory === 'ROOM_BASED' ? '#133E32' : '#64748B'}
+                                    />
+                                    <Text style={[styles.categoryCardText, boardingCategory === 'ROOM_BASED' && styles.categoryCardTextActive]}>
+                                        Room Based
+                                    </Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[
+                                        styles.categoryCard,
+                                        boardingCategory === 'ANNEX' && styles.categoryCardActive
+                                    ]}
+                                    onPress={() => setBoardingCategory('ANNEX')}
+                                    activeOpacity={0.8}
+                                >
+                                    <Ionicons
+                                        name="home-outline"
+                                        size={20}
+                                        color={boardingCategory === 'ANNEX' ? '#133E32' : '#64748B'}
+                                    />
+                                    <Text style={[styles.categoryCardText, boardingCategory === 'ANNEX' && styles.categoryCardTextActive]}>
+                                        Annex Type
+                                    </Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
-                    </TouchableWithoutFeedback>
+
+                        {/* Category 2: Dynamic Price Filter with UX Improvements */}
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeaderRow}>
+                                <Text style={styles.sectionTitle}>2. Monthly Price Range (LKR)</Text>
+                            </View>
+
+                            {/* Rent Calculation Basis Selection under Monthly Price Range (for Room Based or All) */}
+                            {(boardingCategory === 'ROOM_BASED' || boardingCategory === 'ALL') && (
+                                <View style={{ marginBottom: 14 }}>
+                                    <Text style={[styles.subCategoryTitle, { color: '#64748B', marginBottom: 6 }]}>Price Calculation Basis:</Text>
+                                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.rentBasisChip,
+                                                rentBasis === 'PER_PERSON' && styles.rentBasisChipActive
+                                            ]}
+                                            onPress={() => setRentBasis('PER_PERSON')}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Ionicons
+                                                name="person-outline"
+                                                size={15}
+                                                color={rentBasis === 'PER_PERSON' ? '#133E32' : '#64748B'}
+                                                style={{ marginRight: 6 }}
+                                            />
+                                            <Text style={[styles.rentBasisChipText, rentBasis === 'PER_PERSON' && styles.rentBasisChipTextActive]}>
+                                                Per Person
+                                            </Text>
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.rentBasisChip,
+                                                rentBasis === 'PER_ROOM' && styles.rentBasisChipActive
+                                            ]}
+                                            onPress={() => setRentBasis('PER_ROOM')}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Ionicons
+                                                name="key-outline"
+                                                size={15}
+                                                color={rentBasis === 'PER_ROOM' ? '#133E32' : '#64748B'}
+                                                style={{ marginRight: 6 }}
+                                            />
+                                            <Text style={[styles.rentBasisChipText, rentBasis === 'PER_ROOM' && styles.rentBasisChipTextActive]}>
+                                                Per Room
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* Direct Price Input Fields */}
+                            <View style={styles.priceInputRow}>
+                                <View style={styles.priceInputBox}>
+                                    <Text style={styles.priceInputLabel}>Min Price (Rs.)</Text>
+                                    <TextInput
+                                        style={styles.priceInput}
+                                        value={priceMinInput}
+                                        onChangeText={(val) => {
+                                            setPriceMinInput(val);
+                                            setActivePricePreset('CUSTOM');
+                                        }}
+                                        keyboardType="numeric"
+                                        placeholder="0"
+                                        placeholderTextColor="#94A3B8"
+                                    />
+                                </View>
+
+                                <Text style={styles.priceDash}>-</Text>
+
+                                <View style={styles.priceInputBox}>
+                                    <Text style={styles.priceInputLabel}>Max Price (Rs.)</Text>
+                                    <TextInput
+                                        style={styles.priceInput}
+                                        value={priceMaxInput}
+                                        onChangeText={(val) => {
+                                            setPriceMaxInput(val);
+                                            setActivePricePreset('CUSTOM');
+                                        }}
+                                        keyboardType="numeric"
+                                        placeholder="100000"
+                                        placeholderTextColor="#94A3B8"
+                                    />
+                                </View>
+                            </View>
+
+                            {/* Quick Price Preset Chips */}
+                            <Text style={styles.presetLabel}>Quick Presets:</Text>
+                            <View style={styles.presetChipRow}>
+                                {[
+                                    { id: 'ALL', label: 'Any Price' },
+                                    { id: '<15k', label: '< 15k' },
+                                    { id: '15k-30k', label: '15k - 30k' },
+                                    { id: '30k-50k', label: '30k - 50k' },
+                                    { id: '50k+', label: '50k+' },
+                                ].map((preset) => {
+                                    const isActive = activePricePreset === preset.id;
+                                    return (
+                                        <TouchableOpacity
+                                            key={preset.id}
+                                            style={[styles.presetChip, isActive && styles.presetChipActive]}
+                                            onPress={() => handleSelectPricePreset(preset.id)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={[styles.presetChipText, isActive && styles.presetChipTextActive]}>
+                                                {preset.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </View>
+
+                        {/* Category 3: Gender Preference Section */}
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>3. Gender Preference</Text>
+                            <View style={styles.segmentRow}>
+                                {[
+                                    { id: 'ANY', label: 'Any Gender', icon: 'people-outline' },
+                                    { id: 'MALE', label: 'Boys Only', icon: 'male-outline' },
+                                    { id: 'FEMALE', label: 'Girls Only', icon: 'female-outline' },
+                                ].map((item) => {
+                                    const isActive = selectedGender === item.id;
+                                    return (
+                                        <TouchableOpacity
+                                            key={item.id}
+                                            style={[styles.segmentBtn, isActive && styles.segmentBtnActive]}
+                                            onPress={() => setSelectedGender(item.id)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Ionicons
+                                                name={item.icon}
+                                                size={16}
+                                                color={isActive ? '#133E32' : '#64748B'}
+                                                style={{ marginBottom: 2 }}
+                                            />
+                                            <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>
+                                                {item.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </View>
+
+                        {/* Category 4: Amenities & Features Section */}
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>4. Key Amenities</Text>
+
+                            <View style={styles.amenitiesGrid}>
+                                {[
+                                    { key: 'wifi', label: 'WiFi Connection', icon: 'wifi-outline' },
+                                    { key: 'parking', label: 'Parking Area', icon: 'car-outline' },
+                                    { key: 'laundry', label: 'Laundry Facility', icon: 'shirt-outline' },
+                                    { key: 'attachedBathroom', label: 'Attached Bath', icon: 'water-outline' },
+                                    { key: 'kitchenAccess', label: 'Kitchen Access', icon: 'restaurant-outline' },
+                                    { key: 'airConditioning', label: 'A/C Room', icon: 'snow-outline' },
+                                ].map((amenityItem) => {
+                                    const isChecked = amenities[amenityItem.key];
+                                    return (
+                                        <TouchableOpacity
+                                            key={amenityItem.key}
+                                            style={[styles.amenityTile, isChecked && styles.amenityTileActive]}
+                                            onPress={() => toggleAmenity(amenityItem.key)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Ionicons
+                                                name={amenityItem.icon}
+                                                size={18}
+                                                color={isChecked ? '#133E32' : '#64748B'}
+                                                style={{ marginRight: 8 }}
+                                            />
+                                            <Text style={[styles.amenityTileText, isChecked && styles.amenityTileTextActive]}>
+                                                {amenityItem.label}
+                                            </Text>
+                                            <View style={[styles.miniCheck, isChecked && styles.miniCheckActive]}>
+                                                {isChecked && <Ionicons name="checkmark" size={10} color="#FFFFFF" />}
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </View>
+                    </ScrollView>
+
+                    {/* Bottom Fixed Action Buttons */}
+                    <View style={styles.footerRow}>
+                        <TouchableOpacity
+                            style={styles.resetBtn}
+                            onPress={handleReset}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="refresh-outline" size={16} color="#133E32" style={{ marginRight: 4 }} />
+                            <Text style={styles.resetBtnText}>Reset All</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.applyBtn}
+                            onPress={handleApply}
+                            activeOpacity={0.85}
+                        >
+                            <Ionicons name="checkmark-done" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                            <Text style={styles.applyBtnText}>Apply Filters</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </TouchableWithoutFeedback>
-        </Modal>
+            </View >
+        </Modal >
     );
 }
 
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(15, 23, 42, 0.45)',
+        backgroundColor: 'rgba(15, 23, 42, 0.55)',
         justifyContent: 'flex-end',
     },
     modalContent: {
@@ -227,12 +472,13 @@ const styles = StyleSheet.create({
         paddingBottom: 24,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.12,
-        shadowRadius: 12,
+        shadowOpacity: 0.15,
+        shadowRadius: 14,
         elevation: 10,
         maxWidth: 600,
         width: '100%',
         alignSelf: 'center',
+        flexDirection: 'column',
     },
     handleContainer: {
         alignItems: 'center',
@@ -268,7 +514,7 @@ const styles = StyleSheet.create({
     scrollBody: {
         paddingHorizontal: 20,
         paddingTop: 16,
-        paddingBottom: 12,
+        paddingBottom: 24,
     },
 
     /* Section Styling */
@@ -279,80 +525,87 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 14,
+        marginBottom: 8,
     },
     sectionTitle: {
-        fontSize: 15,
+        fontSize: 16,
         fontWeight: '800',
         color: '#0F172A',
-        marginBottom: 10,
+        marginBottom: 2,
     },
-    priceValueText: {
-        fontSize: 13,
-        fontWeight: '600',
+    sectionSubtitle: {
+        fontSize: 12,
         color: '#64748B',
+        marginBottom: 12,
     },
 
-    /* Slider Track */
-    sliderTrackContainer: {
-        position: 'relative',
-        height: 30,
-        justifyContent: 'center',
-        marginVertical: 4,
-    },
-    sliderTrackBackground: {
-        height: 4,
-        backgroundColor: '#CBD5E1',
-        borderRadius: 2,
-        width: '100%',
-    },
-    sliderTrackActive: {
-        position: 'absolute',
-        height: 4,
-        backgroundColor: '#1B4D3E',
-        borderRadius: 2,
-    },
-    sliderThumb: {
-        position: 'absolute',
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        backgroundColor: '#1B4D3E',
-        borderWidth: 2,
-        borderColor: '#FFFFFF',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-
-    /* Segment Buttons */
-    segmentRow: {
+    /* Boarding Category Cards */
+    categoryCardRow: {
         flexDirection: 'row',
         gap: 10,
+        marginBottom: 10,
     },
-    segmentBtn: {
+    categoryCard: {
         flex: 1,
-        paddingVertical: 10,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#CBD5E1',
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center',
-    },
-    segmentBtnActive: {
-        borderColor: '#1B4D3E',
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        borderRadius: 14,
         borderWidth: 1.5,
-        backgroundColor: '#FFFFFF',
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
+        alignItems: 'center',
+        gap: 6,
     },
-    segmentText: {
-        fontSize: 14,
-        fontWeight: '600',
+    categoryCardActive: {
+        borderColor: '#133E32',
+        backgroundColor: '#E6F0EC',
+    },
+    categoryCardText: {
+        fontSize: 12,
+        fontWeight: '700',
         color: '#64748B',
     },
-    segmentTextActive: {
-        color: '#1B4D3E',
+    categoryCardTextActive: {
+        color: '#133E32',
+        fontWeight: '800',
+    },
+
+    subCategoryBox: {
+        backgroundColor: '#F1F5F9',
+        borderRadius: 12,
+        padding: 12,
+        marginTop: 4,
+    },
+    subCategoryTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#475569',
+        marginBottom: 8,
+    },
+
+    rentBasisChip: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        borderRadius: 10,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#CBD5E1',
+    },
+    rentBasisChipActive: {
+        backgroundColor: '#E6F0EC',
+        borderColor: '#133E32',
+    },
+    rentBasisChipText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#64748B',
+    },
+    rentBasisChipTextActive: {
+        color: '#133E32',
         fontWeight: '800',
     },
 
@@ -360,27 +613,198 @@ const styles = StyleSheet.create({
     checkboxRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 14,
     },
     checkbox: {
-        width: 22,
-        height: 22,
+        width: 20,
+        height: 20,
         borderRadius: 5,
         borderWidth: 1.5,
         borderColor: '#CBD5E1',
         backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
+        marginRight: 8,
     },
     checkboxActive: {
-        backgroundColor: '#1B4D3E',
-        borderColor: '#1B4D3E',
+        backgroundColor: '#133E32',
+        borderColor: '#133E32',
     },
     checkboxLabel: {
-        fontSize: 15,
+        fontSize: 13,
         fontWeight: '600',
         color: '#1E293B',
+    },
+
+    /* Price Section UX */
+    priceInputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
+    priceInputBox: {
+        flex: 1,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+    },
+    priceInputLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#64748B',
+        textTransform: 'uppercase',
+    },
+    priceInput: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#0F172A',
+        paddingVertical: 2,
+    },
+    priceDash: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#64748B',
+        marginHorizontal: 10,
+    },
+
+    presetLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#475569',
+        marginBottom: 8,
+    },
+    presetChipRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    presetChip: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        backgroundColor: '#F1F5F9',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    presetChipActive: {
+        backgroundColor: '#133E32',
+        borderColor: '#133E32',
+    },
+    presetChipText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#475569',
+    },
+    presetChipTextActive: {
+        color: '#FFD700',
+        fontWeight: '800',
+    },
+
+    /* Segment Buttons */
+    segmentRow: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    segmentBtn: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    segmentBtnActive: {
+        borderColor: '#133E32',
+        borderWidth: 1.5,
+        backgroundColor: '#E6F0EC',
+    },
+    segmentText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#64748B',
+    },
+    segmentTextActive: {
+        color: '#133E32',
+        fontWeight: '800',
+    },
+
+    /* Amenities Grid */
+    amenitiesGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    amenityTile: {
+        width: '48%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
+    },
+    amenityTileActive: {
+        borderColor: '#133E32',
+        backgroundColor: '#E6F0EC',
+    },
+    amenityTileText: {
+        flex: 1,
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#475569',
+    },
+    amenityTileTextActive: {
+        color: '#133E32',
+        fontWeight: '800',
+    },
+    miniCheck: {
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    miniCheckActive: {
+        backgroundColor: '#133E32',
+        borderColor: '#133E32',
+    },
+
+    /* Sort Chips */
+    sortRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    sortChip: {
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 12,
+        backgroundColor: '#F1F5F9',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    sortChipActive: {
+        backgroundColor: '#133E32',
+        borderColor: '#133E32',
+    },
+    sortChipText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#475569',
+    },
+    sortChipTextActive: {
+        color: '#FFFFFF',
+        fontWeight: '800',
     },
 
     /* Footer Row */
@@ -396,30 +820,32 @@ const styles = StyleSheet.create({
         flex: 1,
         height: 48,
         borderRadius: 12,
-        backgroundColor: '#ECF3F0',
+        backgroundColor: '#E6F0EC',
+        flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
     },
     resetBtnText: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '800',
-        color: '#1B4D3E',
+        color: '#133E32',
     },
     applyBtn: {
-        flex: 1,
+        flex: 1.5,
         height: 48,
         borderRadius: 12,
-        backgroundColor: '#D97706',
+        backgroundColor: '#133E32',
+        flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#D97706',
+        shadowColor: '#133E32',
         shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.25,
         shadowRadius: 6,
         elevation: 3,
     },
     applyBtnText: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '800',
         color: '#FFFFFF',
     },
