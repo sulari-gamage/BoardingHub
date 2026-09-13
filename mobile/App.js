@@ -61,21 +61,29 @@ export default function App() {
   useEffect(() => {
     const loadSavedBoardings = async () => {
       try {
-        const storageKey = currentUser?.id ? `@saved_boardings_${currentUser.id}` : '@saved_boardings_default';
-        const savedData = await AsyncStorage.getItem(storageKey);
-        if (savedData) {
-          const parsed = JSON.parse(savedData);
-          if (Array.isArray(parsed)) {
-            setSavedBoardings(parsed);
-            return;
+        const userKey = currentUser?.id || currentUser?.email;
+        if (userKey) {
+          const storageKey = `@saved_boardings_${userKey}`;
+          const savedData = await AsyncStorage.getItem(storageKey);
+          if (savedData) {
+            const parsed = JSON.parse(savedData);
+            if (Array.isArray(parsed)) {
+              setSavedBoardings(parsed);
+              return;
+            }
           }
-        }
-        const genericData = await AsyncStorage.getItem('@saved_boardings_default');
-        if (genericData) {
-          const parsedGeneric = JSON.parse(genericData);
-          if (Array.isArray(parsedGeneric)) {
-            setSavedBoardings(parsedGeneric);
+          setSavedBoardings([]);
+        } else {
+          // Unauthenticated or default user fallback
+          const genericData = await AsyncStorage.getItem('@saved_boardings_default');
+          if (genericData) {
+            const parsedGeneric = JSON.parse(genericData);
+            if (Array.isArray(parsedGeneric)) {
+              setSavedBoardings(parsedGeneric);
+              return;
+            }
           }
+          setSavedBoardings([]);
         }
       } catch (error) {
         console.log('[App] Error loading saved boardings from AsyncStorage:', error);
@@ -90,11 +98,11 @@ export default function App() {
       const exists = prev.some((b) => b.id === boarding.id);
       const updated = exists ? prev.filter((b) => b.id !== boarding.id) : [...prev, boarding];
 
-      const storageKey = currentUser?.id ? `@saved_boardings_${currentUser.id}` : '@saved_boardings_default';
+      const userKey = currentUser?.id || currentUser?.email;
+      const storageKey = userKey ? `@saved_boardings_${userKey}` : '@saved_boardings_default';
       AsyncStorage.setItem(storageKey, JSON.stringify(updated)).catch((err) =>
         console.log('[App] Error saving boardings to AsyncStorage:', err)
       );
-      AsyncStorage.setItem('@saved_boardings_default', JSON.stringify(updated)).catch(() => { });
 
       return updated;
     });
@@ -213,6 +221,7 @@ export default function App() {
 
   const handleLogout = () => {
     setCurrentUser(null);
+    setSavedBoardings([]);
     setUserRole('SEEKER');
     setCurrentScreen('LOGIN');
   };

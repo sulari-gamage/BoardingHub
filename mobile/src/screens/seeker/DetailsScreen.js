@@ -539,22 +539,30 @@ export default function DetailsScreen({
                                 >
                                     {boarding.rooms.map((roomItem, index) => {
                                         const isSelected = selectedRoom === (roomItem.id || `room_${index}`);
-                                        const rentBasisLabel = roomItem.rentType === 'PER_ROOM' ? '/ Room / mo' : '/ Person / mo';
-                                        const roomPriceFormatted = (roomItem.monthlyPrice || price).toLocaleString();
+                                        const rawRoomPrice = roomItem.monthlyPrice || roomItem.monthlyRent || roomItem.price || price;
+                                        const capacity = roomItem.totalCapacity || 1;
+                                        const rentType = (roomItem.rentType || '').toUpperCase();
+
+                                        // Calculate total per-room monthly rent for this room
+                                        let perRoomPrice = rawRoomPrice;
+                                        if (rentType === 'PER_PERSON' || rentType === 'PERSON') {
+                                            perRoomPrice = Math.round(rawRoomPrice * capacity);
+                                        }
+
+                                        const roomPriceFormatted = perRoomPrice.toLocaleString();
                                         const roomImgUri = roomItem.imageUrl || roomItem.image || (imagesList && imagesList.length > 0 ? imagesList[index % imagesList.length] : 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=600');
 
                                         // Formatted Title: Room Name (Room Type)
                                         const baseRoomName = roomItem.roomName || roomItem.roomNumber || roomItem.name || `Room ${index + 1}`;
-                                        const fullRoomTitle = roomItem.roomType ? `${baseRoomName} (${roomItem.roomType})` : baseRoomName;
 
-                                        // Build special feature pills list (Bathroom count only, no type)
+                                        // Build special feature pills list
                                         const featurePills = [];
                                         const bathCount = roomItem.washrooms || (roomItem.washroomType || roomItem.hasAttachedBathroom ? 1 : null);
                                         if (bathCount != null) {
                                             featurePills.push({ icon: 'water-outline', label: `${bathCount} ${bathCount === 1 ? 'Bath' : 'Baths'}` });
                                         }
                                         if (roomItem.isAirConditioned != null) {
-                                            featurePills.push({ icon: 'snow-outline', label: roomItem.isAirConditioned ? 'AC Room' : 'Non-AC' });
+                                            featurePills.push({ icon: 'snow-outline', label: roomItem.isAirConditioned ? 'AC' : 'Non-AC' });
                                         }
                                         if (roomItem.isFurnished != null) {
                                             featurePills.push({ icon: 'cube-outline', label: roomItem.isFurnished ? 'Furnished' : 'Unfurnished' });
@@ -585,24 +593,22 @@ export default function DetailsScreen({
 
                                                 {/* Room Details Content Body */}
                                                 <View style={styles.roomCardContentBody}>
-                                                    {/* Room Header Row */}
-                                                    <View style={styles.roomHeaderRow}>
-                                                        <Text style={styles.roomTypeTitle} numberOfLines={1}>
-                                                            {baseRoomName}
-                                                            {roomItem.roomType ? (
-                                                                <Text style={{ fontWeight: '400', fontSize: 12, color: '#64748B' }}>
-                                                                    {` (${roomItem.roomType})`}
-                                                                </Text>
-                                                            ) : null}
-                                                        </Text>
-                                                    </View>
+                                                    {/* Room Title */}
+                                                    <Text style={styles.roomTypeTitle} numberOfLines={1}>
+                                                        {baseRoomName}
+                                                        {roomItem.roomType ? (
+                                                            <Text style={{ fontWeight: '500', fontSize: 12, color: '#64748B' }}>
+                                                                {` (${roomItem.roomType})`}
+                                                            </Text>
+                                                        ) : null}
+                                                    </Text>
 
                                                     {/* Special Room Features Pills */}
                                                     {featurePills.length > 0 && (
                                                         <View style={styles.roomFeaturePillsRow}>
                                                             {featurePills.map((pill, pIdx) => (
                                                                 <View key={pIdx} style={styles.roomFeaturePill}>
-                                                                    <Ionicons name={pill.icon} size={11} color="#133E32" style={{ marginRight: 4 }} />
+                                                                    <Ionicons name={pill.icon} size={10} color="#133E32" style={{ marginRight: 3 }} />
                                                                     <Text style={styles.roomFeaturePillText}>{pill.label}</Text>
                                                                 </View>
                                                             ))}
@@ -611,49 +617,48 @@ export default function DetailsScreen({
 
                                                     <View style={styles.roomCardDivider} />
 
-                                                    {/* Room Card Footer Row */}
-                                                    <View style={styles.roomFooterRow}>
-                                                        <View style={{ flex: 1 }}>
-                                                            <Text style={styles.roomPriceText}>Rs.{roomPriceFormatted}</Text>
-                                                            <Text style={styles.roomPricePeriod}>{rentBasisLabel}</Text>
-                                                        </View>
+                                                    {/* Price Row */}
+                                                    <View style={styles.roomPriceContainer}>
+                                                        <Text style={styles.roomPriceText}>Rs.{roomPriceFormatted}</Text>
+                                                        <Text style={styles.roomPricePeriod}> / room / month</Text>
+                                                    </View>
 
-                                                        <View style={{ flexDirection: 'row', gap: 6 }}>
-                                                            <TouchableOpacity
-                                                                style={styles.viewRoomBtn}
-                                                                onPress={() => handleOpenRoomModal(roomItem)}
-                                                                activeOpacity={0.8}
-                                                            >
-                                                                <Ionicons name="eye-outline" size={14} color="#1B4D3E" style={{ marginRight: 4 }} />
-                                                                <Text style={styles.viewRoomBtnText}>View</Text>
-                                                            </TouchableOpacity>
+                                                    {/* Buttons Row: Swapped Order -> [Select Room] then [View >] */}
+                                                    <View style={styles.roomActionButtonsRow}>
+                                                        <TouchableOpacity
+                                                            style={[
+                                                                styles.selectRoomCardBtn,
+                                                                selectedRoom === (roomItem.id || roomItem.roomNumber) && styles.selectRoomCardBtnActive
+                                                            ]}
+                                                            onPress={() => {
+                                                                const rId = roomItem.id || roomItem.roomNumber;
+                                                                setSelectedRoom(rId);
+                                                                setIsBookingModalVisible(true);
+                                                            }}
+                                                            activeOpacity={0.8}
+                                                        >
+                                                            <Ionicons
+                                                                name={selectedRoom === (roomItem.id || roomItem.roomNumber) ? "checkmark-circle" : "add-circle-outline"}
+                                                                size={13}
+                                                                color={selectedRoom === (roomItem.id || roomItem.roomNumber) ? "#FFFFFF" : "#1B4D3E"}
+                                                                style={{ marginRight: 4 }}
+                                                            />
+                                                            <Text style={[
+                                                                styles.selectRoomCardBtnText,
+                                                                selectedRoom === (roomItem.id || roomItem.roomNumber) && styles.selectRoomCardBtnTextActive
+                                                            ]}>
+                                                                {selectedRoom === (roomItem.id || roomItem.roomNumber) ? 'Selected' : 'Select'}
+                                                            </Text>
+                                                        </TouchableOpacity>
 
-                                                            <TouchableOpacity
-                                                                style={[
-                                                                    styles.selectRoomCardBtn,
-                                                                    selectedRoom === (roomItem.id || roomItem.roomNumber) && styles.selectRoomCardBtnActive
-                                                                ]}
-                                                                onPress={() => {
-                                                                    const rId = roomItem.id || roomItem.roomNumber;
-                                                                    setSelectedRoom(rId);
-                                                                    setIsBookingModalVisible(true);
-                                                                }}
-                                                                activeOpacity={0.8}
-                                                            >
-                                                                <Ionicons
-                                                                    name={selectedRoom === (roomItem.id || roomItem.roomNumber) ? "checkmark-circle" : "add-circle-outline"}
-                                                                    size={14}
-                                                                    color={selectedRoom === (roomItem.id || roomItem.roomNumber) ? "#FFFFFF" : "#1B4D3E"}
-                                                                    style={{ marginRight: 4 }}
-                                                                />
-                                                                <Text style={[
-                                                                    styles.selectRoomCardBtnText,
-                                                                    selectedRoom === (roomItem.id || roomItem.roomNumber) && styles.selectRoomCardBtnTextActive
-                                                                ]}>
-                                                                    Select
-                                                                </Text>
-                                                            </TouchableOpacity>
-                                                        </View>
+                                                        <TouchableOpacity
+                                                            style={styles.viewRoomBtn}
+                                                            onPress={() => handleOpenRoomModal(roomItem)}
+                                                            activeOpacity={0.85}
+                                                        >
+                                                            <Text style={styles.viewRoomBtnText}>View</Text>
+                                                            <Ionicons name="chevron-forward" size={13} color="#FFFFFF" style={{ marginLeft: 2 }} />
+                                                        </TouchableOpacity>
                                                     </View>
                                                 </View>
                                             </View>
@@ -935,16 +940,52 @@ export default function DetailsScreen({
                                 );
                             })()}
 
-                            {/* 2. Monthly Rent Card */}
-                            <View style={styles.modalPriceCard}>
-                                <Text style={styles.modalPriceLabel}>Monthly Rent</Text>
-                                <Text style={styles.modalPriceValue}>
-                                    Rs. {(selectedRoomModalData?.monthlyPrice || selectedRoomModalData?.price || selectedRoomModalData?.rent || price).toLocaleString()}
-                                    <Text style={styles.modalPriceBasis}>
-                                        {selectedRoomModalData?.rentType === 'PER_ROOM' ? ' / Room / Month' : ' / Person / Month'}
-                                    </Text>
-                                </Text>
-                            </View>
+                            {/* 2. Monthly Rent Breakdown Cards (Both Per Room & Per Person) */}
+                            {(() => {
+                                const rawPrice = selectedRoomModalData?.monthlyPrice || selectedRoomModalData?.monthlyRent || selectedRoomModalData?.price || selectedRoomModalData?.rent || price || 0;
+                                const cap = selectedRoomModalData?.totalCapacity || 1;
+                                const rType = (selectedRoomModalData?.rentType || '').toUpperCase();
+
+                                let roomRent = rawPrice;
+                                let personRent = rawPrice;
+
+                                if (rType === 'PER_PERSON' || rType === 'PERSON') {
+                                    personRent = rawPrice;
+                                    roomRent = rawPrice * cap;
+                                } else {
+                                    roomRent = rawPrice;
+                                    personRent = Math.round(rawPrice / cap);
+                                }
+
+                                return (
+                                    <View style={{ marginBottom: 18 }}>
+                                        <Text style={styles.modalSectionLabel}>💵 Rent Breakdown</Text>
+                                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                                            {/* Per Room Card */}
+                                            <View style={[styles.modalPriceCard, { flex: 1, marginBottom: 0, paddingVertical: 12, paddingHorizontal: 12 }]}>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                                                    <Ionicons name="home-outline" size={14} color="#1B4D3E" style={{ marginRight: 4 }} />
+                                                    <Text style={[styles.modalPriceLabel, { marginBottom: 0 }]}>Per Room (Monthly)</Text>
+                                                </View>
+                                                <Text style={[styles.modalPriceValue, { fontSize: 16 }]}>
+                                                    Rs. {roomRent.toLocaleString()}
+                                                </Text>
+                                            </View>
+
+                                            {/* Per Person Card */}
+                                            <View style={[styles.modalPriceCard, { flex: 1, marginBottom: 0, paddingVertical: 12, paddingHorizontal: 12, backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }]}>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                                                    <Ionicons name="person-outline" size={14} color="#475569" style={{ marginRight: 4 }} />
+                                                    <Text style={[styles.modalPriceLabel, { marginBottom: 0, color: '#475569' }]}>Per Person (Monthly)</Text>
+                                                </View>
+                                                <Text style={[styles.modalPriceValue, { fontSize: 16, color: '#1E293B' }]}>
+                                                    Rs. {personRent.toLocaleString()}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    </View>
+                                );
+                            })()}
 
                             {/* 3. Utility Bills Status Banner (Directly under Monthly Rent) */}
                             <Text style={styles.modalSectionLabel}>⚡ Utility Bills Status</Text>
@@ -1513,7 +1554,7 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     horizontalRoomCard: {
-        width: 260,
+        width: 280,
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: '#E2E8F0',
@@ -1618,45 +1659,52 @@ const styles = StyleSheet.create({
     roomCardDivider: {
         height: 1,
         backgroundColor: '#F1F5F9',
-        marginBottom: 14,
+        marginVertical: 10,
     },
-    roomFooterRow: {
+    roomPriceContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'baseline',
+        marginBottom: 12,
     },
     roomPriceText: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '900',
-        color: '#0F172A',
+        color: '#1B4D3E',
     },
     roomPricePeriod: {
         fontSize: 12,
+        fontWeight: '500',
         color: '#64748B',
     },
-    viewRoomBtn: {
+    roomActionButtonsRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#E6F4EA',
-        borderWidth: 1,
-        borderColor: '#A7F3D0',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
+        justifyContent: 'space-between',
+        marginTop: 4,
+    },
+    viewRoomBtn: {
+        width: '48%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#1B4D3E',
+        paddingVertical: 8,
         borderRadius: 8,
     },
     viewRoomBtnText: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#1B4D3E',
+        color: '#FFFFFF',
     },
     selectRoomCardBtn: {
+        width: '48%',
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
         backgroundColor: '#E6F0EC',
         borderWidth: 1,
         borderColor: '#1B4D3E',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
+        paddingVertical: 8,
         borderRadius: 8,
     },
     selectRoomCardBtnActive: {

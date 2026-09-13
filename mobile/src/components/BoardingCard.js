@@ -82,7 +82,9 @@ export default function BoardingCard({ item, onPress, isSaved, onToggleSave }) {
                 <View style={styles.priceRow}>
                     <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
                         <Text style={styles.priceVal}>Rs. {item.price?.toLocaleString() || '0'}</Text>
-                        <Text style={styles.pricePeriod}> / month</Text>
+                        <Text style={styles.pricePeriod}>
+                            {isAnnex ? ' / month' : ' / room / mon.'}
+                        </Text>
                     </View>
                     <TouchableOpacity
                         style={styles.viewBtn}
