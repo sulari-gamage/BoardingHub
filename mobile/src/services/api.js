@@ -275,6 +275,19 @@ export const api = {
         },
     },
 
+    // Favorite / Saved Services
+    favorites: {
+        getSaved: async () => {
+            return await request('/favorites', { method: 'GET' });
+        },
+
+        toggle: async (propertyId) => {
+            return await request(`/favorites/${propertyId}/toggle`, {
+                method: 'POST',
+            });
+        },
+    },
+
     // Admin Services
     admin: {
         getPendingProperties: async () => {
@@ -320,6 +333,8 @@ export const api = {
             });
         },
     },
+
+    storage,
 };
 
 export default api;

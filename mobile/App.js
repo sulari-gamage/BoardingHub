@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, SafeAreaView, StatusBar } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from './src/services/api';
 
 // Auth Screens
 import LoginScreen from './src/screens/auth/LoginScreen';
@@ -57,55 +58,97 @@ export default function App() {
   const [savedBoardings, setSavedBoardings] = useState([]);
   const [searchInitialQuery, setSearchInitialQuery] = useState('');
 
-  // Load saved boardings from AsyncStorage on app mount / user login
+  // Load saved boardings from Backend / AsyncStorage on app mount / user login
   useEffect(() => {
     const loadSavedBoardings = async () => {
       try {
-        const userKey = currentUser?.id || currentUser?.email;
-        if (userKey) {
-          const storageKey = `@saved_boardings_${userKey}`;
-          const savedData = await AsyncStorage.getItem(storageKey);
-          if (savedData) {
-            const parsed = JSON.parse(savedData);
-            if (Array.isArray(parsed)) {
-              setSavedBoardings(parsed);
-              return;
-            }
+        if (currentUser) {
+          const remoteFavorites = await api.favorites.getSaved();
+          if (Array.isArray(remoteFavorites)) {
+            const formatted = remoteFavorites.map((p) => ({
+              ...p,
+              imageUrl: (p.imageUrls && p.imageUrls.length > 0)
+                ? p.imageUrls[0]
+                : (p.images && p.images.length > 0)
+                  ? p.images[0].imageUrl
+                  : 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=800&q=80',
+              location: p.address || (p.city ? `${p.city}` : 'Location Not Set'),
+              price: p.monthlyRent || p.price || 0,
+              rent: `Rs. ${(p.monthlyRent || p.price || 0).toLocaleString()}/mo`,
+              rating: p.rating != null ? p.rating : null,
+            }));
+            setSavedBoardings(formatted);
+            const userKey = currentUser?.id || currentUser?.email;
+            api.storage.setItem(`@saved_boardings_${userKey}`, JSON.stringify(formatted)).catch(() => { });
+            return;
           }
-          setSavedBoardings([]);
-        } else {
-          // Unauthenticated or default user fallback
-          const genericData = await AsyncStorage.getItem('@saved_boardings_default');
-          if (genericData) {
-            const parsedGeneric = JSON.parse(genericData);
-            if (Array.isArray(parsedGeneric)) {
-              setSavedBoardings(parsedGeneric);
-              return;
-            }
-          }
-          setSavedBoardings([]);
         }
+
+        // Fallback to local storage
+        const userKey = currentUser?.id || currentUser?.email;
+        const storageKey = userKey ? `@saved_boardings_${userKey}` : '@saved_boardings_default';
+        const savedData = await api.storage.getItem(storageKey);
+        if (savedData) {
+          const parsed = JSON.parse(savedData);
+          if (Array.isArray(parsed)) {
+            setSavedBoardings(parsed);
+            return;
+          }
+        }
+        setSavedBoardings([]);
       } catch (error) {
-        console.log('[App] Error loading saved boardings from AsyncStorage:', error);
+        console.log('[App] Error loading saved boardings:', error);
       }
     };
     loadSavedBoardings();
   }, [currentUser]);
 
-  const handleToggleSaveBoarding = (boarding) => {
+  const handleToggleSaveBoarding = async (boarding) => {
     if (!boarding || !boarding.id) return;
+
+    const rawId = boarding.id;
+    const propId = typeof rawId === 'number' ? rawId : parseInt(rawId, 10);
+
+    // Optimistic UI update with string-based ID comparison
     setSavedBoardings((prev) => {
-      const exists = prev.some((b) => b.id === boarding.id);
-      const updated = exists ? prev.filter((b) => b.id !== boarding.id) : [...prev, boarding];
+      const exists = prev.some((b) => String(b.id) === String(boarding.id));
+      const updated = exists
+        ? prev.filter((b) => String(b.id) !== String(boarding.id))
+        : [...prev, boarding];
 
       const userKey = currentUser?.id || currentUser?.email;
       const storageKey = userKey ? `@saved_boardings_${userKey}` : '@saved_boardings_default';
-      AsyncStorage.setItem(storageKey, JSON.stringify(updated)).catch((err) =>
-        console.log('[App] Error saving boardings to AsyncStorage:', err)
+      api.storage.setItem(storageKey, JSON.stringify(updated)).catch((err) =>
+        console.log('[App] Error saving boardings to local storage:', err)
       );
 
       return updated;
     });
+
+    // Sync with database backend if logged in
+    try {
+      if (currentUser) {
+        // Check if property ID is a valid numeric DB id (mock boardings have IDs like 'n1', 'p1')
+        if (isNaN(propId) || propId <= 0) {
+          console.log('[App] Property ID is non-numeric (mock/offline property); stored in local device storage only.');
+          return;
+        }
+
+        const token = await api.auth.getToken();
+        if (!token) {
+          console.log('[App] User JWT token unavailable; stored in local device storage only.');
+          return;
+        }
+
+        console.log('[App] Syncing favorite toggle to backend for propertyId:', propId);
+        const response = await api.favorites.toggle(propId);
+        console.log('[App] Favorite toggle backend response:', response);
+      } else {
+        console.log('[App] User is not logged in; saved to local storage only.');
+      }
+    } catch (err) {
+      console.warn('[App] Remote favorite sync notice (fallback to local storage):', err?.message || err);
+    }
   };
 
   const handleUserUpdated = (updatedUserData) => {
@@ -131,7 +174,10 @@ export default function App() {
   // Navigation Handlers
   const handleSelectBoarding = (boarding, origin = 'HOME') => {
     setSelectedBoarding(boarding);
-    setPreviousScreen(origin);
+    // If we're already coming from a main tab screen, store it as originScreen
+    if (origin !== 'DETAILS') {
+      setPreviousScreen(origin);
+    }
     setCurrentScreen('DETAILS');
   };
 
@@ -157,19 +203,26 @@ export default function App() {
       setSelectedBoarding(boarding);
       if (userRole === 'OWNER') setSelectedOwnerProperty(boarding);
     }
-    setPreviousScreen(currentScreen);
+    // Only set previousScreen if not already in DETAILS
+    if (currentScreen !== 'DETAILS') {
+      setPreviousScreen(currentScreen);
+    }
     setCurrentScreen('IMAGE_GALLERY');
   };
 
   const handleOpenMap = (boarding) => {
     if (boarding) setSelectedBoarding(boarding);
-    setPreviousScreen(currentScreen);
+    if (currentScreen !== 'DETAILS') {
+      setPreviousScreen(currentScreen);
+    }
     setCurrentScreen('MAP_VIEW');
   };
 
   const handleOpenReviews = (boarding) => {
     if (boarding) setSelectedBoarding(boarding);
-    setPreviousScreen(currentScreen);
+    if (currentScreen !== 'DETAILS') {
+      setPreviousScreen(currentScreen);
+    }
     setCurrentScreen('REVIEWS');
   };
 
@@ -496,7 +549,14 @@ export default function App() {
       ) : currentScreen === 'REVIEWS' ? (
         <ReviewsScreen
           boarding={selectedBoarding || {}}
+          currentUser={currentUser}
           onBack={() => setCurrentScreen(previousScreen || 'DETAILS')}
+          onReviewAdded={(updatedBoarding) => {
+            setSelectedBoarding(updatedBoarding);
+            setSavedBoardings((prev) =>
+              prev.map((b) => (b.id === updatedBoarding.id ? { ...b, rating: updatedBoarding.rating } : b))
+            );
+          }}
         />
       ) : currentScreen === 'NOTIFICATIONS' ? (
         <NotificationsScreen

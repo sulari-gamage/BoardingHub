@@ -84,13 +84,13 @@ export default function SearchScreen({
 
         return {
             ...p,
-            id: p.id ? p.id.toString() : Math.random().toString(),
+            id: p.id != null ? p.id : (p.raw && p.raw.id != null ? p.raw.id : Math.random().toString()),
             title: p.title || 'Boarding Property',
             address: p.address || (p.raw && p.raw.address) || '',
             location: p.address || (p.city ? `${p.city}` : 'Location Not Set'),
             price: p.monthlyRent || p.price || 0,
             pricePeriod: 'month',
-            rating: p.rating || 4.8,
+            rating: p.rating != null ? p.rating : null,
             isVerified: true,
             propertyNatureCategory: natureCategory,
             genderPreference: p.genderPreference || 'ANY',
@@ -412,7 +412,7 @@ export default function SearchScreen({
                             <BoardingCard
                                 key={item.id}
                                 item={item}
-                                isSaved={savedBoardings.some((b) => b.id === item.id)}
+                                isSaved={savedBoardings.some((b) => String(b.id) === String(item.id))}
                                 onToggleSave={(b) => onToggleSaveBoarding && onToggleSaveBoarding(b)}
                                 onPress={() => onSelectBoarding && onSelectBoarding(item)}
                             />

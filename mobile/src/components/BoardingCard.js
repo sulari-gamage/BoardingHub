@@ -39,7 +39,7 @@ export default function BoardingCard({ item, onPress, isSaved, onToggleSave }) {
                     </Text>
                     <View style={styles.ratingBadge}>
                         <Ionicons name="star" size={12} color="#D97706" style={{ marginRight: 3 }} />
-                        <Text style={styles.ratingText}>{item.rating || 4.8}</Text>
+                        <Text style={styles.ratingText}>{item.rating ? Number(item.rating).toFixed(1) : 'New'}</Text>
                     </View>
                 </View>
 

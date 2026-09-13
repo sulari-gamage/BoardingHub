@@ -83,7 +83,7 @@ export default function MapViewScreen({ onSelectBoarding, onBack, onToggleListVi
                         latitude: lat,
                         longitude: lng,
                         price: p.monthlyRent || 0,
-                        rating: p.rating || 4.8,
+                        rating: p.rating != null ? p.rating : null,
                         imageUrl: (p.imageUrls && p.imageUrls.length > 0)
                             ? p.imageUrls[0]
                             : (p.images && p.images.length > 0)
@@ -212,7 +212,7 @@ export default function MapViewScreen({ onSelectBoarding, onBack, onToggleListVi
                                 </Text>
                                 <View style={styles.ratingBadge}>
                                     <Ionicons name="star" size={12} color="#D97706" style={{ marginRight: 2 }} />
-                                    <Text style={styles.ratingVal}>{selectedBoarding.rating || 4.8}</Text>
+                                    <Text style={styles.ratingVal}>{selectedBoarding.rating ? Number(selectedBoarding.rating).toFixed(1) : 'New'}</Text>
                                 </View>
                             </View>
 

@@ -217,7 +217,7 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
             distanceText: distanceText,
             price: p.monthlyRent || p.price || 0,
             rent: `Rs. ${(p.monthlyRent || p.price || 0).toLocaleString()}/mo`,
-            rating: p.rating || 4.8,
+            rating: p.rating != null ? p.rating : null,
             reviewsCount: p.reviewsCount || 0,
             roomsCount: p.roomsCount || (p.rooms ? p.rooms.length : 0),
             rooms: p.rooms || [],
@@ -395,7 +395,7 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
                             <NearLocationCard
                                 key={item.id}
                                 item={item}
-                                isSaved={savedBoardings.some((b) => b.id === item.id)}
+                                isSaved={savedBoardings.some((b) => String(b.id) === String(item.id))}
                                 onToggleSave={onToggleSaveBoarding}
                                 onPress={() => onSelectBoarding && onSelectBoarding(item)}
                             />
@@ -443,7 +443,7 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
                             <BoardingCard
                                 key={item.id}
                                 item={item}
-                                isSaved={savedBoardings.some((b) => b.id === item.id)}
+                                isSaved={savedBoardings.some((b) => String(b.id) === String(item.id))}
                                 onToggleSave={onToggleSaveBoarding}
                                 onPress={() => onSelectBoarding && onSelectBoarding(item)}
                             />

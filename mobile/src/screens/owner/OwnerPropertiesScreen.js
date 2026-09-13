@@ -72,7 +72,7 @@ export default function OwnerPropertiesScreen({
             occupiedRooms: occCap,
             availableRooms: availCap,
             status: p.status || 'APPROVED',
-            rating: p.rating || 4.8,
+            rating: p.rating != null ? p.rating : null,
             rooms: p.rooms || [],
             raw: p,
             imageUrls: extractedImageUrls,

@@ -52,7 +52,7 @@ public class BookingController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SEEKER', 'OWNER', 'ADMIN')")
     public ResponseEntity<BookingResponse> updateBookingStatus(
             @PathVariable Long id,
             @Valid @RequestBody BookingStatusUpdateDTO dto,

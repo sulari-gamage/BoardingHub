@@ -91,12 +91,19 @@ public class BookingService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        if (!booking.getProperty().getOwner().getId().equals(user.getId()) && user.getRole() != Role.ADMIN) {
-            throw new IllegalArgumentException("You are not authorized to update this booking request");
-        }
+        boolean isOwner = booking.getProperty() != null
+                && booking.getProperty().getOwner() != null
+                && booking.getProperty().getOwner().getId().equals(user.getId());
+        boolean isAdmin = user.getRole() == Role.ADMIN;
+        boolean isSeekerOwnerOfBooking = booking.getSeeker() != null
+                && booking.getSeeker().getId().equals(user.getId());
 
         BookingStatus oldStatus = booking.getStatus();
         BookingStatus newStatus = dto.getStatus();
+
+        if (!isOwner && !isAdmin && !(isSeekerOwnerOfBooking && newStatus == BookingStatus.CANCELLED)) {
+            throw new IllegalArgumentException("Access denied: you do not have permission to perform this action.");
+        }
 
         // If status is being updated to APPROVED, enforce capacity check & deduct remaining spaces
         if (newStatus == BookingStatus.APPROVED && oldStatus != BookingStatus.APPROVED) {

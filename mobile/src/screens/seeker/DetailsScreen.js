@@ -243,7 +243,7 @@ export default function DetailsScreen({
     const title = boarding.title || 'Green Valley Boarding';
     const location = boarding.address || boarding.location || boarding.city || 'Location Not Set';
     const price = boarding.price ? boarding.price.toLocaleString() : '15,000';
-    const rating = boarding.rating || 4.8;
+    const rating = boarding.rating ? Number(boarding.rating).toFixed(1) : 'New';
     const screenWidth = Dimensions.get('window').width;
 
     const handleBookNowPress = () => {
@@ -314,8 +314,17 @@ export default function DetailsScreen({
                     </ScrollView>
 
                     {/* Top Action Overlay Bar */}
-                    <View style={styles.topBarOverlay}>
-                        <TouchableOpacity style={styles.circleBtn} onPress={onBack} activeOpacity={0.8}>
+                    <View style={styles.topBarOverlay} pointerEvents="box-none">
+                        <TouchableOpacity
+                            style={styles.circleBtn}
+                            onPress={() => {
+                                if (onBack) {
+                                    onBack();
+                                }
+                            }}
+                            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                            activeOpacity={0.7}
+                        >
                             <Ionicons name="arrow-back" size={20} color="#0F172A" />
                         </TouchableOpacity>
 
@@ -733,6 +742,40 @@ export default function DetailsScreen({
                         </View>
                     </View>
 
+                    {/* Golden Star Rating & Reviews Section */}
+                    <Text style={styles.sectionHeading}>Ratings & Reviews</Text>
+                    <View style={styles.ratingBadgeCard}>
+                        <View style={styles.ratingBadgeHeader}>
+                            <View style={styles.goldenStarContainer}>
+                                <Ionicons name="star" size={26} color="#D97706" />
+                            </View>
+                            <View style={styles.ratingBadgeTextCol}>
+                                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                                    <Text style={styles.ratingBadgeScore}>{boarding.rating ? Number(boarding.rating).toFixed(1) : 'New'}</Text>
+                                    {boarding.rating != null && <Text style={styles.ratingBadgeMax}> / 5.0</Text>}
+                                </View>
+
+                                <View style={styles.starsRowCompact}>
+                                    {[1, 2, 3, 4, 5].map((s) => (
+                                        <Ionicons key={s} name="star" size={13} color="#D97706" style={{ marginRight: 2 }} />
+                                    ))}
+                                    <Text style={styles.ratingsVerifiedText}>Seeker Ratings</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        <View style={styles.ratingBadgeActionsRow}>
+                            <TouchableOpacity
+                                style={styles.seeReviewsBtn}
+                                onPress={() => onOpenReviews && onOpenReviews(boarding)}
+                                activeOpacity={0.8}
+                            >
+                                <Ionicons name="chatbox-ellipses-outline" size={15} color="#1B4D3E" style={{ marginRight: 5 }} />
+                                <Text style={styles.seeReviewsBtnText}>Reviews & Ratings</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
                     {/* Location Map Section */}
                     <Text style={styles.sectionHeading}>Location</Text>
                     <TouchableOpacity
@@ -767,40 +810,6 @@ export default function DetailsScreen({
                             </View>
                         </View>
                     </TouchableOpacity>
-
-                    {/* Golden Star Rating & Reviews Section */}
-                    <Text style={styles.sectionHeading}>Ratings & Reviews</Text>
-                    <View style={styles.ratingBadgeCard}>
-                        <View style={styles.ratingBadgeHeader}>
-                            <View style={styles.goldenStarContainer}>
-                                <Ionicons name="star" size={26} color="#D97706" />
-                            </View>
-                            <View style={styles.ratingBadgeTextCol}>
-                                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                                    <Text style={styles.ratingBadgeScore}>{boarding.rating || 4.8}</Text>
-                                    <Text style={styles.ratingBadgeMax}> / 5.0</Text>
-                                </View>
-
-                                <View style={styles.starsRowCompact}>
-                                    {[1, 2, 3, 4, 5].map((s) => (
-                                        <Ionicons key={s} name="star" size={13} color="#D97706" style={{ marginRight: 2 }} />
-                                    ))}
-                                    <Text style={styles.ratingsVerifiedText}>Seeker Ratings</Text>
-                                </View>
-                            </View>
-                        </View>
-
-                        <View style={styles.ratingBadgeActionsRow}>
-                            <TouchableOpacity
-                                style={styles.seeReviewsBtn}
-                                onPress={() => onOpenReviews && onOpenReviews(boarding)}
-                                activeOpacity={0.8}
-                            >
-                                <Ionicons name="chatbox-ellipses-outline" size={15} color="#1B4D3E" style={{ marginRight: 5 }} />
-                                <Text style={styles.seeReviewsBtnText}>Reviews & Ratings</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
                 </View>
             </ScrollView>
 
@@ -1243,6 +1252,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        zIndex: 30,
+        elevation: 10,
     },
     topRightActions: {
         flexDirection: 'row',
@@ -1259,7 +1270,8 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 6,
-        elevation: 3,
+        elevation: 5,
+        zIndex: 35,
     },
     paginationDots: {
         position: 'absolute',

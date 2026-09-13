@@ -68,7 +68,7 @@ export default function FavoritesScreen({ onSelectBoarding, onNavigateTab, onOpe
                                     <Text style={styles.cardTitle}>{item.title}</Text>
                                     <View style={styles.ratingBadge}>
                                         <Ionicons name="star" size={12} color="#D97706" style={{ marginRight: 3 }} />
-                                        <Text style={styles.ratingVal}>{item.rating || 4.8}</Text>
+                                        <Text style={styles.ratingVal}>{item.rating ? Number(item.rating).toFixed(1) : 'New'}</Text>
                                     </View>
                                 </View>
 

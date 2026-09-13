@@ -17,7 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 
-export default function ReviewsScreen({ boarding = {}, onBack, currentUser }) {
+export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onReviewAdded }) {
     const title = boarding.title || 'Boarding Property';
 
     const [reviews, setReviews] = useState([]);
@@ -72,9 +72,20 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser }) {
                 comment: userComment.trim(),
             });
 
-            if (newReview) {
-                setReviews([newReview, ...reviews]);
+            const updatedReviews = [newReview, ...reviews];
+            setReviews(updatedReviews);
+
+            const newAvg = (updatedReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / updatedReviews.length).toFixed(1);
+            const updatedBoarding = {
+                ...boarding,
+                rating: parseFloat(newAvg),
+                reviewsCount: updatedReviews.length,
+            };
+
+            if (onReviewAdded) {
+                onReviewAdded(updatedBoarding);
             }
+
             setUserComment('');
             setIsWriteModalVisible(false);
             Alert.alert('Review Submitted ⭐', 'Thank you for sharing your feedback!');
@@ -88,7 +99,7 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser }) {
 
     const computedRating = reviews.length > 0
         ? (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1)
-        : (boarding.rating || 4.8);
+        : (boarding.rating ? Number(boarding.rating).toFixed(1) : 'N/A');
 
     return (
         <SafeAreaView style={styles.container}>
@@ -107,35 +118,26 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser }) {
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {/* Rating Overview Card */}
-                <View style={styles.overviewCard}>
-                    <View style={styles.overviewScoreCol}>
+                <View style={[styles.overviewCard, { justifyContent: 'center', alignItems: 'center', paddingVertical: 20 }]}>
+                    <View style={{ alignItems: 'center' }}>
                         <Text style={styles.bigScore}>{computedRating}</Text>
-                        <View style={styles.starsRow}>
-                            {[1, 2, 3, 4, 5].map((s) => (
-                                <Ionicons key={s} name="star" size={14} color="#D97706" />
-                            ))}
+                        <View style={[styles.starsRow, { marginVertical: 6 }]}>
+                            {[1, 2, 3, 4, 5].map((s) => {
+                                const numRating = parseFloat(computedRating) || 0;
+                                const isFull = s <= Math.floor(numRating);
+                                const isHalf = !isFull && s - 0.5 <= numRating;
+                                return (
+                                    <Ionicons
+                                        key={s}
+                                        name={isFull ? "star" : isHalf ? "star-half" : "star-outline"}
+                                        size={20}
+                                        color="#D97706"
+                                        style={{ marginHorizontal: 2 }}
+                                    />
+                                );
+                            })}
                         </View>
-                        <Text style={styles.totalCount}>{reviews.length} Reviews</Text>
-                    </View>
-
-                    <View style={styles.dividerVertical} />
-
-                    {/* Breakdown Bars */}
-                    <View style={styles.barsCol}>
-                        {[
-                            { label: 'Cleanliness', score: '4.9', width: '95%' },
-                            { label: 'Location', score: '4.8', width: '92%' },
-                            { label: 'Value', score: '4.7', width: '88%' },
-                            { label: 'Host', score: '5.0', width: '100%' },
-                        ].map((item) => (
-                            <View key={item.label} style={styles.barRow}>
-                                <Text style={styles.barLabel}>{item.label}</Text>
-                                <View style={styles.barTrack}>
-                                    <View style={[styles.barFill, { width: item.width }]} />
-                                </View>
-                                <Text style={styles.barScore}>{item.score}</Text>
-                            </View>
-                        ))}
+                        <Text style={[styles.totalCount, { fontSize: 13, color: '#64748B' }]}>{reviews.length} Verified Seeker Reviews</Text>
                     </View>
                 </View>
 
@@ -214,19 +216,20 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser }) {
 
                         <Text style={styles.targetProperty}>{title}</Text>
 
-                        {/* Interactive Star Picker */}
                         <Text style={styles.pickerLabel}>Your Rating</Text>
                         <View style={styles.interactiveStars}>
                             {[1, 2, 3, 4, 5].map((star) => (
                                 <TouchableOpacity
                                     key={star}
                                     onPress={() => setUserRating(star)}
-                                    activeOpacity={0.8}
+                                    hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                                    activeOpacity={0.7}
+                                    style={{ padding: 4 }}
                                 >
                                     <Ionicons
                                         name={star <= userRating ? 'star' : 'star-outline'}
-                                        size={32}
-                                        color="#D97706"
+                                        size={36}
+                                        color={star <= userRating ? '#D97706' : '#94A3B8'}
                                     />
                                 </TouchableOpacity>
                             ))}

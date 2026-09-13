@@ -19,12 +19,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.boardinghub.backend.repository.ReviewRepository;
+
 @Service
 @RequiredArgsConstructor
 public class PropertyService {
 
     private final BoardingPropertyRepository propertyRepository;
     private final UserRepository userRepository;
+    private final ReviewRepository reviewRepository;
 
     @Transactional
     public PropertyResponse createProperty(PropertyRequest request, String ownerEmail) {
@@ -342,6 +345,15 @@ public class PropertyService {
         List<String> imageUrlList = p.getImages() != null ?
                 p.getImages().stream().map(PropertyImage::getImageUrl).collect(Collectors.toList()) : new ArrayList<>();
 
+        Double avgRating = null;
+        if (p.getId() != null) {
+            List<Review> reviews = reviewRepository.findByPropertyIdOrderByCreatedAtDesc(p.getId());
+            if (reviews != null && !reviews.isEmpty()) {
+                double sum = reviews.stream().mapToInt(Review::getRating).sum();
+                avgRating = Math.round((sum / reviews.size()) * 10.0) / 10.0;
+            }
+        }
+
         return PropertyResponse.builder()
                 .id(p.getId())
                 .title(p.getTitle())
@@ -372,6 +384,7 @@ public class PropertyService {
                 .images(imageDTOs)
                 .imageUrls(imageUrlList)
                 .rooms(roomResponses)
+                .rating(avgRating)
                 .createdAt(p.getCreatedAt())
                 .build();
     }
