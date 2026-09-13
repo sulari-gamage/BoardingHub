@@ -18,6 +18,28 @@ import api from '../../services/api';
 
 export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBooking }) {
     const [isCancelling, setIsCancelling] = useState(false);
+    const [liveOwnerData, setLiveOwnerData] = useState(null);
+
+    React.useEffect(() => {
+        const fetchLiveOwnerData = async () => {
+            try {
+                const propId = booking.propertyId || (booking.property && booking.property.id);
+                if (propId && !isNaN(propId)) {
+                    const propData = await api.properties.getById(propId);
+                    if (propData && (propData.ownerName || propData.ownerWhatsapp || propData.owner)) {
+                        setLiveOwnerData({
+                            ownerName: propData.ownerName || propData.owner?.name,
+                            ownerPhone: propData.ownerWhatsapp || propData.ownerPhone || propData.ownerWhatsappNumber || propData.owner?.whatsappNumber || '',
+                            ownerAvatarUrl: propData.ownerAvatar || propData.ownerAvatarUrl || propData.owner?.avatarUrl || null,
+                        });
+                    }
+                }
+            } catch (err) {
+                console.log('[BookingDetailsScreen] Could not fetch live property details for owner:', err?.message);
+            }
+        };
+        fetchLiveOwnerData();
+    }, [booking.propertyId]);
 
     const title = booking.title || 'Boarding Property';
     const location = booking.location || 'Moratuwa, Sri Lanka';
@@ -28,8 +50,9 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
     const price = booking.price ? booking.price.toLocaleString() : '0';
     const status = booking.status || 'PENDING';
     const imageUrl = booking.imageUrl;
-    const ownerName = booking.ownerName || 'Property Owner';
-    const ownerPhone = booking.ownerPhone || '';
+    const ownerName = liveOwnerData?.ownerName || booking.ownerName || 'Property Owner';
+    const ownerPhone = liveOwnerData?.ownerPhone || booking.ownerPhone || '';
+    const ownerAvatarUrl = liveOwnerData?.ownerAvatarUrl || booking.ownerAvatarUrl;
 
     // Status Timeline steps
     const timelineSteps = [
@@ -44,10 +67,14 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
             Alert.alert('Contact Owner', 'Owner phone number is not available.');
             return;
         }
-        Alert.alert('Contact Owner 📞', `Calling ${ownerName} at ${ownerPhone}...`, [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Call Now', onPress: () => Linking.openURL(`tel:${ownerPhone.replace(/[^0-9+]/g, '')}`) }
-        ]);
+        const dialable = ownerPhone.replace(/[^0-9+]/g, '');
+        if (dialable) {
+            Linking.openURL(`tel:${dialable}`).catch(() => {
+                Alert.alert('Phone Dial Error', `Could not open phone dialer for ${ownerPhone}`);
+            });
+        } else {
+            Alert.alert('Contact Owner', 'Invalid phone number format.');
+        }
     };
 
     const handleWhatsAppChat = () => {
@@ -55,15 +82,20 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
             Alert.alert('Contact Owner', 'Owner WhatsApp number is not available.');
             return;
         }
-        const cleanPhone = ownerPhone.replace(/[^0-9]/g, '');
+        let digits = ownerPhone.replace(/[^0-9]/g, '');
+        if (digits.length === 10 && digits.startsWith('0')) {
+            digits = '94' + digits.substring(1);
+        } else if (digits.length === 9 && !digits.startsWith('94')) {
+            digits = '94' + digits;
+        }
         const text = encodeURIComponent(`Hi ${ownerName}, regarding my booking request for "${title}" on BoardingHub.`);
-        const url = `whatsapp://send?phone=${cleanPhone}&text=${text}`;
-        Linking.canOpenURL(url)
-            .then(supported => {
-                if (supported) Linking.openURL(url);
-                else Alert.alert('WhatsApp Not Installed', `Contact ${ownerName} at ${ownerPhone}`);
-            })
-            .catch(() => Alert.alert('Contact Host', `Call ${ownerName} at ${ownerPhone}`));
+        const url = `https://wa.me/${digits}?text=${text}`;
+        Linking.openURL(url).catch(() => {
+            const appUrl = `whatsapp://send?phone=${digits}&text=${text}`;
+            Linking.openURL(appUrl).catch(() => {
+                Alert.alert('WhatsApp Error', `Could not open WhatsApp for ${ownerPhone}`);
+            });
+        });
     };
 
     const handleCancelPress = () => {
@@ -265,7 +297,11 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
                 <Text style={styles.sectionHeading}>Property Owner</Text>
                 <View style={styles.ownerCard}>
                     <View style={styles.ownerAvatar}>
-                        <Ionicons name="person" size={24} color="#1B4D3E" />
+                        {ownerAvatarUrl ? (
+                            <Image source={{ uri: ownerAvatarUrl }} style={{ width: '100%', height: '100%', borderRadius: 21 }} />
+                        ) : (
+                            <Ionicons name="person" size={24} color="#1B4D3E" />
+                        )}
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={styles.ownerName}>{ownerName}</Text>

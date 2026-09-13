@@ -236,19 +236,25 @@ public class BookingService {
             remainingSpaces = Math.max(0, capacity - occupied);
         }
 
+        User owner = b.getProperty() != null ? b.getProperty().getOwner() : null;
+
         return BookingResponse.builder()
                 .id(b.getId())
-                .propertyId(b.getProperty().getId())
-                .propertyTitle(b.getProperty().getTitle())
+                .propertyId(b.getProperty() != null ? b.getProperty().getId() : null)
+                .propertyTitle(b.getProperty() != null ? b.getProperty().getTitle() : null)
                 .imageUrl(propImageUrl)
                 .roomId(b.getRoom() != null ? b.getRoom().getId() : null)
                 .roomName(b.getRoom() != null ? b.getRoom().getRoomName() : null)
                 .roomType(b.getRoom() != null ? b.getRoom().getRoomType() : null)
                 .bookingType(b.getBookingType())
-                .seekerId(b.getSeeker().getId())
-                .seekerName(b.getSeeker().getName())
-                .seekerPhone(b.getSeeker().getWhatsappNumber())
-                .seekerAvatarUrl(b.getSeeker().getAvatarUrl())
+                .seekerId(b.getSeeker() != null ? b.getSeeker().getId() : null)
+                .seekerName(b.getSeeker() != null ? b.getSeeker().getName() : null)
+                .seekerPhone(b.getSeeker() != null ? b.getSeeker().getWhatsappNumber() : null)
+                .seekerAvatarUrl(b.getSeeker() != null ? b.getSeeker().getAvatarUrl() : null)
+                .ownerId(owner != null ? owner.getId() : null)
+                .ownerName(owner != null ? owner.getName() : null)
+                .ownerPhone(owner != null ? owner.getWhatsappNumber() : null)
+                .ownerAvatarUrl(owner != null ? owner.getAvatarUrl() : null)
                 .remainingSpaces(remainingSpaces)
                 .occupantsCount(b.getOccupantsCount())
                 .moveInDate(b.getMoveInDate())

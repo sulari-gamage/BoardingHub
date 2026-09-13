@@ -65,8 +65,9 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
             imageUrl: realImageUrl || null,
             description: b.notes || '',
             notes: b.notes || '',
-            ownerName: b.ownerName || b.seekerName || 'Property Owner',
-            ownerPhone: b.seekerPhone || b.ownerPhone || ''
+            ownerName: b.ownerName || 'Property Owner',
+            ownerPhone: b.ownerPhone || '',
+            ownerAvatarUrl: b.ownerAvatarUrl || null,
         };
     });
 

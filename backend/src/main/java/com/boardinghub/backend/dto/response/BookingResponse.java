@@ -29,6 +29,11 @@ public class BookingResponse {
     private String seekerPhone;
     private String seekerAvatarUrl;
 
+    private Long ownerId;
+    private String ownerName;
+    private String ownerPhone;
+    private String ownerAvatarUrl;
+
     private Integer remainingSpaces;
     private Integer occupantsCount;
     private LocalDate moveInDate;
