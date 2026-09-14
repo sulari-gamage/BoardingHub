@@ -12,7 +12,6 @@ import lombok.*;
 @Builder
 public class ReviewRequest {
 
-    @NotNull(message = "Property ID is required")
     private Long propertyId;
 
     @NotNull(message = "Rating is required")

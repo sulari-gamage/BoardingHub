@@ -22,7 +22,7 @@ public class Review {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "property_id", nullable = false)
+    @JoinColumn(name = "property_id", nullable = true)
     private BoardingProperty property;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -37,6 +37,9 @@ public class Review {
 
     @Column(columnDefinition = "TEXT")
     private String comment;
+
+    @Column(length = 20)
+    private String type; // "PROPERTY" or "APP"
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

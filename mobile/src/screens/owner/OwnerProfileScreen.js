@@ -255,6 +255,12 @@ export default function OwnerProfileScreen({
                                 action: () => setPersonalModalVisible(true)
                             },
                             {
+                                title: 'My Reviews & Feedback',
+                                subtitle: 'See feedback & rate BoardingHub platform',
+                                icon: 'star-outline',
+                                action: () => onNavigateTab && onNavigateTab('REVIEWS')
+                            },
+                            {
                                 title: 'Contact Settings',
                                 subtitle: `WhatsApp: ${displayWhatsapp}`,
                                 icon: 'call-outline',

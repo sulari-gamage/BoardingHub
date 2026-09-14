@@ -22,7 +22,7 @@ public class ReviewController {
     private final ReviewService reviewService;
 
     @PostMapping("/api/reviews")
-    @PreAuthorize("hasRole('SEEKER')")
+    @PreAuthorize("hasAnyRole('SEEKER', 'OWNER')")
     public ResponseEntity<ReviewResponse> createReview(
             @Valid @RequestBody ReviewRequest request,
             @AuthenticationPrincipal UserDetails userDetails
@@ -34,6 +34,13 @@ public class ReviewController {
     @GetMapping("/api/properties/{propertyId}/reviews")
     public ResponseEntity<List<ReviewResponse>> getPropertyReviews(@PathVariable Long propertyId) {
         List<ReviewResponse> reviews = reviewService.getPropertyReviews(propertyId);
+        return ResponseEntity.ok(reviews);
+    }
+
+    @GetMapping("/api/reviews/my")
+    @PreAuthorize("hasAnyRole('SEEKER', 'OWNER')")
+    public ResponseEntity<List<ReviewResponse>> getMyReviews(@AuthenticationPrincipal UserDetails userDetails) {
+        List<ReviewResponse> reviews = reviewService.getMyReviews(userDetails.getUsername());
         return ResponseEntity.ok(reviews);
     }
 }

@@ -277,6 +277,10 @@ export const api = {
         getByPropertyId: async (propertyId) => {
             return await request(`/properties/${propertyId}/reviews`, { method: 'GET' });
         },
+
+        getMyReviews: async () => {
+            return await request('/reviews/my', { method: 'GET' });
+        },
     },
 
     // Favorite / Saved Services

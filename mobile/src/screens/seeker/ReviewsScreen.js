@@ -17,8 +17,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 
-export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onReviewAdded }) {
-    const title = boarding.title || 'Boarding Property';
+export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onReviewAdded, mode = 'PROPERTY' }) {
+    const isMyReviewsMode = mode === 'MY_REVIEWS' || !boarding?.id;
+    const title = isMyReviewsMode ? 'My Feedback & Reviews' : (boarding.title || 'Boarding Property');
 
     const [reviews, setReviews] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -30,23 +31,24 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
 
     useEffect(() => {
         loadReviews();
-    }, [boarding?.id]);
+    }, [boarding?.id, mode]);
 
     const loadReviews = async () => {
-        if (!boarding?.id) {
-            setLoading(false);
-            return;
-        }
         try {
             setLoading(true);
-            const data = await api.reviews.getByPropertyId(boarding.id);
+            let data = null;
+            if (isMyReviewsMode) {
+                data = await api.reviews.getMyReviews();
+            } else if (boarding?.id) {
+                data = await api.reviews.getByPropertyId(boarding.id);
+            }
             if (data && Array.isArray(data)) {
                 setReviews(data);
             } else {
                 setReviews([]);
             }
         } catch (error) {
-            console.log('Error loading property reviews:', error);
+            console.log('Error loading reviews:', error);
             setReviews([]);
         } finally {
             setLoading(false);
@@ -59,15 +61,14 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
             return;
         }
 
-        if (!boarding?.id) {
-            Alert.alert('Error', 'Property ID is missing.');
-            return;
-        }
+        const propertyIdToSend = (!isMyReviewsMode && boarding?.id)
+            ? (typeof boarding.id === 'string' ? parseInt(boarding.id, 10) : boarding.id)
+            : null;
 
         try {
             setIsSubmitting(true);
             const newReview = await api.reviews.create({
-                propertyId: typeof boarding.id === 'string' ? parseInt(boarding.id, 10) : boarding.id,
+                propertyId: propertyIdToSend,
                 rating: userRating,
                 comment: userComment.trim(),
             });
@@ -75,20 +76,19 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
             const updatedReviews = [newReview, ...reviews];
             setReviews(updatedReviews);
 
-            const newAvg = (updatedReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / updatedReviews.length).toFixed(1);
-            const updatedBoarding = {
-                ...boarding,
-                rating: parseFloat(newAvg),
-                reviewsCount: updatedReviews.length,
-            };
-
-            if (onReviewAdded) {
+            if (boarding?.id && onReviewAdded) {
+                const newAvg = (updatedReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / updatedReviews.length).toFixed(1);
+                const updatedBoarding = {
+                    ...boarding,
+                    rating: parseFloat(newAvg),
+                    reviewsCount: updatedReviews.length,
+                };
                 onReviewAdded(updatedBoarding);
             }
 
             setUserComment('');
             setIsWriteModalVisible(false);
-            Alert.alert('Review Submitted ⭐', 'Thank you for sharing your feedback!');
+            Alert.alert('Review Submitted ⭐', 'Thank you for sharing your feedback with BoardingHub!');
         } catch (error) {
             console.log('Error submitting review:', error);
             Alert.alert('Submission Error', error.message || 'Failed to submit review. Please try again.');
@@ -110,7 +110,7 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                 <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
                     <Ionicons name="arrow-back" size={20} color="#0F172A" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Reviews & Ratings</Text>
+                <Text style={styles.headerTitle}>{isMyReviewsMode ? 'My Feedback & Reviews' : 'Reviews & Ratings'}</Text>
                 <TouchableOpacity style={styles.writeBtn} onPress={() => setIsWriteModalVisible(true)} activeOpacity={0.85}>
                     <Ionicons name="pencil" size={16} color="#1B4D3E" />
                 </TouchableOpacity>
@@ -137,15 +137,17 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                                 );
                             })}
                         </View>
-                        <Text style={[styles.totalCount, { fontSize: 13, color: '#64748B' }]}>{reviews.length} Verified Seeker Reviews</Text>
+                        <Text style={[styles.totalCount, { fontSize: 13, color: '#64748B' }]}>
+                            {isMyReviewsMode ? `${reviews.length} Reviews Submitted by You` : `${reviews.length} Verified Seeker Reviews`}
+                        </Text>
                     </View>
                 </View>
 
                 {/* Subheading */}
                 <View style={styles.subHeaderRow}>
-                    <Text style={styles.subHeading}>User Reviews ({reviews.length})</Text>
+                    <Text style={styles.subHeading}>{isMyReviewsMode ? `My Submissions (${reviews.length})` : `User Reviews (${reviews.length})`}</Text>
                     <TouchableOpacity onPress={() => setIsWriteModalVisible(true)}>
-                        <Text style={styles.writeTextLink}>+ Write Review</Text>
+                        <Text style={styles.writeTextLink}>{isMyReviewsMode ? '+ Rate App' : '+ Write Review'}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -157,8 +159,8 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                         const dateStr = rev.createdAt
                             ? new Date(rev.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                             : 'Recently';
-                        const author = rev.seekerName || 'Anonymous Seeker';
-                        const avatar = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80';
+                        const author = isMyReviewsMode ? (rev.propertyTitle || 'Boarding Property') : (rev.seekerName || 'Anonymous Seeker');
+                        const avatar = currentUser?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80';
 
                         return (
                             <View key={rev.id || Math.random().toString()} style={styles.reviewCard}>
@@ -192,7 +194,7 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                         <Ionicons name="chatbox-ellipses-outline" size={36} color="#CBD5E1" style={{ marginBottom: 8 }} />
                         <Text style={{ fontSize: 15, fontWeight: '800', color: '#1B4D3E', marginBottom: 4 }}>No Reviews Yet</Text>
                         <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center' }}>
-                            Be the first seeker to write a review for this boarding place!
+                            {isMyReviewsMode ? "You haven't submitted any boarding reviews yet." : "Be the first seeker to write a review for this boarding place!"}
                         </Text>
                     </View>
                 )}

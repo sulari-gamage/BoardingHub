@@ -248,6 +248,10 @@ export default function App() {
       else if (tab === 'Properties' || tab === 'OWNER_PROPERTIES') setCurrentScreen('OWNER_PROPERTIES');
       else if (tab === 'Requests' || tab === 'OWNER_REQUESTS') setCurrentScreen('OWNER_REQUESTS');
       else if (tab === 'Profile' || tab === 'PROFILE' || tab === 'OwnerProfile' || tab === 'OWNER_PROFILE') setCurrentScreen('OWNER_PROFILE');
+      else if (tab === 'REVIEWS') {
+        setPreviousScreen('PROFILE');
+        setCurrentScreen('REVIEWS');
+      }
       else if (tab === 'NOTIFICATIONS') setCurrentScreen('NOTIFICATIONS');
       return;
     }
@@ -550,6 +554,7 @@ export default function App() {
         <ReviewsScreen
           boarding={selectedBoarding || {}}
           currentUser={currentUser}
+          mode={previousScreen === 'PROFILE' ? 'MY_REVIEWS' : 'PROPERTY'}
           onBack={() => setCurrentScreen(previousScreen || 'DETAILS')}
           onReviewAdded={(updatedBoarding) => {
             setSelectedBoarding(updatedBoarding);
