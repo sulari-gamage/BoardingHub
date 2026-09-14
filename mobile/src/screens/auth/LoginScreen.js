@@ -6,7 +6,6 @@ import {
     TouchableOpacity,
     StyleSheet,
     ScrollView,
-    SafeAreaView,
     StatusBar,
     Alert,
     Image,
@@ -16,6 +15,7 @@ import {
     TouchableWithoutFeedback,
     Keyboard
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../../services/api';
 
 const REMEMBER_EMAIL_KEY = '@boardinghub_remember_email';

@@ -4,7 +4,6 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    SafeAreaView,
     StatusBar,
     ScrollView,
     Image,
@@ -14,6 +13,7 @@ import {
     Platform,
     ActivityIndicator
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 
@@ -56,11 +56,6 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
     };
 
     const handleAddReview = async () => {
-        if (!userComment.trim()) {
-            Alert.alert('Missing Text', 'Please enter a review comment.');
-            return;
-        }
-
         const propertyIdToSend = (!isMyReviewsMode && boarding?.id)
             ? (typeof boarding.id === 'string' ? parseInt(boarding.id, 10) : boarding.id)
             : null;
@@ -159,8 +154,13 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                         const dateStr = rev.createdAt
                             ? new Date(rev.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                             : 'Recently';
-                        const author = isMyReviewsMode ? (rev.propertyTitle || 'Boarding Property') : (rev.seekerName || 'Anonymous Seeker');
-                        const avatar = currentUser?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80';
+                        const author = rev.userName || rev.seekerName || 'Anonymous Seeker';
+                        const avatar = (rev.userAvatar && typeof rev.userAvatar === 'string' && rev.userAvatar.trim().length > 0)
+                            ? rev.userAvatar
+                            : (rev.seekerAvatar && typeof rev.seekerAvatar === 'string' && rev.seekerAvatar.trim().length > 0)
+                                ? rev.seekerAvatar
+                                : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80';
+                        const propTitle = rev.propertyTitle || null;
 
                         return (
                             <View key={rev.id || Math.random().toString()} style={styles.reviewCard}>
@@ -169,7 +169,14 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
 
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.authorName}>{author}</Text>
-                                        <Text style={styles.reviewDate}>{dateStr}</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                                            <Text style={styles.reviewDate}>{dateStr}</Text>
+                                            {propTitle ? (
+                                                <Text style={[styles.reviewDate, { color: '#1B4D3E', fontWeight: '700' }]} numberOfLines={1}>
+                                                    • {propTitle}
+                                                </Text>
+                                            ) : null}
+                                        </View>
                                     </View>
 
                                     <View style={styles.starBadge}>
@@ -210,13 +217,13 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalSheet}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Write a Review</Text>
+                            <Text style={styles.modalTitle}>{isMyReviewsMode ? 'Write a Review About App' : 'Write a Review'}</Text>
                             <TouchableOpacity onPress={() => setIsWriteModalVisible(false)}>
                                 <Ionicons name="close" size={22} color="#0F172A" />
                             </TouchableOpacity>
                         </View>
 
-                        <Text style={styles.targetProperty}>{title}</Text>
+                        <Text style={styles.targetProperty}>{isMyReviewsMode ? 'BoardingHub App Experience' : title}</Text>
 
                         <Text style={styles.pickerLabel}>Your Rating</Text>
                         <View style={styles.interactiveStars}>
@@ -224,9 +231,9 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                                 <TouchableOpacity
                                     key={star}
                                     onPress={() => setUserRating(star)}
-                                    hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
-                                    activeOpacity={0.7}
-                                    style={{ padding: 4 }}
+                                    hitSlop={{ top: 16, bottom: 16, left: 12, right: 12 }}
+                                    activeOpacity={0.6}
+                                    style={{ paddingHorizontal: 8, paddingVertical: 6 }}
                                 >
                                     <Ionicons
                                         name={star <= userRating ? 'star' : 'star-outline'}
@@ -237,13 +244,13 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                             ))}
                         </View>
 
-                        {/* Review Input */}
-                        <Text style={styles.pickerLabel}>Your Experience</Text>
+                        {/* Review Input (Optional) */}
+                        <Text style={styles.pickerLabel}>Your Experience (Optional)</Text>
                         <TextInput
                             style={styles.reviewInput}
                             multiline
                             numberOfLines={4}
-                            placeholder="Share details about room condition, facilities, host friendliness, or location..."
+                            placeholder={isMyReviewsMode ? "Share feedback about app design, performance, or suggestions..." : "Share details about room condition, facilities, host friendliness, or location..."}
                             placeholderTextColor="#94A3B8"
                             value={userComment}
                             onChangeText={setUserComment}

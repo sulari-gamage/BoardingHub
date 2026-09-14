@@ -26,8 +26,8 @@ public class Review {
     private BoardingProperty property;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "seeker_id", nullable = false)
-    private User seeker;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @NotNull
     @Min(1)

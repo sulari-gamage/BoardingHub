@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, SafeAreaView, StatusBar } from 'react-native';
+import { StyleSheet, StatusBar } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './src/services/api';
 
@@ -287,301 +288,309 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
-      {/* Central Screen Router */}
-      {currentScreen === 'REGISTER' ? (
-        <RegisterScreen
-          onNavigateToLogin={() => setCurrentScreen('LOGIN')}
-          onRegisterSuccess={(role, userData) => {
-            setCurrentUser(userData);
-            if (role === 'Admins' || role === 'Admin') {
-              setUserRole('ADMIN');
-              setCurrentScreen('ADMIN_DASHBOARD');
-            } else if (role === 'Owner' || role === 'Owners') {
-              setUserRole('OWNER');
-              setCurrentScreen('OWNER_HOME');
-            } else {
-              setUserRole('SEEKER');
-              setCurrentScreen('HOME');
-            }
-          }}
-        />
-      ) : currentScreen === 'LOGIN' ? (
-        <LoginScreen
-          onLoginSuccess={(role, userData) => {
-            setCurrentUser(userData);
-            if (role === 'Admins' || role === 'Admin') {
-              setUserRole('ADMIN');
-              setCurrentScreen('ADMIN_DASHBOARD');
-            } else if (role === 'Owners' || role === 'Owner') {
-              setUserRole('OWNER');
-              setCurrentScreen('OWNER_HOME');
-            } else {
-              setUserRole('SEEKER');
-              setCurrentScreen('HOME');
-            }
-          }}
-          onNavigateToRegister={() => setCurrentScreen('REGISTER')}
-        />
-      ) : currentScreen === 'OWNER_HOME' ? (
-        <OwnerHomeScreen
-          activeTab="Dashboard"
-          currentUser={currentUser}
-          onNavigateTab={handleNavigateTab}
-          onOpenNotifications={handleOpenNotifications}
-          onViewAllRequests={() => setCurrentScreen('OWNER_REQUESTS')}
-          onReviewRequest={() => setCurrentScreen('OWNER_REQUESTS')}
-          onViewPropertyDetails={() => setCurrentScreen('OWNER_PROPERTIES')}
-        />
-      ) : currentScreen === 'OWNER_PROPERTIES' ? (
-        <OwnerPropertiesScreen
-          activeTab="Properties"
-          currentUser={currentUser}
-          onNavigateTab={handleNavigateTab}
-          onAddNewProperty={() => {
-            setSelectedOwnerProperty(null);
-            setCurrentScreen('ADD_PROPERTY');
-          }}
-          onSelectProperty={handleSelectOwnerProperty}
-        />
-      ) : currentScreen === 'OWNER_PROPERTY_DETAIL' ? (
-        <OwnerPropertyDetailScreen
-          property={selectedOwnerProperty}
-          onBack={() => setCurrentScreen('OWNER_PROPERTIES')}
-          onOpenRooms={() => setCurrentScreen('ROOM_MANAGEMENT')}
-          onOpenGallery={() => handleOpenGallery(selectedOwnerProperty)}
-          onEditProperty={() => setCurrentScreen('ADD_PROPERTY')}
-          onOpenBookings={() => setCurrentScreen('OWNER_REQUESTS')}
-          onPropertyUpdated={(updatedProp) => setSelectedOwnerProperty(updatedProp)}
-        />
-      ) : currentScreen === 'ROOM_MANAGEMENT' ? (
-        <RoomManagementScreen
-          property={selectedOwnerProperty}
-          propertyName={selectedOwnerProperty?.title || 'Boarding Property'}
-          onBack={() => setCurrentScreen('OWNER_PROPERTY_DETAIL')}
-          onAddRoom={() => setCurrentScreen('ADD_ROOM')}
-          onPropertyUpdated={(updatedProp) => setSelectedOwnerProperty(updatedProp)}
-        />
-      ) : currentScreen === 'ADD_ROOM' ? (
-        <AddRoomScreen
-          onBack={() => setCurrentScreen('ROOM_MANAGEMENT')}
-          onSaveRoom={() => setCurrentScreen('ROOM_MANAGEMENT')}
-        />
-      ) : currentScreen === 'OWNER_REQUESTS' ? (
-        <OwnerRequestsScreen
-          activeTab="Requests"
-          currentUser={currentUser}
-          requestsList={ownerRequests}
-          onApproveRequest={handleApproveRequest}
-          onRejectRequest={handleRejectRequest}
-          onNavigateTab={handleNavigateTab}
-          onSelectRequest={(req) => {
-            setSelectedOwnerRequest(req);
-            setCurrentScreen('BOOKING_REQUEST_DETAIL');
-          }}
-        />
-      ) : currentScreen === 'BOOKING_REQUEST_DETAIL' ? (
-        <BookingRequestDetailScreen
-          request={selectedOwnerRequest}
-          onBack={() => setCurrentScreen('OWNER_REQUESTS')}
-          onAccept={(id) => {
-            handleApproveRequest(id || selectedOwnerRequest?.id);
-            setCurrentScreen('OWNER_REQUESTS');
-          }}
-          onReject={(id) => {
-            handleRejectRequest(id || selectedOwnerRequest?.id);
-            setCurrentScreen('OWNER_REQUESTS');
-          }}
-        />
-      ) : currentScreen === 'OWNER_PROFILE' ? (
-        <OwnerProfileScreen
-          activeTab="Profile"
-          currentUser={currentUser}
-          onUserUpdated={handleUserUpdated}
-          onNavigateTab={handleNavigateTab}
-          onSwitchToSeeker={handleSwitchToSeeker}
-          onLogout={handleLogout}
-        />
-      ) : currentScreen === 'ADD_PROPERTY' ? (
-        <AddPropertyScreen
-          currentUser={currentUser}
-          propertyToEdit={selectedOwnerProperty}
-          onBack={() => setCurrentScreen('OWNER_PROPERTIES')}
-          onSaveProperty={() => {
-            setCurrentScreen('OWNER_PROPERTIES');
-          }}
-        />
-      ) : currentScreen === 'ADMIN_DASHBOARD' ? (
-        <AdminDashboardScreen
-          activeTab="Dashboard"
-          onNavigateTab={handleNavigateTab}
-          onOpenPendingReview={() => setCurrentScreen('ADMIN_PENDING_PROPERTIES')}
-        />
-      ) : currentScreen === 'ADMIN_PENDING_PROPERTIES' ? (
-        <AdminPendingPropertiesScreen
-          activeTab="Listings"
-          onNavigateTab={handleNavigateTab}
-          onOpenNotifications={handleOpenNotifications}
-          onSelectProperty={() => setCurrentScreen('ADMIN_PROPERTY_REVIEW')}
-        />
-      ) : currentScreen === 'ADMIN_PROPERTY_REVIEW' ? (
-        <AdminPropertyReviewScreen
-          onBack={() => setCurrentScreen('ADMIN_PENDING_PROPERTIES')}
-          onApprove={() => setCurrentScreen('ADMIN_PENDING_PROPERTIES')}
-          onReject={() => setCurrentScreen('ADMIN_PENDING_PROPERTIES')}
-        />
-      ) : currentScreen === 'ADMIN_USER_MANAGEMENT' ? (
-        <AdminUserManagementScreen
-          activeTab="Users"
-          onNavigateTab={handleNavigateTab}
-          onSelectUser={(user) => {
-            setSelectedAdminUser(user);
-            setCurrentScreen('ADMIN_USER_DETAIL');
-          }}
-        />
-      ) : currentScreen === 'ADMIN_USER_DETAIL' ? (
-        <AdminUserDetailScreen
-          user={selectedAdminUser}
-          onBack={() => setCurrentScreen('ADMIN_USER_MANAGEMENT')}
-        />
-      ) : currentScreen === 'ADMIN_BOOKING_MONITORING' ? (
-        <AdminBookingMonitoringScreen
-          activeTab="More"
-          onNavigateTab={handleNavigateTab}
-        />
-      ) : currentScreen === 'ADMIN_ANALYTICS' ? (
-        <AdminAnalyticsScreen
-          activeTab="More"
-          onNavigateTab={handleNavigateTab}
-          onOpenNotifications={handleOpenNotifications}
-        />
-      ) : currentScreen === 'ADMIN_MORE' ? (
-        <AdminMoreScreen
-          activeTab="More"
-          onNavigateTab={handleNavigateTab}
-          onNavigateScreen={(scr) => setCurrentScreen(scr)}
-          onOpenNotifications={handleOpenNotifications}
-          onLogout={() => setCurrentScreen('LOGIN')}
-        />
-      ) : currentScreen === 'SEARCH' ? (
-        <SearchScreen
-          currentUser={currentUser}
-          initialSearchQuery={searchInitialQuery}
-          savedBoardings={savedBoardings}
-          onToggleSaveBoarding={handleToggleSaveBoarding}
-          onSelectBoarding={(b) => handleSelectBoarding(b, 'SEARCH')}
-          onNavigateTab={(tab) => {
-            setSearchInitialQuery('');
-            handleNavigateTab(tab);
-          }}
-        />
-      ) : currentScreen === 'FAVORITES' ? (
-        <FavoritesScreen
-          currentUser={currentUser}
-          savedBoardings={savedBoardings}
-          onToggleSaveBoarding={handleToggleSaveBoarding}
-          onSelectBoarding={(b) => handleSelectBoarding(b, 'FAVORITES')}
-          onNavigateTab={handleNavigateTab}
-        />
-      ) : currentScreen === 'BOOKINGS' ? (
-        <BookingsScreen
-          currentUser={currentUser}
-          bookings={userBookings}
-          onSelectBoarding={(b) => handleSelectBoarding(b, 'BOOKINGS')}
-          onViewBookingDetails={handleViewBookingDetails}
-          onNavigateTab={handleNavigateTab}
-        />
-      ) : currentScreen === 'PROFILE' ? (
-        <ProfileScreen
-          currentUser={currentUser}
-          savedBoardings={savedBoardings}
-          userBookings={userBookings}
-          onUserUpdated={handleUserUpdated}
-          onLogout={handleLogout}
-          onNavigateTab={handleNavigateTab}
-          onOpenNotifications={handleOpenNotifications}
-          onOpenReviews={() => handleOpenReviews(selectedBoarding)}
-        />
-      ) : currentScreen === 'DETAILS' && selectedBoarding ? (
-        <DetailsScreen
-          boarding={selectedBoarding}
-          isSaved={savedBoardings.some((b) => b.id === selectedBoarding.id)}
-          onToggleSave={() => handleToggleSaveBoarding(selectedBoarding)}
-          onBack={() => setCurrentScreen(previousScreen || 'HOME')}
-          onBookSuccess={handleAddBooking}
-          onOpenGallery={() => handleOpenGallery(selectedBoarding)}
-          onOpenReviews={() => handleOpenReviews(selectedBoarding)}
-          onOpenMap={() => handleOpenMap(selectedBoarding)}
-          onViewOwnerProperties={(ownerName) => {
-            setSearchInitialQuery(ownerName);
-            setPreviousScreen('DETAILS');
-            setCurrentScreen('SEARCH');
-          }}
-        />
-      ) : currentScreen === 'IMAGE_GALLERY' ? (
-        <ImageGalleryScreen
-          boarding={selectedBoarding || selectedOwnerProperty || {}}
-          isOwner={userRole === 'OWNER'}
-          onBack={() => setCurrentScreen(previousScreen || (userRole === 'OWNER' ? 'OWNER_PROPERTY_DETAIL' : 'DETAILS'))}
-          onPropertyUpdated={(updated) => {
-            setSelectedOwnerProperty(updated);
-            setSelectedBoarding(updated);
-          }}
-        />
-      ) : currentScreen === 'MAP_VIEW' ? (
-        <MapViewScreen
-          onSelectBoarding={(b) => handleSelectBoarding(b, 'MAP_VIEW')}
-          onBack={() => setCurrentScreen(previousScreen || 'HOME')}
-          onToggleListView={() => setCurrentScreen('SEARCH')}
-        />
-      ) : currentScreen === 'BOOKING_CONFIRMATION' ? (
-        <BookingConfirmationScreen
-          booking={selectedBooking || {}}
-          onGoToBookings={() => setCurrentScreen('BOOKINGS')}
-          onGoHome={() => setCurrentScreen('HOME')}
-        />
-      ) : currentScreen === 'BOOKING_DETAILS' ? (
-        <BookingDetailsScreen
-          booking={selectedBooking || {}}
-          onBack={() => setCurrentScreen(previousScreen || 'BOOKINGS')}
-          onCancelBooking={(id) => {
-            setUserBookings((prev) => prev.filter((b) => b.id !== id));
-          }}
-        />
-      ) : currentScreen === 'REVIEWS' ? (
-        <ReviewsScreen
-          boarding={selectedBoarding || {}}
-          currentUser={currentUser}
-          mode={previousScreen === 'PROFILE' ? 'MY_REVIEWS' : 'PROPERTY'}
-          onBack={() => setCurrentScreen(previousScreen || 'DETAILS')}
-          onReviewAdded={(updatedBoarding) => {
-            setSelectedBoarding(updatedBoarding);
-            setSavedBoardings((prev) =>
-              prev.map((b) => (b.id === updatedBoarding.id ? { ...b, rating: updatedBoarding.rating } : b))
-            );
-          }}
-        />
-      ) : currentScreen === 'NOTIFICATIONS' ? (
-        <NotificationsScreen
-          onBack={() => setCurrentScreen(previousScreen || 'HOME')}
-          onSelectNotification={(notif) => {
-            if (notif.type === 'BOOKING') setCurrentScreen('BOOKINGS');
-          }}
-        />
-      ) : (
-        <HomeScreen
-          currentUser={currentUser}
-          savedBoardings={savedBoardings}
-          onToggleSaveBoarding={handleToggleSaveBoarding}
-          onUserUpdated={handleUserUpdated}
-          onSelectBoarding={(b) => handleSelectBoarding(b, 'HOME')}
-          onNavigateTab={handleNavigateTab}
-          onOpenNotifications={handleOpenNotifications}
-        />
-      )}
-    </SafeAreaView>
+        {/* Central Screen Router */}
+        {currentScreen === 'REGISTER' ? (
+          <RegisterScreen
+            onNavigateToLogin={() => setCurrentScreen('LOGIN')}
+            onRegisterSuccess={(role, userData) => {
+              setCurrentUser(userData);
+              if (role === 'Admins' || role === 'Admin') {
+                setUserRole('ADMIN');
+                setCurrentScreen('ADMIN_DASHBOARD');
+              } else if (role === 'Owner' || role === 'Owners') {
+                setUserRole('OWNER');
+                setCurrentScreen('OWNER_HOME');
+              } else {
+                setUserRole('SEEKER');
+                setCurrentScreen('HOME');
+              }
+            }}
+          />
+        ) : currentScreen === 'LOGIN' ? (
+          <LoginScreen
+            onLoginSuccess={(role, userData) => {
+              setCurrentUser(userData);
+              if (role === 'Admins' || role === 'Admin') {
+                setUserRole('ADMIN');
+                setCurrentScreen('ADMIN_DASHBOARD');
+              } else if (role === 'Owners' || role === 'Owner') {
+                setUserRole('OWNER');
+                setCurrentScreen('OWNER_HOME');
+              } else {
+                setUserRole('SEEKER');
+                setCurrentScreen('HOME');
+              }
+            }}
+            onNavigateToRegister={() => setCurrentScreen('REGISTER')}
+          />
+        ) : currentScreen === 'OWNER_HOME' ? (
+          <OwnerHomeScreen
+            activeTab="Dashboard"
+            currentUser={currentUser}
+            onNavigateTab={handleNavigateTab}
+            onOpenNotifications={handleOpenNotifications}
+            onViewAllRequests={() => setCurrentScreen('OWNER_REQUESTS')}
+            onReviewRequest={() => setCurrentScreen('OWNER_REQUESTS')}
+            onViewPropertyDetails={() => setCurrentScreen('OWNER_PROPERTIES')}
+          />
+        ) : currentScreen === 'OWNER_PROPERTIES' ? (
+          <OwnerPropertiesScreen
+            activeTab="Properties"
+            currentUser={currentUser}
+            onNavigateTab={handleNavigateTab}
+            onAddNewProperty={() => {
+              setSelectedOwnerProperty(null);
+              setCurrentScreen('ADD_PROPERTY');
+            }}
+            onSelectProperty={handleSelectOwnerProperty}
+          />
+        ) : currentScreen === 'OWNER_PROPERTY_DETAIL' ? (
+          <OwnerPropertyDetailScreen
+            property={selectedOwnerProperty}
+            onBack={() => setCurrentScreen('OWNER_PROPERTIES')}
+            onOpenRooms={() => setCurrentScreen('ROOM_MANAGEMENT')}
+            onOpenGallery={() => handleOpenGallery(selectedOwnerProperty)}
+            onEditProperty={() => setCurrentScreen('ADD_PROPERTY')}
+            onOpenBookings={() => setCurrentScreen('OWNER_REQUESTS')}
+            onPropertyUpdated={(updatedProp) => setSelectedOwnerProperty(updatedProp)}
+          />
+        ) : currentScreen === 'ROOM_MANAGEMENT' ? (
+          <RoomManagementScreen
+            property={selectedOwnerProperty}
+            propertyName={selectedOwnerProperty?.title || 'Boarding Property'}
+            onBack={() => setCurrentScreen('OWNER_PROPERTY_DETAIL')}
+            onAddRoom={() => setCurrentScreen('ADD_ROOM')}
+            onPropertyUpdated={(updatedProp) => setSelectedOwnerProperty(updatedProp)}
+          />
+        ) : currentScreen === 'ADD_ROOM' ? (
+          <AddRoomScreen
+            onBack={() => setCurrentScreen('ROOM_MANAGEMENT')}
+            onSaveRoom={() => setCurrentScreen('ROOM_MANAGEMENT')}
+          />
+        ) : currentScreen === 'OWNER_REQUESTS' ? (
+          <OwnerRequestsScreen
+            activeTab="Requests"
+            currentUser={currentUser}
+            requestsList={ownerRequests}
+            onApproveRequest={handleApproveRequest}
+            onRejectRequest={handleRejectRequest}
+            onNavigateTab={handleNavigateTab}
+            onSelectRequest={(req) => {
+              setSelectedOwnerRequest(req);
+              setCurrentScreen('BOOKING_REQUEST_DETAIL');
+            }}
+          />
+        ) : currentScreen === 'BOOKING_REQUEST_DETAIL' ? (
+          <BookingRequestDetailScreen
+            request={selectedOwnerRequest}
+            onBack={() => setCurrentScreen('OWNER_REQUESTS')}
+            onAccept={(id) => {
+              handleApproveRequest(id || selectedOwnerRequest?.id);
+              setCurrentScreen('OWNER_REQUESTS');
+            }}
+            onReject={(id) => {
+              handleRejectRequest(id || selectedOwnerRequest?.id);
+              setCurrentScreen('OWNER_REQUESTS');
+            }}
+          />
+        ) : currentScreen === 'OWNER_PROFILE' ? (
+          <OwnerProfileScreen
+            activeTab="Profile"
+            currentUser={currentUser}
+            onUserUpdated={handleUserUpdated}
+            onNavigateTab={handleNavigateTab}
+            onSwitchToSeeker={handleSwitchToSeeker}
+            onLogout={handleLogout}
+          />
+        ) : currentScreen === 'ADD_PROPERTY' ? (
+          <AddPropertyScreen
+            currentUser={currentUser}
+            propertyToEdit={selectedOwnerProperty}
+            onBack={() => setCurrentScreen('OWNER_PROPERTIES')}
+            onSaveProperty={() => {
+              setCurrentScreen('OWNER_PROPERTIES');
+            }}
+          />
+        ) : currentScreen === 'ADMIN_DASHBOARD' ? (
+          <AdminDashboardScreen
+            activeTab="Dashboard"
+            onNavigateTab={handleNavigateTab}
+            onOpenPendingReview={() => setCurrentScreen('ADMIN_PENDING_PROPERTIES')}
+          />
+        ) : currentScreen === 'ADMIN_PENDING_PROPERTIES' ? (
+          <AdminPendingPropertiesScreen
+            activeTab="Listings"
+            onNavigateTab={handleNavigateTab}
+            onOpenNotifications={handleOpenNotifications}
+            onSelectProperty={() => setCurrentScreen('ADMIN_PROPERTY_REVIEW')}
+          />
+        ) : currentScreen === 'ADMIN_PROPERTY_REVIEW' ? (
+          <AdminPropertyReviewScreen
+            onBack={() => setCurrentScreen('ADMIN_PENDING_PROPERTIES')}
+            onApprove={() => setCurrentScreen('ADMIN_PENDING_PROPERTIES')}
+            onReject={() => setCurrentScreen('ADMIN_PENDING_PROPERTIES')}
+          />
+        ) : currentScreen === 'ADMIN_USER_MANAGEMENT' ? (
+          <AdminUserManagementScreen
+            activeTab="Users"
+            onNavigateTab={handleNavigateTab}
+            onSelectUser={(user) => {
+              setSelectedAdminUser(user);
+              setCurrentScreen('ADMIN_USER_DETAIL');
+            }}
+          />
+        ) : currentScreen === 'ADMIN_USER_DETAIL' ? (
+          <AdminUserDetailScreen
+            user={selectedAdminUser}
+            onBack={() => setCurrentScreen('ADMIN_USER_MANAGEMENT')}
+          />
+        ) : currentScreen === 'ADMIN_BOOKING_MONITORING' ? (
+          <AdminBookingMonitoringScreen
+            activeTab="More"
+            onNavigateTab={handleNavigateTab}
+          />
+        ) : currentScreen === 'ADMIN_ANALYTICS' ? (
+          <AdminAnalyticsScreen
+            activeTab="More"
+            onNavigateTab={handleNavigateTab}
+            onOpenNotifications={handleOpenNotifications}
+          />
+        ) : currentScreen === 'ADMIN_MORE' ? (
+          <AdminMoreScreen
+            activeTab="More"
+            onNavigateTab={handleNavigateTab}
+            onNavigateScreen={(scr) => setCurrentScreen(scr)}
+            onOpenNotifications={handleOpenNotifications}
+            onLogout={() => setCurrentScreen('LOGIN')}
+          />
+        ) : currentScreen === 'SEARCH' ? (
+          <SearchScreen
+            currentUser={currentUser}
+            initialSearchQuery={searchInitialQuery}
+            savedBoardings={savedBoardings}
+            onToggleSaveBoarding={handleToggleSaveBoarding}
+            onSelectBoarding={(b) => handleSelectBoarding(b, 'SEARCH')}
+            onNavigateTab={(tab) => {
+              setSearchInitialQuery('');
+              handleNavigateTab(tab);
+            }}
+          />
+        ) : currentScreen === 'FAVORITES' ? (
+          <FavoritesScreen
+            currentUser={currentUser}
+            savedBoardings={savedBoardings}
+            onToggleSaveBoarding={handleToggleSaveBoarding}
+            onSelectBoarding={(b) => handleSelectBoarding(b, 'FAVORITES')}
+            onNavigateTab={handleNavigateTab}
+          />
+        ) : currentScreen === 'BOOKINGS' ? (
+          <BookingsScreen
+            currentUser={currentUser}
+            bookings={userBookings}
+            onSelectBoarding={(b) => handleSelectBoarding(b, 'BOOKINGS')}
+            onViewBookingDetails={handleViewBookingDetails}
+            onNavigateTab={handleNavigateTab}
+          />
+        ) : currentScreen === 'PROFILE' ? (
+          <ProfileScreen
+            currentUser={currentUser}
+            savedBoardings={savedBoardings}
+            userBookings={userBookings}
+            onUserUpdated={handleUserUpdated}
+            onLogout={handleLogout}
+            onNavigateTab={handleNavigateTab}
+            onOpenNotifications={handleOpenNotifications}
+            onOpenReviews={() => handleOpenReviews(selectedBoarding)}
+          />
+        ) : currentScreen === 'DETAILS' && selectedBoarding ? (
+          <DetailsScreen
+            boarding={selectedBoarding}
+            isSaved={savedBoardings.some((b) => b.id === selectedBoarding.id)}
+            onToggleSave={() => handleToggleSaveBoarding(selectedBoarding)}
+            onBack={() => setCurrentScreen(previousScreen || 'HOME')}
+            onBookSuccess={handleAddBooking}
+            onOpenGallery={() => handleOpenGallery(selectedBoarding)}
+            onOpenReviews={() => handleOpenReviews(selectedBoarding)}
+            onOpenMap={() => handleOpenMap(selectedBoarding)}
+            onViewOwnerProperties={(ownerName) => {
+              setSearchInitialQuery(ownerName);
+              setPreviousScreen('DETAILS');
+              setCurrentScreen('SEARCH');
+            }}
+          />
+        ) : currentScreen === 'IMAGE_GALLERY' ? (
+          <ImageGalleryScreen
+            boarding={selectedBoarding || selectedOwnerProperty || {}}
+            isOwner={userRole === 'OWNER'}
+            onBack={() => setCurrentScreen(previousScreen || (userRole === 'OWNER' ? 'OWNER_PROPERTY_DETAIL' : 'DETAILS'))}
+            onPropertyUpdated={(updated) => {
+              setSelectedOwnerProperty(updated);
+              setSelectedBoarding(updated);
+            }}
+          />
+        ) : currentScreen === 'MAP_VIEW' ? (
+          <MapViewScreen
+            onSelectBoarding={(b) => handleSelectBoarding(b, 'MAP_VIEW')}
+            onBack={() => setCurrentScreen(previousScreen || 'HOME')}
+            onToggleListView={() => setCurrentScreen('SEARCH')}
+          />
+        ) : currentScreen === 'BOOKING_CONFIRMATION' ? (
+          <BookingConfirmationScreen
+            booking={selectedBooking || {}}
+            onGoToBookings={() => setCurrentScreen('BOOKINGS')}
+            onGoHome={() => setCurrentScreen('HOME')}
+          />
+        ) : currentScreen === 'BOOKING_DETAILS' ? (
+          <BookingDetailsScreen
+            booking={selectedBooking || {}}
+            onBack={() => setCurrentScreen(previousScreen || 'BOOKINGS')}
+            onCancelBooking={(id) => {
+              setUserBookings((prev) => prev.filter((b) => b.id !== id));
+            }}
+          />
+        ) : currentScreen === 'REVIEWS' ? (
+          <ReviewsScreen
+            boarding={selectedBoarding || {}}
+            currentUser={currentUser}
+            mode={previousScreen === 'PROFILE' || previousScreen === 'OWNER_PROFILE' ? 'MY_REVIEWS' : 'PROPERTY'}
+            onBack={() => {
+              if (previousScreen === 'PROFILE' || previousScreen === 'OWNER_PROFILE') {
+                setCurrentScreen(userRole === 'OWNER' ? 'OWNER_PROFILE' : 'PROFILE');
+              } else {
+                setCurrentScreen(previousScreen || (userRole === 'OWNER' ? 'OWNER_HOME' : 'DETAILS'));
+              }
+            }}
+            onReviewAdded={(updatedBoarding) => {
+              setSelectedBoarding(updatedBoarding);
+              setSavedBoardings((prev) =>
+                prev.map((b) => (b.id === updatedBoarding.id ? { ...b, rating: updatedBoarding.rating } : b))
+              );
+            }}
+          />
+        ) : currentScreen === 'NOTIFICATIONS' ? (
+          <NotificationsScreen
+            onBack={() => setCurrentScreen(previousScreen || 'HOME')}
+            onSelectNotification={(notif) => {
+              if (notif.type === 'BOOKING') setCurrentScreen('BOOKINGS');
+            }}
+          />
+        ) : (
+          <HomeScreen
+            currentUser={currentUser}
+            savedBoardings={savedBoardings}
+            onToggleSaveBoarding={handleToggleSaveBoarding}
+            onUserUpdated={handleUserUpdated}
+            onSelectBoarding={(b) => handleSelectBoarding(b, 'HOME')}
+            onNavigateTab={handleNavigateTab}
+            onOpenNotifications={handleOpenNotifications}
+          />
+        )}
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 

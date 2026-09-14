@@ -4,13 +4,13 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    SafeAreaView,
     StatusBar,
     ScrollView,
     Image,
     Platform,
     Linking
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
 import { api } from '../../services/api';
@@ -254,7 +254,7 @@ export default function OwnerPropertyDetailScreen({
                                         )}
                                         {currentProperty.raw?.bedsCount > 0 && (
                                             <View style={{ backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#CBD5E1', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center' }}>
-                                                <Ionicons name="ios-bed" size={12} color="#334155" style={{ marginRight: 4 }} />
+                                                <Ionicons name="bed-outline" size={12} color="#334155" style={{ marginRight: 4 }} />
                                                 <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>{currentProperty.raw.bedsCount} Beds</Text>
                                             </View>
                                         )}

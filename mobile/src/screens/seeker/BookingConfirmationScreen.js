@@ -4,7 +4,6 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    SafeAreaView,
     StatusBar,
     ScrollView,
     Image,
@@ -12,6 +11,7 @@ import {
     Platform,
     Linking
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function BookingConfirmationScreen({ booking = {}, onGoToBookings, onContactHost, onGoHome }) {

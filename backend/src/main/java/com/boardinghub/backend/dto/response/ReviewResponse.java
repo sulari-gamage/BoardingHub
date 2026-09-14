@@ -14,8 +14,9 @@ public class ReviewResponse {
     private Long id;
     private Long propertyId;
     private String propertyTitle;
-    private Long seekerId;
-    private String seekerName;
+    private Long userId;
+    private String userName;
+    private String userAvatar;
     private Integer rating;
     private String comment;
     private String type; // "PROPERTY" or "APP"

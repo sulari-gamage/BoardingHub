@@ -6,7 +6,6 @@ import {
     Image,
     ScrollView,
     TouchableOpacity,
-    SafeAreaView,
     StatusBar,
     Alert,
     Platform,
@@ -14,10 +13,12 @@ import {
     Dimensions,
     Modal
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import BookingRequestModal from '../../components/BookingRequestModal';
+import api from '../../services/api';
 
 export default function DetailsScreen({
     boarding = {},
@@ -35,6 +36,23 @@ export default function DetailsScreen({
     useEffect(() => {
         setIsSaved(isSavedProp);
     }, [isSavedProp]);
+
+    const [propertyReviews, setPropertyReviews] = useState([]);
+    const [loadingReviews, setLoadingReviews] = useState(false);
+
+    useEffect(() => {
+        if (boarding?.id) {
+            setLoadingReviews(true);
+            api.reviews.getByPropertyId(boarding.id)
+                .then(res => {
+                    if (res && Array.isArray(res)) {
+                        setPropertyReviews(res);
+                    }
+                })
+                .catch(err => console.log('[DetailsScreen] Reviews load error:', err))
+                .finally(() => setLoadingReviews(false));
+        }
+    }, [boarding?.id]);
     const [selectedRoom, setSelectedRoom] = useState('shared');
     const [isBookingModalVisible, setIsBookingModalVisible] = useState(false);
     const [selectedRoomModalData, setSelectedRoomModalData] = useState(null);
@@ -771,9 +789,93 @@ export default function DetailsScreen({
                                 activeOpacity={0.8}
                             >
                                 <Ionicons name="chatbox-ellipses-outline" size={15} color="#1B4D3E" style={{ marginRight: 5 }} />
-                                <Text style={styles.seeReviewsBtnText}>Reviews & Ratings</Text>
+                                <Text style={styles.seeReviewsBtnText}>
+                                    {propertyReviews.length > 0 ? `View All (${propertyReviews.length}) Reviews` : 'Write a Review'}
+                                </Text>
                             </TouchableOpacity>
                         </View>
+                    </View>
+
+                    {/* Seeker Reviews List Widget (Displayed above Map) */}
+                    <View style={{ marginBottom: 20 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                            <Text style={{ fontSize: 15, fontWeight: '800', color: '#0F172A' }}>Seeker Reviews ({propertyReviews.length})</Text>
+                            <TouchableOpacity onPress={() => onOpenReviews && onOpenReviews(boarding)}>
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: '#1B4D3E' }}>
+                                    {propertyReviews.length > 0 ? `View All (${propertyReviews.length})` : '+ Write Review'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {loadingReviews ? (
+                            <ActivityIndicator size="small" color="#1B4D3E" style={{ marginVertical: 15 }} />
+                        ) : propertyReviews.length > 0 ? (
+                            propertyReviews.slice(0, 3).map((rev) => {
+                                const revAvatar = (rev.userAvatar && typeof rev.userAvatar === 'string' && rev.userAvatar.trim().length > 0)
+                                    ? rev.userAvatar
+                                    : (rev.seekerAvatar && typeof rev.seekerAvatar === 'string' && rev.seekerAvatar.trim().length > 0)
+                                        ? rev.seekerAvatar
+                                        : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80';
+                                const revName = rev.userName || rev.seekerName || 'Anonymous Seeker';
+                                const dateStr = rev.createdAt
+                                    ? new Date(rev.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                    : 'Recently';
+
+                                return (
+                                    <View
+                                        key={rev.id || Math.random().toString()}
+                                        style={{
+                                            backgroundColor: '#FFFFFF',
+                                            borderRadius: 16,
+                                            padding: 14,
+                                            marginBottom: 10,
+                                            borderWidth: 1,
+                                            borderColor: '#E2E8F0',
+                                            shadowColor: '#0F172A',
+                                            shadowOffset: { width: 0, height: 1 },
+                                            shadowOpacity: 0.03,
+                                            shadowRadius: 4,
+                                            elevation: 1,
+                                        }}
+                                    >
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                                            <Image source={{ uri: revAvatar }} style={{ width: 36, height: 36, borderRadius: 18, marginRight: 10 }} />
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F172A' }}>{revName}</Text>
+                                                <Text style={{ fontSize: 11, color: '#64748B' }}>{dateStr}</Text>
+                                            </View>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 }}>
+                                                <Ionicons name="star" size={12} color="#D97706" style={{ marginRight: 3 }} />
+                                                <Text style={{ fontSize: 12, fontWeight: '800', color: '#B45309' }}>{rev.rating}</Text>
+                                            </View>
+                                        </View>
+                                        {rev.comment ? (
+                                            <Text style={{ fontSize: 13, color: '#334155', lineHeight: 18 }}>{rev.comment}</Text>
+                                        ) : (
+                                            <Text style={{ fontSize: 12, fontStyle: 'italic', color: '#94A3B8' }}>No written comment provided.</Text>
+                                        )}
+                                    </View>
+                                );
+                            })
+                        ) : (
+                            <TouchableOpacity
+                                style={{
+                                    backgroundColor: '#F8FAFC',
+                                    borderRadius: 14,
+                                    padding: 16,
+                                    alignItems: 'center',
+                                    borderWidth: 1,
+                                    borderColor: '#E2E8F0',
+                                    borderStyle: 'dashed'
+                                }}
+                                onPress={() => onOpenReviews && onOpenReviews(boarding)}
+                                activeOpacity={0.8}
+                            >
+                                <Ionicons name="chatbox-ellipses-outline" size={26} color="#94A3B8" style={{ marginBottom: 4 }} />
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: '#1B4D3E', marginBottom: 2 }}>No seeker reviews yet</Text>
+                                <Text style={{ fontSize: 12, color: '#64748B' }}>Be the first seeker to write a review for this property!</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
 
                     {/* Location Map Section */}

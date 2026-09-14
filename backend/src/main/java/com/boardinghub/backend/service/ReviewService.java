@@ -25,7 +25,7 @@ public class ReviewService {
 
     @Transactional
     public ReviewResponse createReview(ReviewRequest request, String userEmail) {
-        User seeker = userRepository.findByEmail(userEmail)
+        User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         BoardingProperty property = null;
@@ -42,7 +42,7 @@ public class ReviewService {
 
         Review review = Review.builder()
                 .property(property)
-                .seeker(seeker)
+                .user(user)
                 .rating(request.getRating())
                 .comment(request.getComment())
                 .type(type)
@@ -58,23 +58,45 @@ public class ReviewService {
     }
 
     public List<ReviewResponse> getMyReviews(String userEmail) {
-        User seeker = userRepository.findByEmail(userEmail)
+        User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        return reviewRepository.findBySeekerIdOrderByCreatedAtDesc(seeker.getId())
-                .stream().map(this::mapToReviewResponse).collect(Collectors.toList());
+        
+        List<Review> userOwnReviews = reviewRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+        List<Review> propertyReviewsForOwner = reviewRepository.findByPropertyOwnerIdOrderByCreatedAtDesc(user.getId());
+        
+        java.util.Set<Long> seenIds = new java.util.HashSet<>();
+        List<Review> combined = new java.util.ArrayList<>();
+        
+        if (propertyReviewsForOwner != null) {
+            for (Review r : propertyReviewsForOwner) {
+                if (r != null && r.getId() != null && seenIds.add(r.getId())) {
+                    combined.add(r);
+                }
+            }
+        }
+        if (userOwnReviews != null) {
+            for (Review r : userOwnReviews) {
+                if (r != null && r.getId() != null && seenIds.add(r.getId())) {
+                    combined.add(r);
+                }
+            }
+        }
+        
+        return combined.stream().map(this::mapToReviewResponse).collect(Collectors.toList());
     }
 
     private ReviewResponse mapToReviewResponse(Review r) {
-        return ReviewResponse.builder()
-                .id(r.getId())
-                .propertyId(r.getProperty() != null ? r.getProperty().getId() : null)
-                .propertyTitle(r.getProperty() != null ? r.getProperty().getTitle() : "BoardingHub Platform (App Review)")
-                .seekerId(r.getSeeker().getId())
-                .seekerName(r.getSeeker().getName())
-                .rating(r.getRating())
-                .comment(r.getComment())
-                .type(r.getType() != null ? r.getType() : (r.getProperty() != null ? "PROPERTY" : "APP"))
-                .createdAt(r.getCreatedAt())
-                .build();
+        ReviewResponse response = new ReviewResponse();
+        response.setId(r.getId());
+        response.setPropertyId(r.getProperty() != null ? r.getProperty().getId() : null);
+        response.setPropertyTitle(r.getProperty() != null ? r.getProperty().getTitle() : "BoardingHub Platform (App Review)");
+        response.setUserId(r.getUser().getId());
+        response.setUserName(r.getUser().getName());
+        response.setUserAvatar(r.getUser().getAvatarUrl());
+        response.setRating(r.getRating());
+        response.setComment(r.getComment());
+        response.setType(r.getType() != null ? r.getType() : (r.getProperty() != null ? "PROPERTY" : "APP"));
+        response.setCreatedAt(r.getCreatedAt());
+        return response;
     }
 }
