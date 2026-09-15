@@ -266,7 +266,11 @@ export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess })
                                         onPress={() => setShowPassword(!showPassword)}
                                         style={styles.eyeBtn}
                                     >
-                                        <Text style={styles.eyeIcon}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
+                                        <Ionicons
+                                            name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                                            size={20}
+                                            color="#64748B"
+                                        />
                                     </TouchableOpacity>
                                 </View>
                             </View>

@@ -194,6 +194,13 @@ export const api = {
         getToken: async () => {
             return await storage.getItem(TOKEN_KEY);
         },
+
+        forgotPassword: async (email) => {
+            return await request('/auth/forgot-password', {
+                method: 'POST',
+                body: JSON.stringify({ email }),
+            });
+        },
     },
 
     // Property Services
