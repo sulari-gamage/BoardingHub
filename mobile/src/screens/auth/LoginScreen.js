@@ -33,7 +33,13 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
 
     // Forgot Password Modal state
     const [forgotModalVisible, setForgotModalVisible] = useState(false);
+    const [modalStep, setModalStep] = useState(1); // 1: Email, 2: OTP, 3: New Password
     const [forgotEmail, setForgotEmail] = useState('');
+    const [otpCode, setOtpCode] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showNewPass, setShowNewPass] = useState(false);
+    const [showConfirmPass, setShowConfirmPass] = useState(false);
     const [forgotLoading, setForgotLoading] = useState(false);
 
     useEffect(() => {
@@ -94,12 +100,27 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
         }
     };
 
+    const resetModalState = () => {
+        setForgotModalVisible(false);
+        setModalStep(1);
+        setOtpCode('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setShowNewPass(false);
+        setShowConfirmPass(false);
+    };
+
     const openForgotPasswordModal = () => {
         setForgotEmail(email.trim());
+        setModalStep(1);
+        setOtpCode('');
+        setNewPassword('');
+        setConfirmPassword('');
         setForgotModalVisible(true);
     };
 
-    const handleSendResetEmail = async () => {
+    // Step 1: Send OTP to Email
+    const handleSendOtp = async () => {
         const targetEmail = forgotEmail.trim();
         if (!targetEmail) {
             Alert.alert('Email Required', 'Please enter your registered email address.');
@@ -108,20 +129,66 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
 
         try {
             setForgotLoading(true);
-            if (api.auth.forgotPassword) {
-                await api.auth.forgotPassword(targetEmail);
-            }
+            await api.auth.forgotPassword(targetEmail);
             Alert.alert(
-                'Password Reset Link Sent',
-                `A password reset link has been sent to ${targetEmail}. Please check your email inbox to reset your password.`,
-                [{ text: 'OK', onPress: () => setForgotModalVisible(false) }]
+                'OTP Sent',
+                `A 6-digit OTP code has been sent to ${targetEmail}. Please check your email inbox.`
+            );
+            setModalStep(2);
+        } catch (error) {
+            Alert.alert('Error', error.message || 'Failed to send OTP code.');
+        } finally {
+            setForgotLoading(false);
+        }
+    };
+
+    // Step 2: Verify OTP
+    const handleVerifyOtp = async () => {
+        const targetOtp = otpCode.trim();
+        if (!targetOtp || targetOtp.length < 6) {
+            Alert.alert('OTP Required', 'Please enter the 6-digit OTP code sent to your email.');
+            return;
+        }
+
+        try {
+            setForgotLoading(true);
+            await api.auth.verifyOtp(forgotEmail.trim(), targetOtp);
+            Alert.alert('OTP Verified', 'Your OTP code is valid. Please enter your new password.');
+            setModalStep(3);
+        } catch (error) {
+            Alert.alert('Verification Failed', error.message || 'Invalid or expired OTP code.');
+        } finally {
+            setForgotLoading(false);
+        }
+    };
+
+    // Step 3: Reset Password
+    const handleResetPassword = async () => {
+        if (!newPassword || !confirmPassword) {
+            Alert.alert('Required Fields', 'Please fill in both password fields.');
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            Alert.alert('Weak Password', 'Password must be at least 6 characters long.');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            Alert.alert('Password Mismatch', 'New password and confirm password do not match.');
+            return;
+        }
+
+        try {
+            setForgotLoading(true);
+            await api.auth.resetPassword(otpCode.trim(), newPassword);
+            Alert.alert(
+                'Password Reset Complete',
+                'Your password has been successfully updated! You can now sign in with your new password.',
+                [{ text: 'Sign In Now', onPress: resetModalState }]
             );
         } catch (error) {
-            Alert.alert(
-                'Notice',
-                error.message || `Password reset instructions have been sent to ${targetEmail} if registered.`,
-                [{ text: 'OK', onPress: () => setForgotModalVisible(false) }]
-            );
+            Alert.alert('Reset Failed', error.message || 'Failed to reset password.');
         } finally {
             setForgotLoading(false);
         }
@@ -249,69 +316,198 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
                 </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
 
-            {/* Forgot Password Modal */}
+            {/* Forgot Password Wizard Modal */}
             <Modal
                 visible={forgotModalVisible}
                 transparent={true}
                 animationType="fade"
-                onRequestClose={() => setForgotModalVisible(false)}
+                onRequestClose={resetModalState}
             >
                 <TouchableOpacity
                     style={styles.modalOverlay}
                     activeOpacity={1}
-                    onPress={() => setForgotModalVisible(false)}
+                    onPress={resetModalState}
                 >
                     <TouchableWithoutFeedback>
                         <View style={styles.modalCard}>
+                            {/* Step Indicator Header */}
                             <View style={styles.modalHeaderRow}>
                                 <View style={styles.modalIconBg}>
-                                    <Ionicons name="key-outline" size={24} color="#1B4D3E" />
+                                    <Ionicons
+                                        name={modalStep === 1 ? 'key-outline' : modalStep === 2 ? 'mail-unread-outline' : 'shield-checkmark-outline'}
+                                        size={24}
+                                        color="#1B4D3E"
+                                    />
+                                </View>
+                                <View style={styles.stepBadge}>
+                                    <Text style={styles.stepBadgeText}>Step {modalStep} of 3</Text>
                                 </View>
                                 <TouchableOpacity
-                                    onPress={() => setForgotModalVisible(false)}
+                                    onPress={resetModalState}
                                     style={styles.closeBtn}
                                 >
                                     <Ionicons name="close" size={22} color="#64748B" />
                                 </TouchableOpacity>
                             </View>
 
-                            <Text style={styles.modalTitle}>Reset Password</Text>
-                            <Text style={styles.modalSubtitle}>
-                                Enter your registered email address below and we'll send you instructions to reset your password.
-                            </Text>
+                            {/* STEP 1: Enter Email & Send OTP */}
+                            {modalStep === 1 && (
+                                <>
+                                    <Text style={styles.modalTitle}>Forgot Password?</Text>
+                                    <Text style={styles.modalSubtitle}>
+                                        Enter your registered email address below and we'll send a 6-digit OTP verification code to your inbox.
+                                    </Text>
 
-                            <View style={styles.formGroup}>
-                                <Text style={styles.label}>Email Address</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="name@company.com"
-                                    placeholderTextColor="#94A3B8"
-                                    value={forgotEmail}
-                                    onChangeText={setForgotEmail}
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                />
-                            </View>
+                                    <View style={styles.formGroup}>
+                                        <Text style={styles.label}>Email Address</Text>
+                                        <TextInput
+                                            style={styles.input}
+                                            placeholder="name@company.com"
+                                            placeholderTextColor="#94A3B8"
+                                            value={forgotEmail}
+                                            onChangeText={setForgotEmail}
+                                            keyboardType="email-address"
+                                            autoCapitalize="none"
+                                        />
+                                    </View>
 
-                            <TouchableOpacity
-                                style={[styles.signInBtn, forgotLoading && { opacity: 0.7 }, { marginTop: 10 }]}
-                                onPress={handleSendResetEmail}
-                                disabled={forgotLoading}
-                                activeOpacity={0.85}
-                            >
-                                {forgotLoading ? (
-                                    <ActivityIndicator color="#FFD700" size="small" />
-                                ) : (
-                                    <Text style={styles.signInBtnText}>Send Reset Link</Text>
-                                )}
-                            </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.signInBtn, forgotLoading && { opacity: 0.7 }, { marginTop: 10 }]}
+                                        onPress={handleSendOtp}
+                                        disabled={forgotLoading}
+                                        activeOpacity={0.85}
+                                    >
+                                        {forgotLoading ? (
+                                            <ActivityIndicator color="#FFD700" size="small" />
+                                        ) : (
+                                            <Text style={styles.signInBtnText}>Send OTP Code</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                </>
+                            )}
 
-                            <TouchableOpacity
-                                style={styles.cancelModalBtn}
-                                onPress={() => setForgotModalVisible(false)}
-                            >
-                                <Text style={styles.cancelModalText}>Cancel</Text>
-                            </TouchableOpacity>
+                            {/* STEP 2: Verify 6-Digit OTP */}
+                            {modalStep === 2 && (
+                                <>
+                                    <Text style={styles.modalTitle}>Enter OTP Code</Text>
+                                    <Text style={styles.modalSubtitle}>
+                                        We sent a 6-digit verification code to <Text style={{ fontWeight: '700', color: '#0F172A' }}>{forgotEmail}</Text>.
+                                    </Text>
+
+                                    <View style={styles.formGroup}>
+                                        <Text style={styles.label}>6-Digit OTP Code</Text>
+                                        <TextInput
+                                            style={[styles.input, { letterSpacing: 6, fontSize: 20, textAlign: 'center', fontWeight: '800' }]}
+                                            placeholder="000000"
+                                            placeholderTextColor="#CBD5E1"
+                                            value={otpCode}
+                                            onChangeText={setOtpCode}
+                                            keyboardType="number-pad"
+                                            maxLength={6}
+                                        />
+                                    </View>
+
+                                    <TouchableOpacity
+                                        style={[styles.signInBtn, forgotLoading && { opacity: 0.7 }, { marginTop: 10 }]}
+                                        onPress={handleVerifyOtp}
+                                        disabled={forgotLoading}
+                                        activeOpacity={0.85}
+                                    >
+                                        {forgotLoading ? (
+                                            <ActivityIndicator color="#FFD700" size="small" />
+                                        ) : (
+                                            <Text style={styles.signInBtnText}>Verify OTP</Text>
+                                        )}
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={styles.cancelModalBtn}
+                                        onPress={() => setModalStep(1)}
+                                    >
+                                        <Text style={styles.cancelModalText}>← Back to Email</Text>
+                                    </TouchableOpacity>
+                                </>
+                            )}
+
+                            {/* STEP 3: Enter New Password & Confirm Password */}
+                            {modalStep === 3 && (
+                                <>
+                                    <Text style={styles.modalTitle}>Set New Password</Text>
+                                    <Text style={styles.modalSubtitle}>
+                                        Your OTP has been verified. Create a new strong password for your account.
+                                    </Text>
+
+                                    <View style={styles.formGroup}>
+                                        <Text style={styles.label}>New Password</Text>
+                                        <View style={styles.passwordWrapper}>
+                                            <TextInput
+                                                style={styles.passwordInput}
+                                                placeholder="••••••••"
+                                                placeholderTextColor="#94A3B8"
+                                                value={newPassword}
+                                                onChangeText={setNewPassword}
+                                                secureTextEntry={!showNewPass}
+                                            />
+                                            <TouchableOpacity
+                                                onPress={() => setShowNewPass(!showNewPass)}
+                                                style={styles.eyeBtn}
+                                            >
+                                                <Ionicons
+                                                    name={showNewPass ? 'eye-outline' : 'eye-off-outline'}
+                                                    size={20}
+                                                    color="#64748B"
+                                                />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+
+                                    <View style={styles.formGroup}>
+                                        <Text style={styles.label}>Confirm New Password</Text>
+                                        <View style={styles.passwordWrapper}>
+                                            <TextInput
+                                                style={styles.passwordInput}
+                                                placeholder="••••••••"
+                                                placeholderTextColor="#94A3B8"
+                                                value={confirmPassword}
+                                                onChangeText={setConfirmPassword}
+                                                secureTextEntry={!showConfirmPass}
+                                            />
+                                            <TouchableOpacity
+                                                onPress={() => setShowConfirmPass(!showConfirmPass)}
+                                                style={styles.eyeBtn}
+                                            >
+                                                <Ionicons
+                                                    name={showConfirmPass ? 'eye-outline' : 'eye-off-outline'}
+                                                    size={20}
+                                                    color="#64748B"
+                                                />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+
+                                    <TouchableOpacity
+                                        style={[styles.signInBtn, forgotLoading && { opacity: 0.7 }, { marginTop: 10 }]}
+                                        onPress={handleResetPassword}
+                                        disabled={forgotLoading}
+                                        activeOpacity={0.85}
+                                    >
+                                        {forgotLoading ? (
+                                            <ActivityIndicator color="#FFD700" size="small" />
+                                        ) : (
+                                            <Text style={styles.signInBtnText}>Reset Password</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                </>
+                            )}
+
+                            {modalStep === 1 && (
+                                <TouchableOpacity
+                                    style={styles.cancelModalBtn}
+                                    onPress={resetModalState}
+                                >
+                                    <Text style={styles.cancelModalText}>Cancel</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     </TouchableWithoutFeedback>
                 </TouchableOpacity>
@@ -553,6 +749,19 @@ const styles = StyleSheet.create({
         backgroundColor: '#E6F0EC',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    stepBadge: {
+        backgroundColor: '#F1F5F9',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    stepBadgeText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#1B4D3E',
     },
     closeBtn: {
         padding: 6,

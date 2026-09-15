@@ -119,52 +119,70 @@ public class AuthService {
             passwordResetTokenRepository.flush();
         });
 
-        // Generate 32-char UUID reset token valid for 30 minutes
-        String tokenStr = UUID.randomUUID().toString().replace("-", "");
+        // Generate 6-digit numeric OTP valid for 10 minutes
+        String otpStr = String.format("%06d", new java.security.SecureRandom().nextInt(1000000));
         PasswordResetToken resetToken = PasswordResetToken.builder()
-                .token(tokenStr)
+                .token(otpStr)
                 .user(user)
-                .expiryDate(LocalDateTime.now().plusMinutes(30))
+                .expiryDate(LocalDateTime.now().plusMinutes(10))
                 .build();
 
         passwordResetTokenRepository.save(resetToken);
 
         System.out.println("=================================================");
-        System.out.println("[BoardingHub Auth] Password Reset Token Generated");
+        System.out.println("[BoardingHub Auth] Password Reset OTP Generated");
         System.out.println("User Email: " + user.getEmail());
-        System.out.println("Token: " + tokenStr);
+        System.out.println("OTP Code: " + otpStr);
         System.out.println("=================================================");
 
-        // Send Email if JavaMailSender is configured
+        // Send Email asynchronously in background thread to avoid blocking HTTP response & timing out fetch requests
         if (mailSender != null) {
-            try {
-                SimpleMailMessage mailMessage = new SimpleMailMessage();
-                mailMessage.setTo(user.getEmail());
-                mailMessage.setSubject("BoardingHub - Password Reset Request");
-                mailMessage.setText("Hello " + user.getName() + ",\n\n"
-                        + "You requested a password reset for your BoardingHub account.\n"
-                        + "Your password reset token is:\n\n"
-                        + tokenStr + "\n\n"
-                        + "This token will expire in 30 minutes.\n"
-                        + "If you did not request a password reset, please ignore this email.\n\n"
-                        + "Best regards,\n"
-                        + "The BoardingHub Team");
-                mailSender.send(mailMessage);
-                System.out.println("[BoardingHub Auth] Reset email successfully dispatched to " + user.getEmail());
-            } catch (Exception e) {
-                System.err.println("[BoardingHub Auth] Could not send email via SMTP (Token logged above): " + e.getMessage());
-            }
+            java.util.concurrent.CompletableFuture.runAsync(() -> {
+                try {
+                    SimpleMailMessage mailMessage = new SimpleMailMessage();
+                    mailMessage.setTo(user.getEmail());
+                    mailMessage.setSubject("BoardingHub - Password Reset OTP");
+                    mailMessage.setText("Hello " + user.getName() + ",\n\n"
+                            + "Your One-Time Password (OTP) for resetting your BoardingHub account password is:\n\n"
+                            + "    " + otpStr + "\n\n"
+                            + "This OTP code is valid for 10 minutes.\n"
+                            + "If you did not request a password reset, please ignore this email.\n\n"
+                            + "Best regards,\n"
+                            + "The BoardingHub Team");
+                    mailSender.send(mailMessage);
+                    System.out.println("[BoardingHub Auth] OTP email successfully dispatched to " + user.getEmail());
+                } catch (Exception e) {
+                    System.err.println("[BoardingHub Auth] Could not send OTP email via SMTP (OTP logged above): " + e.getMessage());
+                }
+            });
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public void verifyOtp(com.boardinghub.backend.dto.request.VerifyOtpRequest request) {
+        User user = userRepository.findByEmail(request.getEmail().trim())
+                .orElseThrow(() -> new IllegalArgumentException("User with this email does not exist."));
+
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByUser(user)
+                .orElseThrow(() -> new IllegalArgumentException("No OTP request found for this email."));
+
+        if (!resetToken.getToken().equals(request.getOtp().trim())) {
+            throw new IllegalArgumentException("Invalid OTP code. Please check your email and try again.");
+        }
+
+        if (resetToken.isExpired()) {
+            throw new IllegalArgumentException("OTP code has expired. Please request a new OTP.");
         }
     }
 
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(request.getToken())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired password reset token."));
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(request.getToken().trim())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired OTP code."));
 
         if (resetToken.isExpired()) {
             passwordResetTokenRepository.delete(resetToken);
-            throw new IllegalArgumentException("Password reset token has expired. Please request a new token.");
+            throw new IllegalArgumentException("OTP code has expired. Please request a new OTP.");
         }
 
         User user = resetToken.getUser();
@@ -174,6 +192,26 @@ public class AuthService {
         // Revoke token after successful use
         passwordResetTokenRepository.delete(resetToken);
         System.out.println("[BoardingHub Auth] Password reset successful for user: " + user.getEmail());
+
+        // Send confirmation email asynchronously
+        if (mailSender != null) {
+            java.util.concurrent.CompletableFuture.runAsync(() -> {
+                try {
+                    SimpleMailMessage mailMessage = new SimpleMailMessage();
+                    mailMessage.setTo(user.getEmail());
+                    mailMessage.setSubject("BoardingHub - Password Successfully Reset");
+                    mailMessage.setText("Hello " + user.getName() + ",\n\n"
+                            + "Your BoardingHub account password has been successfully updated.\n\n"
+                            + "If you did not perform this change, please contact support immediately.\n\n"
+                            + "Best regards,\n"
+                            + "The BoardingHub Team");
+                    mailSender.send(mailMessage);
+                    System.out.println("[BoardingHub Auth] Reset confirmation email sent to " + user.getEmail());
+                } catch (Exception e) {
+                    System.err.println("[BoardingHub Auth] Failed to send reset confirmation email: " + e.getMessage());
+                }
+            });
+        }
     }
 }
 

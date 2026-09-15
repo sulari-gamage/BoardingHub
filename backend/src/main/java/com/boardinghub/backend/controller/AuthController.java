@@ -33,7 +33,13 @@ public class AuthController {
     @PostMapping("/forgot-password")
     public ResponseEntity<java.util.Map<String, String>> forgotPassword(@Valid @RequestBody com.boardinghub.backend.dto.request.ForgotPasswordRequest request) {
         authService.forgotPassword(request);
-        return ResponseEntity.ok(java.util.Map.of("message", "If an account with that email exists, password reset instructions have been sent."));
+        return ResponseEntity.ok(java.util.Map.of("message", "If an account with that email exists, an OTP has been sent to your email."));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<java.util.Map<String, String>> verifyOtp(@Valid @RequestBody com.boardinghub.backend.dto.request.VerifyOtpRequest request) {
+        authService.verifyOtp(request);
+        return ResponseEntity.ok(java.util.Map.of("message", "OTP verified successfully."));
     }
 
     @PostMapping("/reset-password")
