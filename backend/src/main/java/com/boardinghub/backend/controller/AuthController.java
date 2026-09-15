@@ -29,4 +29,16 @@ public class AuthController {
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<java.util.Map<String, String>> forgotPassword(@Valid @RequestBody com.boardinghub.backend.dto.request.ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ResponseEntity.ok(java.util.Map.of("message", "If an account with that email exists, password reset instructions have been sent."));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<java.util.Map<String, String>> resetPassword(@Valid @RequestBody com.boardinghub.backend.dto.request.ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(java.util.Map.of("message", "Password has been successfully reset. You can now log in with your new password."));
+    }
 }
