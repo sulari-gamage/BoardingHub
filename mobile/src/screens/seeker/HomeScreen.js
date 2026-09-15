@@ -203,7 +203,10 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
             setLoading(true);
             const data = await api.properties.getAll();
             if (data && data.length > 0) {
-                const updatedData = await Promise.all(data.map(async (p) => {
+                // LIFO Sorting: Last added properties (higher IDs) displayed first
+                const sortedData = [...data].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+
+                const updatedData = await Promise.all(sortedData.map(async (p) => {
                     let lat = p.latitude || (p.raw && p.raw.latitude);
                     let lng = p.longitude || (p.raw && p.raw.longitude);
 
@@ -284,14 +287,11 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
                     : 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5',
         };
     }).filter((item) => {
-        // Gender preference filter
-        if (selectedFilter === 'girls' && item.rawGender !== 'FEMALE_ONLY' && item.genderPreference !== 'Girls Only') {
+        // Property Type filter
+        if (selectedFilter === 'ROOM_BASED' && item.propertyNature !== 'ROOM_BASED') {
             return false;
         }
-        if (selectedFilter === 'boys' && item.rawGender !== 'MALE_ONLY' && item.genderPreference !== 'Boys Only') {
-            return false;
-        }
-        if (selectedFilter === 'any' && item.rawGender !== 'ANY' && item.rawGender !== 'UNISEX' && item.genderPreference !== 'Any Gender') {
+        if (selectedFilter === 'ANNEX' && item.propertyNature !== 'WHOLE_HOUSE') {
             return false;
         }
 
@@ -464,9 +464,8 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
                 <View style={styles.filterChipRow}>
                     {[
                         { id: 'ALL', label: 'All Places' },
-                        { id: 'girls', label: 'Girls Only' },
-                        { id: 'boys', label: 'Boys Only' },
-                        { id: 'any', label: 'Any Gender' },
+                        { id: 'ROOM_BASED', label: 'Room-Based' },
+                        { id: 'ANNEX', label: 'Annex / Whole House' },
                     ].map((chip) => (
                         <TouchableOpacity
                             key={chip.id}

@@ -345,6 +345,13 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
                 <Text style={styles.sectionHeading}>Booking Summary</Text>
                 <View style={styles.summaryCard}>
                     <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Request Sent Date</Text>
+                        <Text style={styles.summaryVal}>{booking.createdAt || booking.requestDate || booking.date || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.summaryDivider} />
+
+                    <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Move-in Date</Text>
                         <Text style={styles.summaryVal}>{date}</Text>
                     </View>

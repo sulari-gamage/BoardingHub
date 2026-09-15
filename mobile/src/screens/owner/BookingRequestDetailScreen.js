@@ -227,6 +227,17 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
                     </View>
                 </View>
 
+                {/* Request Sent Date Box */}
+                <View style={styles.detailCard}>
+                    <View style={styles.detailIconBox}>
+                        <Ionicons name="time-outline" size={18} color="#133E32" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.detailLabel}>REQUEST SENT DATE</Text>
+                        <Text style={styles.detailValue}>{currentRequest.createdAt || currentRequest.requestDate || currentRequest.date || 'N/A'}</Text>
+                    </View>
+                </View>
+
                 {/* Occupants Box */}
                 <View style={styles.detailCard}>
                     <View style={styles.detailIconBox}>

@@ -66,7 +66,9 @@ export default function SearchScreen({
             setLoading(true);
             const data = await api.properties.getAll();
             if (data && data.length > 0) {
-                setApiProperties(data);
+                // LIFO Order: Last added properties first
+                const sortedData = [...data].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+                setApiProperties(sortedData);
             } else {
                 setApiProperties([]);
             }
@@ -205,8 +207,17 @@ export default function SearchScreen({
         return true;
     });
 
-    // Sorting Engine: Default to Low Price to High Price for any search
-    searchResults.sort((a, b) => a.price - b.price);
+    // Sorting Engine: Default to LIFO order (last added properties first) unless explicitly overridden
+    if (filterConfig.sortBy === 'PRICE_LOW_HIGH') {
+        searchResults.sort((a, b) => a.price - b.price);
+    } else if (filterConfig.sortBy === 'PRICE_HIGH_LOW') {
+        searchResults.sort((a, b) => b.price - a.price);
+    } else if (filterConfig.sortBy === 'RATING') {
+        searchResults.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else {
+        // DEFAULT: LIFO Order (Last added properties first)
+        searchResults.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+    }
 
     // Active Filter Tag Pills Generator
     const getActiveFilterTags = () => {

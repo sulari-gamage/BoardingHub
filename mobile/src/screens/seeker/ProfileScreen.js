@@ -254,16 +254,6 @@ export default function ProfileScreen({
 
                     <Text style={styles.userName}>{userName}</Text>
                     <Text style={styles.userEmail}>{userEmail}</Text>
-
-                    {/* Switch to Owner Dashboard Banner */}
-                    <TouchableOpacity
-                        style={styles.switchOwnerBanner}
-                        onPress={() => onNavigateTab && onNavigateTab('OWNER_HOME')}
-                        activeOpacity={0.85}
-                    >
-                        <Ionicons name="business" size={16} color="#133E32" style={{ marginRight: 6 }} />
-                        <Text style={styles.switchOwnerText}>Switch to Owner Dashboard</Text>
-                    </TouchableOpacity>
                 </View>
 
                 {/* Stats Row (Real Metrics: Saved & Requests) */}

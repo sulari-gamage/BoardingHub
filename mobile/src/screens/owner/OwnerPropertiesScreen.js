@@ -35,7 +35,9 @@ export default function OwnerPropertiesScreen({
             setLoading(true);
             const data = await api.properties.getMyProperties();
             if (data) {
-                setApiProperties(data);
+                // LIFO Order: Last added properties (higher IDs) first
+                const sorted = [...data].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+                setApiProperties(sorted);
             }
         } catch (error) {
             console.log('Error loading owner properties:', error);
