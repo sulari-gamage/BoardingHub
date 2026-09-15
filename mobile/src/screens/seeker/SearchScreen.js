@@ -284,7 +284,7 @@ export default function SearchScreen({
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             {/* Standard Dark Emerald Header Bar */}
             <HeaderBar
                 title="BoardingHub"
@@ -451,7 +451,7 @@ export default function SearchScreen({
                     if (onNavigateTab) onNavigateTab(tab);
                 }}
             />
-        </SafeAreaView>
+        </View>
     );
 }
 

@@ -213,7 +213,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F8FAFC',
-        paddingTop: Platform.OS === 'android' ? 35 : 0,
     },
     header: {
         flexDirection: 'row',

@@ -73,7 +73,7 @@ export default function OwnerHomeScreen({
     const recentRequests = requests.slice(0, 3);
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             {/* Standard Dark Emerald Header Bar with Logo */}
             <HeaderBar
                 title="BoardingHub"
@@ -226,7 +226,7 @@ export default function OwnerHomeScreen({
                     );
                 })}
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 

@@ -47,7 +47,9 @@ export default function OwnerProfileScreen({
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [showPasswords, setShowPasswords] = useState(false);
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     // Notification Preference Toggles
     const [notifBookingRequests, setNotifBookingRequests] = useState(true);
@@ -189,7 +191,7 @@ export default function OwnerProfileScreen({
     const hasAvatar = Boolean(currentAvatar && typeof currentAvatar === 'string' && currentAvatar.trim().length > 0);
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
             {/* HeaderBar */}
@@ -423,52 +425,78 @@ export default function OwnerProfileScreen({
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.inputLabel}>Current Password</Text>
-                            <TextInput
-                                style={styles.textInput}
-                                value={currentPassword}
-                                onChangeText={setCurrentPassword}
-                                placeholder="Enter current password"
-                                placeholderTextColor="#94A3B8"
-                                secureTextEntry={!showPasswords}
-                            />
+                            <View style={styles.passwordInputContainer}>
+                                <TextInput
+                                    style={styles.passwordTextInput}
+                                    value={currentPassword}
+                                    onChangeText={setCurrentPassword}
+                                    placeholder="Enter current password"
+                                    placeholderTextColor="#94A3B8"
+                                    secureTextEntry={!showCurrentPassword}
+                                />
+                                <TouchableOpacity
+                                    style={styles.eyeIconBtn}
+                                    onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons
+                                        name={showCurrentPassword ? "eye" : "eye-off-outline"}
+                                        size={20}
+                                        color="#64748B"
+                                    />
+                                </TouchableOpacity>
+                            </View>
                         </View>
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.inputLabel}>New Password</Text>
-                            <TextInput
-                                style={styles.textInput}
-                                value={newPassword}
-                                onChangeText={setNewPassword}
-                                placeholder="At least 6 characters"
-                                placeholderTextColor="#94A3B8"
-                                secureTextEntry={!showPasswords}
-                            />
+                            <View style={styles.passwordInputContainer}>
+                                <TextInput
+                                    style={styles.passwordTextInput}
+                                    value={newPassword}
+                                    onChangeText={setNewPassword}
+                                    placeholder="At least 6 characters"
+                                    placeholderTextColor="#94A3B8"
+                                    secureTextEntry={!showNewPassword}
+                                />
+                                <TouchableOpacity
+                                    style={styles.eyeIconBtn}
+                                    onPress={() => setShowNewPassword(!showNewPassword)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons
+                                        name={showNewPassword ? "eye" : "eye-off-outline"}
+                                        size={20}
+                                        color="#64748B"
+                                    />
+                                </TouchableOpacity>
+                            </View>
                         </View>
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.inputLabel}>Confirm New Password</Text>
-                            <TextInput
-                                style={styles.textInput}
-                                value={confirmPassword}
-                                onChangeText={setConfirmPassword}
-                                placeholder="Re-enter new password"
-                                placeholderTextColor="#94A3B8"
-                                secureTextEntry={!showPasswords}
-                            />
+                            <View style={styles.passwordInputContainer}>
+                                <TextInput
+                                    style={styles.passwordTextInput}
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                    placeholder="Re-enter new password"
+                                    placeholderTextColor="#94A3B8"
+                                    secureTextEntry={!showConfirmPassword}
+                                />
+                                <TouchableOpacity
+                                    style={styles.eyeIconBtn}
+                                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons
+                                        name={showConfirmPassword ? "eye" : "eye-off-outline"}
+                                        size={20}
+                                        color="#64748B"
+                                    />
+                                </TouchableOpacity>
+                            </View>
                         </View>
-
-                        <TouchableOpacity
-                            style={styles.showPassRow}
-                            onPress={() => setShowPasswords(!showPasswords)}
-                        >
-                            <Ionicons
-                                name={showPasswords ? 'checkbox' : 'square-outline'}
-                                size={20}
-                                color="#133E32"
-                                style={{ marginRight: 8 }}
-                            />
-                            <Text style={styles.showPassText}>Show Passwords</Text>
-                        </TouchableOpacity>
 
                         <TouchableOpacity
                             style={styles.saveBtn}
@@ -578,7 +606,7 @@ export default function OwnerProfileScreen({
                     );
                 })}
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 
@@ -936,6 +964,28 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#0F172A',
         backgroundColor: '#F8FAFC',
+    },
+    passwordInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        height: 48,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
+        backgroundColor: '#F8FAFC',
+    },
+    passwordTextInput: {
+        flex: 1,
+        height: '100%',
+        paddingHorizontal: 14,
+        fontSize: 14,
+        color: '#0F172A',
+    },
+    eyeIconBtn: {
+        paddingHorizontal: 14,
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     readOnlyInput: {
         backgroundColor: '#F1F5F9',

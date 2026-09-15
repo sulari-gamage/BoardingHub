@@ -81,7 +81,7 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
     });
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             {/* Standard Dark Emerald Header Bar */}
             <HeaderBar
                 title="BoardingHub"
@@ -219,7 +219,7 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
                     if (onNavigateTab) onNavigateTab(tab);
                 }}
             />
-        </SafeAreaView>
+        </View>
     );
 }
 

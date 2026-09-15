@@ -20,7 +20,7 @@ export default function FavoritesScreen({ onSelectBoarding, onNavigateTab, onOpe
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             {/* Standardized HeaderBar */}
             <HeaderBar
                 title="BoardingHub"
@@ -122,7 +122,7 @@ export default function FavoritesScreen({ onSelectBoarding, onNavigateTab, onOpe
                 activeTab="FAVORITES"
                 onTabChange={(tab) => onNavigateTab && onNavigateTab(tab)}
             />
-        </SafeAreaView>
+        </View>
     );
 }
 

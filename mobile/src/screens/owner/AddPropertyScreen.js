@@ -1700,7 +1700,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
         borderBottomColor: '#E2E8F0',
-        paddingTop: Platform.OS === 'android' ? 35 : 10,
+        paddingTop: 10,
         paddingHorizontal: 20,
         paddingBottom: 14,
     },

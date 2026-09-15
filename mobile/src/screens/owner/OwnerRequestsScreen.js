@@ -171,7 +171,7 @@ export default function OwnerRequestsScreen({
         .sort((a, b) => (b.occupantsCount || 1) - (a.occupantsCount || 1));
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             {/* Standardized HeaderBar */}
             <HeaderBar
                 title="BoardingHub"
@@ -371,7 +371,7 @@ export default function OwnerRequestsScreen({
                     })
                 }
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 

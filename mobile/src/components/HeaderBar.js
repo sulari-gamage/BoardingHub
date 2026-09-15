@@ -9,6 +9,7 @@ import {
     StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HeaderBar({
     title = 'BoardingHub',
@@ -18,11 +19,12 @@ export default function HeaderBar({
     onBack,
     userAvatar
 }) {
+    const insets = useSafeAreaInsets();
     const hasAvatar = Boolean(userAvatar && typeof userAvatar === 'string' && userAvatar.trim().length > 0);
 
     return (
-        <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor="#133E32" />
+        <View style={[styles.container, { paddingTop: insets.top }]}>
+            <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
             <View style={styles.headerContent}>
                 {/* Left Section: Back Button or Logo + Title */}
@@ -81,7 +83,6 @@ export default function HeaderBar({
 const styles = StyleSheet.create({
     container: {
         backgroundColor: '#133E32',
-        paddingTop: Platform.OS === 'android' ? 35 : 0,
     },
     headerContent: {
         height: 60,

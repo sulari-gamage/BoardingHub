@@ -219,7 +219,7 @@ export default function ProfileScreen({
     ];
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             {/* Standardized HeaderBar */}
             <HeaderBar
                 title="BoardingHub"
@@ -457,7 +457,7 @@ export default function ProfileScreen({
                 activeTab="PROFILE"
                 onTabChange={(tab) => onNavigateTab && onNavigateTab(tab)}
             />
-        </SafeAreaView>
+        </View>
     );
 }
 

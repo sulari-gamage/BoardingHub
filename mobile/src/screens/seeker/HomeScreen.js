@@ -370,7 +370,7 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             {/* Standard Dark Emerald Header Bar with BoardingHub Logo */}
             <HeaderBar
                 title="BoardingHub"
@@ -559,7 +559,7 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
                     </View>
                 </View>
             </Modal>
-        </SafeAreaView>
+        </View>
     );
 }
 

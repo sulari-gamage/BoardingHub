@@ -98,7 +98,7 @@ export default function OwnerPropertiesScreen({
     ];
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             {/* Standardized HeaderBar */}
             <HeaderBar
                 title="BoardingHub"
@@ -312,7 +312,7 @@ export default function OwnerPropertiesScreen({
                     );
                 })}
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 

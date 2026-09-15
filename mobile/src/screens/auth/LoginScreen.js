@@ -20,11 +20,9 @@ import api from '../../services/api';
 
 const REMEMBER_EMAIL_KEY = '@boardinghub_remember_email';
 const REMEMBER_PASSWORD_KEY = '@boardinghub_remember_password';
-const REMEMBER_ROLE_KEY = '@boardinghub_remember_role';
 const REMEMBER_ME_KEY = '@boardinghub_remember_me_flag';
 
 export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
-    const [selectedRole, setSelectedRole] = useState('Seekers'); // Seekers | Owners | Admins
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -41,12 +39,10 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
                 const isRemembered = window.localStorage.getItem(REMEMBER_ME_KEY) === 'true';
                 const savedEmail = window.localStorage.getItem(REMEMBER_EMAIL_KEY);
                 const savedPassword = window.localStorage.getItem(REMEMBER_PASSWORD_KEY);
-                const savedRole = window.localStorage.getItem(REMEMBER_ROLE_KEY);
 
                 if (isRemembered || savedEmail) {
                     if (savedEmail) setEmail(savedEmail);
                     if (savedPassword) setPassword(savedPassword);
-                    if (savedRole) setSelectedRole(savedRole);
                     setRememberMe(true);
                 }
             }
@@ -63,18 +59,16 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
         try {
             setLoading(true);
 
-            // Handle Remember Me persistence (stores email, password, and role)
+            // Handle Remember Me persistence (stores email and password)
             if (typeof window !== 'undefined' && window.localStorage) {
                 if (rememberMe) {
                     window.localStorage.setItem(REMEMBER_ME_KEY, 'true');
                     window.localStorage.setItem(REMEMBER_EMAIL_KEY, email.trim());
                     window.localStorage.setItem(REMEMBER_PASSWORD_KEY, password);
-                    window.localStorage.setItem(REMEMBER_ROLE_KEY, selectedRole);
                 } else {
                     window.localStorage.removeItem(REMEMBER_ME_KEY);
                     window.localStorage.removeItem(REMEMBER_EMAIL_KEY);
                     window.localStorage.removeItem(REMEMBER_PASSWORD_KEY);
-                    window.localStorage.removeItem(REMEMBER_ROLE_KEY);
                 }
             }
 
@@ -124,27 +118,6 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
                                 <Text style={styles.cardSubtitle}>
                                     Find your stay or manage your properties seamlessly.
                                 </Text>
-
-                                {/* Role Switcher Tabs */}
-                                <View style={styles.roleContainer}>
-                                    {['Seekers', 'Owners', 'Admins'].map((role) => {
-                                        const isActive = selectedRole === role;
-                                        return (
-                                            <TouchableOpacity
-                                                key={role}
-                                                style={[styles.roleTab, isActive && styles.roleTabActive]}
-                                                onPress={() => setSelectedRole(role)}
-                                                activeOpacity={0.8}
-                                            >
-                                                <Text
-                                                    style={[styles.roleText, isActive && styles.roleTextActive]}
-                                                >
-                                                    {role}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
 
                                 {/* Email / Username Input */}
                                 <View style={styles.formGroup}>
@@ -247,7 +220,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F8FAFC',
-        paddingTop: Platform.OS === 'android' ? 20 : 0,
     },
     scrollContent: {
         flexGrow: 1,
@@ -303,37 +275,6 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
 
-    /* Role Switcher */
-    roleContainer: {
-        flexDirection: 'row',
-        backgroundColor: '#F1F5F9',
-        borderRadius: 10,
-        padding: 3,
-        marginBottom: 20,
-    },
-    roleTab: {
-        flex: 1,
-        paddingVertical: 9,
-        alignItems: 'center',
-        borderRadius: 7,
-    },
-    roleTabActive: {
-        backgroundColor: '#FFFFFF',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 3,
-        elevation: 2,
-    },
-    roleText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#64748B',
-    },
-    roleTextActive: {
-        color: '#1B4D3E',
-        fontWeight: '800',
-    },
 
     /* Form Controls */
     formGroup: {

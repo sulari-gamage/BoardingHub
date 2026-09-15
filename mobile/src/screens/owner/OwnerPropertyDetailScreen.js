@@ -8,7 +8,8 @@ import {
     ScrollView,
     Image,
     Platform,
-    Linking
+    Linking,
+    ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,6 +37,23 @@ export default function OwnerPropertyDetailScreen({
         totalRooms: 4,
         availableRooms: 2
     });
+
+    const [propertyReviews, setPropertyReviews] = useState([]);
+    const [loadingReviews, setLoadingReviews] = useState(false);
+
+    useEffect(() => {
+        if (currentProperty?.id) {
+            setLoadingReviews(true);
+            api.reviews.getByPropertyId(currentProperty.id)
+                .then((res) => {
+                    if (res && Array.isArray(res)) {
+                        setPropertyReviews(res);
+                    }
+                })
+                .catch((err) => console.log('[OwnerPropertyDetail] Reviews fetch error:', err))
+                .finally(() => setLoadingReviews(false));
+        }
+    }, [currentProperty?.id]);
 
     useEffect(() => {
         if (!property) return;
@@ -358,6 +376,81 @@ export default function OwnerPropertyDetailScreen({
                     </>
                 )}
 
+                {/* Seeker Reviews Section */}
+                <View style={{ marginBottom: 22 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <Text style={styles.sectionTitle}>Seeker Reviews ({propertyReviews.length})</Text>
+                    </View>
+
+                    {loadingReviews ? (
+                        <ActivityIndicator size="small" color="#133E32" style={{ marginVertical: 15 }} />
+                    ) : propertyReviews.length > 0 ? (
+                        propertyReviews.map((rev) => {
+                            const revAvatar = (rev.userAvatar && typeof rev.userAvatar === 'string' && rev.userAvatar.trim().length > 0)
+                                ? rev.userAvatar
+                                : (rev.seekerAvatar && typeof rev.seekerAvatar === 'string' && rev.seekerAvatar.trim().length > 0)
+                                    ? rev.seekerAvatar
+                                    : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80';
+                            const revName = rev.userName || rev.seekerName || 'Anonymous Seeker';
+                            const dateStr = rev.createdAt
+                                ? new Date(rev.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                : 'Recently';
+
+                            return (
+                                <View
+                                    key={rev.id || Math.random().toString()}
+                                    style={{
+                                        backgroundColor: '#FFFFFF',
+                                        borderRadius: 16,
+                                        padding: 14,
+                                        marginBottom: 10,
+                                        borderWidth: 1,
+                                        borderColor: '#E2E8F0',
+                                        shadowColor: '#0F172A',
+                                        shadowOffset: { width: 0, height: 1 },
+                                        shadowOpacity: 0.03,
+                                        shadowRadius: 4,
+                                        elevation: 1,
+                                    }}
+                                >
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                                        <Image source={{ uri: revAvatar }} style={{ width: 36, height: 36, borderRadius: 18, marginRight: 10 }} />
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F172A' }}>{revName}</Text>
+                                            <Text style={{ fontSize: 11, color: '#64748B' }}>{dateStr}</Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 }}>
+                                            <Ionicons name="star" size={12} color="#D97706" style={{ marginRight: 3 }} />
+                                            <Text style={{ fontSize: 12, fontWeight: '800', color: '#B45309' }}>{rev.rating}</Text>
+                                        </View>
+                                    </View>
+                                    {rev.comment ? (
+                                        <Text style={{ fontSize: 13, color: '#334155', lineHeight: 18 }}>{rev.comment}</Text>
+                                    ) : (
+                                        <Text style={{ fontSize: 12, fontStyle: 'italic', color: '#94A3B8' }}>No written comment provided.</Text>
+                                    )}
+                                </View>
+                            );
+                        })
+                    ) : (
+                        <View
+                            style={{
+                                backgroundColor: '#FFFFFF',
+                                borderRadius: 14,
+                                padding: 16,
+                                alignItems: 'center',
+                                borderWidth: 1,
+                                borderColor: '#E2E8F0',
+                                borderStyle: 'dashed'
+                            }}
+                        >
+                            <Ionicons name="chatbox-ellipses-outline" size={26} color="#94A3B8" style={{ marginBottom: 4 }} />
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: '#133E32', marginBottom: 2 }}>No seeker reviews yet</Text>
+                            <Text style={{ fontSize: 12, color: '#64748B' }}>When seekers review this property, their feedback will appear here.</Text>
+                        </View>
+                    )}
+                </View>
+
                 {/* Map View Box */}
                 <TouchableOpacity style={styles.mapCard} activeOpacity={0.9} onPress={handleMapPress}>
                     <MapView
@@ -394,7 +487,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F8FAFC',
-        paddingTop: Platform.OS === 'android' ? 35 : 0,
     },
     header: {
         flexDirection: 'row',

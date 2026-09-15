@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, StatusBar } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, StatusBar, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './src/services/api';
 
@@ -289,7 +289,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
         {/* Central Screen Router */}
@@ -589,7 +589,7 @@ export default function App() {
             onOpenNotifications={handleOpenNotifications}
           />
         )}
-      </SafeAreaView>
+      </View>
     </SafeAreaProvider>
   );
 }
