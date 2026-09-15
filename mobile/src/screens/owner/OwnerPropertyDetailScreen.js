@@ -13,8 +13,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Marker } from 'react-native-maps';
-import { api } from '../../services/api';
+import api from '../../services/api';
+import OccupantDetailsModal from '../../components/OccupantDetailsModal';
 
 export default function OwnerPropertyDetailScreen({
     property,
@@ -40,6 +40,9 @@ export default function OwnerPropertyDetailScreen({
 
     const [propertyReviews, setPropertyReviews] = useState([]);
     const [loadingReviews, setLoadingReviews] = useState(false);
+    const [approvedOccupants, setApprovedOccupants] = useState([]);
+    const [loadingOccupants, setLoadingOccupants] = useState(false);
+    const [isOccupantModalVisible, setIsOccupantModalVisible] = useState(false);
 
     useEffect(() => {
         if (currentProperty?.id) {
@@ -52,6 +55,16 @@ export default function OwnerPropertyDetailScreen({
                 })
                 .catch((err) => console.log('[OwnerPropertyDetail] Reviews fetch error:', err))
                 .finally(() => setLoadingReviews(false));
+
+            setLoadingOccupants(true);
+            api.bookings.getByPropertyId(currentProperty.id)
+                .then((res) => {
+                    if (res && Array.isArray(res)) {
+                        setApprovedOccupants(res.filter(b => b.status === 'APPROVED'));
+                    }
+                })
+                .catch((err) => console.log('[OwnerPropertyDetail] Occupants fetch error:', err))
+                .finally(() => setLoadingOccupants(false));
         }
     }, [currentProperty?.id]);
 
@@ -202,7 +215,7 @@ export default function OwnerPropertyDetailScreen({
                     {/* Images Card */}
                     <TouchableOpacity style={styles.actionCard} onPress={() => onOpenGallery && onOpenGallery(currentProperty)} activeOpacity={0.85}>
                         <View style={styles.iconCircle}>
-                            <Ionicons name="images-outline" size={24} color="#133E32" />
+                            <Ionicons name="add-circle-outline" size={26} color="#133E32" />
                         </View>
                         <Text style={styles.actionCardTitle}>Images</Text>
                     </TouchableOpacity>
@@ -222,6 +235,16 @@ export default function OwnerPropertyDetailScreen({
                         </View>
                         <Text style={styles.actionCardTitle}>Booking</Text>
                     </TouchableOpacity>
+
+                    {/* Occupants Card - Only for Annex / Whole House (non-room-based) properties */}
+                    {(currentProperty?.propertyNature === 'WHOLE_HOUSE' || currentProperty?.raw?.propertyNature === 'WHOLE_HOUSE' || currentProperty?.propertyNature === 'ANNEX' || currentProperty?.raw?.propertyNature === 'ANNEX' || currentProperty?.boardingType === 'ANNEX' || currentProperty?.raw?.boardingType === 'ANNEX' || currentProperty?.boardingType === 'WHOLE_HOUSE') && (
+                        <TouchableOpacity style={styles.actionCard} onPress={() => setIsOccupantModalVisible(true)} activeOpacity={0.85}>
+                            <View style={styles.iconCircle}>
+                                <Ionicons name="people-outline" size={24} color="#133E32" />
+                            </View>
+                            <Text style={styles.actionCardTitle}>Occupants</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 {/* Property Information */}
@@ -376,6 +399,86 @@ export default function OwnerPropertyDetailScreen({
                     </>
                 )}
 
+                {/* Approved Occupants Preview */}
+                {approvedOccupants.length > 0 && (
+                    <View style={{ marginBottom: 22 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                            <Text style={styles.sectionTitle}>Approved Occupants ({approvedOccupants.length})</Text>
+                            <TouchableOpacity onPress={() => setIsOccupantModalVisible(true)}>
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: '#133E32' }}>View All</Text>
+                            </TouchableOpacity>
+                        </View>
+                        {approvedOccupants.slice(0, 3).map((occ, idx) => {
+                            const name = occ.seekerName || occ.userName || 'Occupant';
+                            const initial = name.charAt(0).toUpperCase();
+                            let avatar = occ.seekerAvatarUrl || occ.seekerAvatar;
+                            if (avatar && typeof avatar === 'string' && avatar.startsWith('/')) {
+                                const baseUrl = api.getBaseUrl ? api.getBaseUrl() : 'http://192.168.1.100:8080';
+                                avatar = `${baseUrl}${avatar}`;
+                            }
+                            const phone = occ.seekerPhone || occ.seekerWhatsapp || '';
+
+                            return (
+                                <View
+                                    key={occ.id || idx}
+                                    style={{
+                                        backgroundColor: '#FFFFFF',
+                                        borderRadius: 16,
+                                        padding: 14,
+                                        marginBottom: 10,
+                                        borderWidth: 1,
+                                        borderColor: '#E2E8F0',
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                    }}
+                                >
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                        {avatar ? (
+                                            <Image source={{ uri: avatar }} style={{ width: 44, height: 44, borderRadius: 22, marginRight: 12 }} />
+                                        ) : (
+                                            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#E6F0EC', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                                                <Text style={{ fontSize: 18, fontWeight: '900', color: '#133E32' }}>{initial}</Text>
+                                            </View>
+                                        )}
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ fontSize: 15, fontWeight: '800', color: '#0F172A' }}>{name}</Text>
+                                            <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                                                {occ.roomName ? `Room: ${occ.roomName}` : 'Approved Resident'}
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    {phone ? (
+                                        <TouchableOpacity
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                backgroundColor: '#25D366',
+                                                paddingHorizontal: 12,
+                                                paddingVertical: 7,
+                                                borderRadius: 10,
+                                            }}
+                                            onPress={() => {
+                                                const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+                                                const formatted = cleanPhone.startsWith('0') ? '94' + cleanPhone.substring(1) : cleanPhone;
+                                                const msg = encodeURIComponent(`Hi ${name}, contacting you via BoardingHub.`);
+                                                Linking.openURL(`whatsapp://send?phone=${formatted}&text=${msg}`).catch(() => {
+                                                    Linking.openURL(`https://wa.me/${formatted}?text=${msg}`);
+                                                });
+                                            }}
+                                            activeOpacity={0.85}
+                                        >
+                                            <Ionicons name="logo-whatsapp" size={15} color="#FFFFFF" style={{ marginRight: 5 }} />
+                                            <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFF' }}>WhatsApp</Text>
+                                        </TouchableOpacity>
+                                    ) : null}
+                                </View>
+                            );
+                        })}
+                    </View>
+                )}
+
                 {/* Seeker Reviews Section */}
                 <View style={{ marginBottom: 22 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -450,35 +553,16 @@ export default function OwnerPropertyDetailScreen({
                         </View>
                     )}
                 </View>
-
-                {/* Map View Box */}
-                <TouchableOpacity style={styles.mapCard} activeOpacity={0.9} onPress={handleMapPress}>
-                    <MapView
-                        style={StyleSheet.absoluteFillObject}
-                        zoomEnabled={false}
-                        scrollEnabled={false}
-                        pitchEnabled={false}
-                        rotateEnabled={false}
-                        region={{
-                            latitude: currentProperty.latitude || 6.9271,
-                            longitude: currentProperty.longitude || 79.8612,
-                            latitudeDelta: 0.02,
-                            longitudeDelta: 0.02,
-                        }}
-                    >
-                        <Marker
-                            coordinate={{
-                                latitude: currentProperty.latitude || 6.9271,
-                                longitude: currentProperty.longitude || 79.8612,
-                            }}
-                        />
-                    </MapView>
-                    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.1)' }]} />
-                    <View style={{ position: 'absolute', top: '42%', left: '40%', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, elevation: 4 }}>
-                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#133E32' }}>Tap for Directions</Text>
-                    </View>
-                </TouchableOpacity>
             </ScrollView>
+
+            {/* Occupants Detail Modal */}
+            <OccupantDetailsModal
+                visible={isOccupantModalVisible}
+                onClose={() => setIsOccupantModalVisible(false)}
+                occupants={approvedOccupants}
+                loading={loadingOccupants}
+                title={`${currentProperty.title} Occupants`}
+            />
         </SafeAreaView>
     );
 }

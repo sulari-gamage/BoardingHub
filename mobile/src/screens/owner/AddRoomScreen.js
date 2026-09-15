@@ -507,7 +507,7 @@ export default function AddRoomScreen({ onBack, onSaveRoom, initialRoomData = nu
                             style={{ backgroundColor: '#133E32', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
                             activeOpacity={0.8}
                         >
-                            <Ionicons name="camera" size={14} color="#FFD700" style={{ marginRight: 6 }} />
+                            <Ionicons name="add-circle-outline" size={16} color="#FFD700" style={{ marginRight: 6 }} />
                             <Text style={{ color: '#FFD700', fontSize: 12, fontWeight: '800' }}>+ Add Photo</Text>
                         </TouchableOpacity>
                     </View>
@@ -533,7 +533,7 @@ export default function AddRoomScreen({ onBack, onSaveRoom, initialRoomData = nu
                             style={{ height: 90, backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: '#CBD5E1', borderStyle: 'dashed', borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}
                             activeOpacity={0.8}
                         >
-                            <Ionicons name="images-outline" size={28} color="#133E32" />
+                            <Ionicons name="add-circle-outline" size={32} color="#133E32" />
                             <Text style={{ fontSize: 12, fontWeight: '700', color: '#133E32', marginTop: 6 }}>Upload images of this specific unit</Text>
                         </TouchableOpacity>
                     )}

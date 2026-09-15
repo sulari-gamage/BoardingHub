@@ -51,6 +51,12 @@ public class BookingController {
         return ResponseEntity.ok(requests);
     }
 
+    @GetMapping("/property/{propertyId}")
+    public ResponseEntity<List<BookingResponse>> getBookingsByPropertyId(@PathVariable Long propertyId) {
+        List<BookingResponse> bookings = bookingService.getBookingsByPropertyId(propertyId);
+        return ResponseEntity.ok(bookings);
+    }
+
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('SEEKER', 'OWNER', 'ADMIN')")
     public ResponseEntity<BookingResponse> updateBookingStatus(

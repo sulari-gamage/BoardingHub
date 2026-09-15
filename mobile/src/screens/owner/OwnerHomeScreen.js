@@ -6,6 +6,7 @@ import {
     TouchableOpacity,
     ScrollView,
     ActivityIndicator,
+    Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,15 +60,26 @@ export default function OwnerHomeScreen({
 
     const totalProperties = properties.length;
     const pendingRequestsCount = requests.filter(r => r.status === 'PENDING').length;
+
+    // Accurately calculate available vacancies across rooms or whole property/annex listings
     const availableSpaces = properties.reduce((acc, p) => {
-        return acc + (p.rooms ? p.rooms.reduce((rAcc, r) => rAcc + Math.max(0, r.remainingSpaces || 0), 0) : 0);
+        if (p.rooms && p.rooms.length > 0) {
+            return acc + p.rooms.reduce((rAcc, r) => rAcc + Math.max(0, r.remainingSpaces !== undefined && r.remainingSpaces !== null ? r.remainingSpaces : ((r.totalSpaces || r.capacity || 1) - (r.occupied || 0))), 0);
+        }
+        const totalCap = p.totalCapacity || p.capacity || 0;
+        const occupied = p.totalOccupied || 0;
+        return acc + Math.max(0, totalCap - occupied);
     }, 0);
+
     const totalOccupants = properties.reduce((acc, p) => {
-        return acc + (p.rooms ? p.rooms.reduce((rAcc, r) => {
-            const total = r.totalSpaces || r.capacity || 0;
-            const remaining = r.remainingSpaces || 0;
-            return rAcc + Math.max(0, total - remaining);
-        }, 0) : 0);
+        if (p.rooms && p.rooms.length > 0) {
+            return acc + p.rooms.reduce((rAcc, r) => {
+                const total = r.totalSpaces || r.capacity || 0;
+                const remaining = r.remainingSpaces !== undefined && r.remainingSpaces !== null ? r.remainingSpaces : 0;
+                return rAcc + Math.max(0, total - remaining);
+            }, 0);
+        }
+        return acc + Math.max(0, p.totalOccupied || 0);
     }, 0);
 
     const recentRequests = requests.slice(0, 3);
@@ -124,16 +136,13 @@ export default function OwnerHomeScreen({
                         <Text style={styles.statValue}>{availableSpaces}</Text>
                     </View>
 
-                    {/* Stat Card 4: Occupants */}
-                    <View style={[styles.statCard, styles.earningsCard]}>
-                        <View style={styles.iconCircleDark}>
-                            <Ionicons name="people-outline" size={22} color="#FFD700" />
+                    {/* Stat Card 4: Occupants (Matching standard card UI) */}
+                    <View style={styles.statCard}>
+                        <View style={styles.iconCircleLight}>
+                            <Ionicons name="people-outline" size={22} color="#133E32" />
                         </View>
-                        <Text style={styles.statLabelLight}>OCCUPANTS</Text>
-                        <Text style={styles.statValueLight}>{totalOccupants}</Text>
-                        <View style={styles.watermarkBgIcon}>
-                            <Ionicons name="people-outline" size={70} color="rgba(255, 255, 255, 0.07)" />
-                        </View>
+                        <Text style={styles.statLabel}>OCCUPANTS</Text>
+                        <Text style={styles.statValue}>{totalOccupants}</Text>
                     </View>
                 </View>
 
@@ -155,12 +164,23 @@ export default function OwnerHomeScreen({
                         recentRequests.map((req, idx) => {
                             const name = req.seekerName || 'Applicant';
                             const initial = name.charAt(0).toUpperCase();
+
+                            let seekerAvatar = req.seekerAvatarUrl || req.avatar;
+                            if (seekerAvatar && typeof seekerAvatar === 'string' && seekerAvatar.startsWith('/')) {
+                                const baseUrl = api.getBaseUrl ? api.getBaseUrl() : 'http://192.168.1.100:8080';
+                                seekerAvatar = `${baseUrl}${seekerAvatar}`;
+                            }
+
                             return (
                                 <React.Fragment key={req.id || idx}>
                                     <View style={styles.requestItemRow}>
-                                        <View style={styles.avatarCircle}>
-                                            <Text style={styles.avatarInitial}>{initial}</Text>
-                                        </View>
+                                        {seekerAvatar ? (
+                                            <Image source={{ uri: seekerAvatar }} style={styles.avatarCircle} />
+                                        ) : (
+                                            <View style={styles.avatarCircle}>
+                                                <Text style={styles.avatarInitial}>{initial}</Text>
+                                            </View>
+                                        )}
 
                                         <View style={styles.requestMainInfo}>
                                             <Text style={styles.tenantName}>{name}</Text>
@@ -170,10 +190,35 @@ export default function OwnerHomeScreen({
                                             </View>
                                         </View>
                                     </View>
+
                                     <View style={styles.requestActionsRow}>
-                                        <View style={req.status === 'PENDING' ? styles.pendingBadge : styles.reviewedBadge}>
-                                            <View style={req.status === 'PENDING' ? styles.yellowDot : styles.greyDot} />
-                                            <Text style={req.status === 'PENDING' ? styles.pendingBadgeText : styles.reviewedBadgeText}>
+                                        <View
+                                            style={
+                                                req.status === 'APPROVED'
+                                                    ? styles.approvedBadge
+                                                    : req.status === 'REJECTED'
+                                                        ? styles.rejectedBadge
+                                                        : styles.pendingBadge
+                                            }
+                                        >
+                                            <View
+                                                style={
+                                                    req.status === 'APPROVED'
+                                                        ? styles.greenDot
+                                                        : req.status === 'REJECTED'
+                                                            ? styles.redDot
+                                                            : styles.yellowDot
+                                                }
+                                            />
+                                            <Text
+                                                style={
+                                                    req.status === 'APPROVED'
+                                                        ? styles.approvedBadgeText
+                                                        : req.status === 'REJECTED'
+                                                            ? styles.rejectedBadgeText
+                                                            : styles.pendingBadgeText
+                                                }
+                                            >
                                                 {req.status}
                                             </Text>
                                         </View>
@@ -443,18 +488,61 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         color: '#B45309',
     },
+    approvedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#DCFCE7',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 12,
+    },
+    greenDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#16A34A',
+        marginRight: 6,
+    },
+    approvedBadgeText: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#15803D',
+    },
+    rejectedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FEE2E2',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 12,
+    },
+    redDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#DC2626',
+        marginRight: 6,
+    },
+    rejectedBadgeText: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#B91C1C',
+    },
     reviewReqBtn: {
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1.5,
-        borderColor: '#133E32',
+        backgroundColor: '#133E32',
         paddingHorizontal: 14,
         paddingVertical: 8,
         borderRadius: 12,
+        shadowColor: '#133E32',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 2,
     },
     reviewReqBtnText: {
         fontSize: 13,
         fontWeight: '800',
-        color: '#133E32',
+        color: '#FFD700',
     },
 
     itemSeparator: {

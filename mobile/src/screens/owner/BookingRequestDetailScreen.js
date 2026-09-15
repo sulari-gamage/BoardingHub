@@ -13,6 +13,38 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const isMoveInDateReached = (dateStr) => {
+    if (!dateStr) return false;
+    try {
+        let dateObj = null;
+        if (typeof dateStr === 'string') {
+            if (dateStr.includes('-')) {
+                const parts = dateStr.split('-');
+                if (parts.length === 3) {
+                    dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                }
+            } else if (dateStr.includes('/')) {
+                const parts = dateStr.split('/');
+                if (parts.length === 3) {
+                    dateObj = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+                }
+            }
+        }
+        if (!dateObj || isNaN(dateObj.getTime())) {
+            dateObj = new Date(dateStr);
+        }
+        if (isNaN(dateObj.getTime())) return false;
+
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const target = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+        return today >= target;
+    } catch (e) {
+        return false;
+    }
+};
 
 export default function BookingRequestDetailScreen({ request, onBack, onAccept, onReject }) {
     const currentRequest = request || {
@@ -30,6 +62,13 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
         message: 'I am highly interested in securing the shared room at Green Valley Boarding. I appreciate the property\'s commitment to sustainable living and eco-friendly practices.',
         tags: ['New Applicant', 'Eco-conscious']
     };
+
+    // Mark request as reviewed by owner in AsyncStorage as soon as details are viewed
+    React.useEffect(() => {
+        if (currentRequest && currentRequest.id) {
+            AsyncStorage.setItem(`reviewed_booking_${currentRequest.id}`, 'true').catch(() => { });
+        }
+    }, [currentRequest?.id]);
 
     const remaining = currentRequest.remainingSpaces !== undefined ? currentRequest.remainingSpaces : 1;
     const isFilled = remaining <= 0;
@@ -199,7 +238,54 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
                     </View>
                 </View>
 
-                {/* 3. Message Section */}
+                {/* 3. Request Progress Timeline */}
+                <Text style={styles.sectionTitle}>Request Progress</Text>
+                {(() => {
+                    const rawStatus = currentRequest.status || 'PENDING';
+                    const isApproved = rawStatus === 'ACCEPTED' || rawStatus === 'APPROVED';
+                    const isRejected = rawStatus === 'REJECTED' || rawStatus === 'DECLINED';
+                    const isCancelled = rawStatus === 'CANCELLED';
+                    const isResponded = isApproved || isRejected || isCancelled;
+
+                    const moveInReached = isMoveInDateReached(currentRequest.moveInDate || currentRequest.date);
+
+                    const timelineSteps = [
+                        { label: 'Booking Request Sent', date: currentRequest.date || 'Submitted', done: true },
+                        { label: 'Owner Review', date: 'Review Completed', done: true },
+                        { label: 'Owner Response', date: isApproved ? 'Approved by Owner' : isRejected ? 'Declined by Owner' : isCancelled ? 'Request Cancelled' : 'Pending Decision', done: isResponded },
+                        { label: 'Move-in Status', date: isApproved ? (moveInReached ? 'Moved In (Date Reached)' : `Scheduled for ${currentRequest.moveInDate || 'Move-in Date'}`) : (isRejected ? 'Declined' : isCancelled ? 'Cancelled' : 'Pending Approval'), done: isApproved && moveInReached }
+                    ];
+
+                    return (
+                        <View style={styles.timelineCard}>
+                            {timelineSteps.map((step, idx) => (
+                                <View key={idx} style={styles.timelineItem}>
+                                    <View style={styles.timelineIconCol}>
+                                        <View style={[styles.timelineNode, step.done && styles.timelineNodeDone]}>
+                                            <Ionicons
+                                                name={step.done ? 'checkmark' : 'ellipse-outline'}
+                                                size={12}
+                                                color={step.done ? '#FFFFFF' : '#94A3B8'}
+                                            />
+                                        </View>
+                                        {idx < timelineSteps.length - 1 && (
+                                            <View style={[styles.timelineLine, step.done && styles.timelineLineDone]} />
+                                        )}
+                                    </View>
+
+                                    <View style={styles.timelineContent}>
+                                        <Text style={[styles.stepLabel, step.done && styles.stepLabelDone]}>
+                                            {step.label}
+                                        </Text>
+                                        <Text style={styles.stepDate}>{step.date}</Text>
+                                    </View>
+                                </View>
+                            ))}
+                        </View>
+                    );
+                })()}
+
+                {/* 4. Message Section */}
                 <Text style={styles.sectionTitle}>Message from {currentRequest.tenantName.split(' ')[0]}</Text>
 
                 <View style={styles.messageCard}>
@@ -452,5 +538,72 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '900',
         color: '#FFFFFF',
+    },
+
+    /* Timeline Stepper Styles */
+    timelineCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        marginBottom: 20,
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    timelineItem: {
+        flexDirection: 'row',
+        minHeight: 52,
+    },
+    timelineIconCol: {
+        alignItems: 'center',
+        marginRight: 16,
+        width: 24,
+    },
+    timelineNode: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: '#F1F5F9',
+        borderWidth: 1.5,
+        borderColor: '#CBD5E1',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 2,
+    },
+    timelineNodeDone: {
+        backgroundColor: '#133E32',
+        borderColor: '#133E32',
+    },
+    timelineLine: {
+        width: 2,
+        flex: 1,
+        backgroundColor: '#E2E8F0',
+        marginVertical: 2,
+    },
+    timelineLineDone: {
+        backgroundColor: '#133E32',
+    },
+    timelineContent: {
+        flex: 1,
+        paddingBottom: 16,
+    },
+    stepLabel: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#64748B',
+        marginBottom: 2,
+    },
+    stepLabelDone: {
+        color: '#0F172A',
+        fontWeight: '800',
+    },
+    stepDate: {
+        fontSize: 12,
+        color: '#64748B',
+        fontWeight: '500',
     },
 });

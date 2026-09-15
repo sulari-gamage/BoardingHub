@@ -14,11 +14,63 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../services/api';
+
+const isMoveInDateReached = (dateStr) => {
+    if (!dateStr) return false;
+    try {
+        let dateObj = null;
+        if (typeof dateStr === 'string') {
+            if (dateStr.includes('-')) {
+                const parts = dateStr.split('-');
+                if (parts.length === 3) {
+                    dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                }
+            } else if (dateStr.includes('/')) {
+                const parts = dateStr.split('/');
+                if (parts.length === 3) {
+                    dateObj = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+                }
+            }
+        }
+        if (!dateObj || isNaN(dateObj.getTime())) {
+            dateObj = new Date(dateStr);
+        }
+        if (isNaN(dateObj.getTime())) return false;
+
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const target = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+        return today >= target;
+    } catch (e) {
+        return false;
+    }
+};
 
 export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBooking }) {
     const [isCancelling, setIsCancelling] = useState(false);
     const [liveOwnerData, setLiveOwnerData] = useState(null);
+    const [isOwnerReviewed, setIsOwnerReviewed] = useState(false);
+
+    React.useEffect(() => {
+        const checkReviewStatus = async () => {
+            const rawStatus = booking.status || 'PENDING';
+            if (rawStatus !== 'PENDING' || booking.isReviewed) {
+                setIsOwnerReviewed(true);
+                return;
+            }
+            if (booking.id) {
+                try {
+                    const reviewed = await AsyncStorage.getItem(`reviewed_booking_${booking.id}`);
+                    if (reviewed === 'true') {
+                        setIsOwnerReviewed(true);
+                    }
+                } catch (e) { }
+            }
+        };
+        checkReviewStatus();
+    }, [booking.id, booking.status]);
 
     React.useEffect(() => {
         const fetchLiveOwnerData = async () => {
@@ -54,12 +106,38 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
     const ownerPhone = liveOwnerData?.ownerPhone || booking.ownerPhone || '';
     const ownerAvatarUrl = liveOwnerData?.ownerAvatarUrl || booking.ownerAvatarUrl;
 
-    // Status Timeline steps
+    const isApproved = status === 'ACCEPTED' || status === 'APPROVED';
+    const isRejected = status === 'REJECTED' || status === 'DECLINED';
+    const isCancelled = status === 'CANCELLED';
+    const isResponded = isApproved || isRejected || isCancelled;
+
+    const targetMoveInDate = booking.moveInDate || booking.date || date;
+    const moveInReached = isMoveInDateReached(targetMoveInDate);
+
+    // Dynamic 4-step status timeline
     const timelineSteps = [
-        { label: 'Booking Request Sent', date: booking.date || 'Submitted', done: true },
-        { label: 'Owner Review', date: status === 'PENDING' ? 'In Progress' : 'Completed', done: status !== 'PENDING' },
-        { label: 'Owner Approval & Response', date: status === 'ACCEPTED' || status === 'APPROVED' ? 'Approved' : (status === 'REJECTED' || status === 'CANCELLED' ? status : 'Pending Action'), done: status === 'ACCEPTED' || status === 'APPROVED' },
-        { label: 'Move-in Ready', date: date, done: status === 'ACCEPTED' || status === 'APPROVED' }
+        {
+            label: 'Booking Request Sent',
+            date: booking.date || 'Submitted',
+            done: true
+        },
+        {
+            label: 'Owner Review',
+            date: (isOwnerReviewed || isResponded) ? 'Review Completed' : 'Awaiting Owner Review',
+            done: isOwnerReviewed || isResponded
+        },
+        {
+            label: 'Owner Response',
+            date: isApproved ? 'Approved by Owner' : isRejected ? 'Declined by Owner' : isCancelled ? 'Request Cancelled' : 'Pending Decision',
+            done: isResponded
+        },
+        {
+            label: 'Move-in Status',
+            date: isApproved
+                ? (moveInReached ? 'Moved In (Date Reached)' : `Scheduled for ${targetMoveInDate}`)
+                : (isRejected ? 'Declined' : isCancelled ? 'Cancelled' : 'Pending Approval'),
+            done: isApproved && moveInReached
+        }
     ];
 
     const handleCallHost = () => {

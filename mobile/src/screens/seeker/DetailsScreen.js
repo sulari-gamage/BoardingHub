@@ -11,11 +11,11 @@ import {
     Platform,
     Linking,
     Dimensions,
-    Modal
+    Modal,
+    ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import BookingRequestModal from '../../components/BookingRequestModal';
 import api from '../../services/api';
@@ -39,6 +39,7 @@ export default function DetailsScreen({
 
     const [propertyReviews, setPropertyReviews] = useState([]);
     const [loadingReviews, setLoadingReviews] = useState(false);
+    const [approvedOccupants, setApprovedOccupants] = useState([]);
 
     useEffect(() => {
         if (boarding?.id) {
@@ -51,6 +52,14 @@ export default function DetailsScreen({
                 })
                 .catch(err => console.log('[DetailsScreen] Reviews load error:', err))
                 .finally(() => setLoadingReviews(false));
+
+            api.bookings.getByPropertyId(boarding.id)
+                .then(res => {
+                    if (res && Array.isArray(res)) {
+                        setApprovedOccupants(res.filter(b => b.status === 'APPROVED'));
+                    }
+                })
+                .catch(err => console.log('[DetailsScreen] Approved bookings fetch error:', err));
         }
     }, [boarding?.id]);
     const [selectedRoom, setSelectedRoom] = useState('shared');
@@ -796,6 +805,80 @@ export default function DetailsScreen({
                         </View>
                     </View>
 
+                    {/* Approved Occupants Section */}
+                    {approvedOccupants.length > 0 && (
+                        <View style={{ marginBottom: 20 }}>
+                            <Text style={styles.sectionHeading}>Approved Occupants ({approvedOccupants.length})</Text>
+                            {approvedOccupants.map((occ, idx) => {
+                                const name = occ.seekerName || occ.userName || 'Occupant';
+                                const initial = name.charAt(0).toUpperCase();
+                                let avatar = occ.seekerAvatarUrl || occ.seekerAvatar;
+                                if (avatar && typeof avatar === 'string' && avatar.startsWith('/')) {
+                                    const baseUrl = api.getBaseUrl ? api.getBaseUrl() : 'http://192.168.1.100:8080';
+                                    avatar = `${baseUrl}${avatar}`;
+                                }
+                                const phone = occ.seekerPhone || occ.seekerWhatsapp || '';
+
+                                return (
+                                    <View
+                                        key={occ.id || idx}
+                                        style={{
+                                            backgroundColor: '#FFFFFF',
+                                            borderRadius: 16,
+                                            padding: 14,
+                                            marginBottom: 10,
+                                            borderWidth: 1,
+                                            borderColor: '#E2E8F0',
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                        }}
+                                    >
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                            {avatar ? (
+                                                <Image source={{ uri: avatar }} style={{ width: 44, height: 44, borderRadius: 22, marginRight: 12 }} />
+                                            ) : (
+                                                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#E6F0EC', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                                                    <Text style={{ fontSize: 18, fontWeight: '900', color: '#133E32' }}>{initial}</Text>
+                                                </View>
+                                            )}
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ fontSize: 15, fontWeight: '800', color: '#0F172A' }}>{name}</Text>
+                                                <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                                                    {occ.roomName ? `Room: ${occ.roomName}` : 'Approved Resident'}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        {phone ? (
+                                            <TouchableOpacity
+                                                style={{
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    backgroundColor: '#25D366',
+                                                    paddingHorizontal: 12,
+                                                    paddingVertical: 7,
+                                                    borderRadius: 10,
+                                                }}
+                                                onPress={() => {
+                                                    const cleanPhone = formatWhatsAppPhone(phone);
+                                                    const msg = encodeURIComponent(`Hi ${name}, contacting you via BoardingHub.`);
+                                                    Linking.openURL(`whatsapp://send?phone=${cleanPhone}&text=${msg}`).catch(() => {
+                                                        Linking.openURL(`https://wa.me/${cleanPhone}?text=${msg}`);
+                                                    });
+                                                }}
+                                                activeOpacity={0.85}
+                                            >
+                                                <Ionicons name="logo-whatsapp" size={15} color="#FFFFFF" style={{ marginRight: 5 }} />
+                                                <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFF' }}>WhatsApp</Text>
+                                            </TouchableOpacity>
+                                        ) : null}
+                                    </View>
+                                );
+                            })}
+                        </View>
+                    )}
+
                     {/* Seeker Reviews List Widget (Displayed above Map) */}
                     <View style={{ marginBottom: 20 }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -877,41 +960,6 @@ export default function DetailsScreen({
                             </TouchableOpacity>
                         )}
                     </View>
-
-                    {/* Location Map Section */}
-                    <Text style={styles.sectionHeading}>Location</Text>
-                    <TouchableOpacity
-                        style={styles.mapCard}
-                        onPress={handleMapPress}
-                        activeOpacity={0.9}
-                    >
-                        <MapView
-                            style={StyleSheet.absoluteFillObject}
-                            zoomEnabled={false}
-                            scrollEnabled={false}
-                            pitchEnabled={false}
-                            rotateEnabled={false}
-                            region={{
-                                latitude: mapCoords.lat,
-                                longitude: mapCoords.lng,
-                                latitudeDelta: 0.015,
-                                longitudeDelta: 0.015,
-                            }}
-                        >
-                            <Marker
-                                coordinate={{
-                                    latitude: mapCoords.lat,
-                                    longitude: mapCoords.lng,
-                                }}
-                            />
-                        </MapView>
-                        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.1)' }]} />
-                        <View style={styles.mapOverlayPin}>
-                            <View style={styles.mapPinBadge}>
-                                <Text style={styles.mapPinText}>Tap to Open Map</Text>
-                            </View>
-                        </View>
-                    </TouchableOpacity>
                 </View>
             </ScrollView>
 

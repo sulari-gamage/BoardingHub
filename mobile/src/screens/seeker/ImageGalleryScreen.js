@@ -36,16 +36,7 @@ export default function ImageGalleryScreen({
                     ? [boarding.imageUrl]
                     : [];
 
-        const roomImgs = [];
-        if (boarding.rooms && Array.isArray(boarding.rooms)) {
-            boarding.rooms.forEach(r => {
-                if (r.imageUrl) roomImgs.push(r.imageUrl);
-                if (r.imageUrls && Array.isArray(r.imageUrls)) {
-                    r.imageUrls.forEach(url => { if (url) roomImgs.push(url); });
-                }
-            });
-        }
-        return Array.from(new Set([...propImgs, ...roomImgs].filter(url => url && typeof url === 'string')));
+        return Array.from(new Set(propImgs.filter(url => url && typeof url === 'string')));
     };
 
     const [images, setImages] = useState(getInitialImages());
@@ -168,6 +159,7 @@ export default function ImageGalleryScreen({
                 amenities: r.amenities,
                 rentType: r.rentType,
                 imageUrl: r.imageUrl,
+                imageUrls: r.imageUrls || (r.imageUrl ? [r.imageUrl] : []),
                 isElectricityIncluded: r.isElectricityIncluded,
                 isWaterIncluded: r.isWaterIncluded
             }));
@@ -303,7 +295,7 @@ export default function ImageGalleryScreen({
                     <Text style={styles.emptyText}>No property photos yet.</Text>
                     {isOwner && (
                         <TouchableOpacity style={styles.addFirstBtn} onPress={openDeviceGalleryPicker} activeOpacity={0.85}>
-                            <Ionicons name="add" size={18} color="#FFFFFF" style={{ marginRight: 4 }} />
+                            <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
                             <Text style={styles.addFirstText}>Add Photo</Text>
                         </TouchableOpacity>
                     )}
@@ -347,7 +339,7 @@ export default function ImageGalleryScreen({
                     {/* Add Photo Card at End of Thumbnails */}
                     {isOwner && (
                         <TouchableOpacity style={styles.addThumbCard} onPress={openDeviceGalleryPicker} activeOpacity={0.85}>
-                            <Ionicons name="add" size={24} color="#1B4D3E" />
+                            <Ionicons name="add-circle-outline" size={26} color="#1B4D3E" />
                             <Text style={styles.addThumbText}>Add</Text>
                         </TouchableOpacity>
                     )}

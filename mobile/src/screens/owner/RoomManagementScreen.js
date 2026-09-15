@@ -18,17 +18,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 import { uploadImage } from '../../services/uploadService';
+import OccupantDetailsModal from '../../components/OccupantDetailsModal';
 import AddRoomScreen from './AddRoomScreen';
 
-export default function RoomManagementScreen({ onBack, onAddRoom, property, propertyName = 'Boarding Property', onPropertyUpdated }) {
+export default function RoomManagementScreen({ onBack, onAddRoom, property, propertyName = 'Boarding Property', onPropertyUpdated, onOpenBookings, onOpenGallery }) {
     const isRoomBased = property?.propertyNature
         ? property.propertyNature === 'ROOM_BASED'
         : (property?.rooms && property.rooms.length > 0 && !property.rooms.some(r => r.roomType === 'Whole House / Annex' || r.roomType === 'Entire Boarding House'));
     const displayPropertyName = property?.title || propertyName;
 
-    // Edit Room Modal State
+    // Room Hub & Edit State
+    const [selectedManageRoom, setSelectedManageRoom] = useState(null);
     const [editingRoom, setEditingRoom] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [roomOccupants, setRoomOccupants] = useState([]);
+    const [loadingRoomOccupants, setLoadingRoomOccupants] = useState(false);
+    const [isOccupantsModalOpen, setIsOccupantsModalOpen] = useState(false);
 
     // Resolve real rooms from property object passed from parent
     const rawRooms = property?.rooms || (property?.raw && property?.raw.rooms) || [];
@@ -91,7 +96,7 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
 
     const handleManageRoom = (room) => {
         const rawObj = room.raw || room;
-        setEditingRoom({
+        const mappedRoom = {
             ...room,
             id: room.id,
             rawId: room.rawId,
@@ -108,7 +113,28 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
             washroomType: rawObj.washroomType || 'Common',
             amenities: rawObj.amenities || '',
             imageUrl: room.imageUrl,
-        });
+            raw: rawObj,
+        };
+
+        setSelectedManageRoom(mappedRoom);
+
+        // Fetch approved occupants for this room
+        if (property?.id) {
+            setLoadingRoomOccupants(true);
+            api.bookings.getByPropertyId(property.id)
+                .then((res) => {
+                    if (res && Array.isArray(res)) {
+                        const approved = res.filter(b => b.status === 'APPROVED');
+                        // Filter by room if room data matches
+                        const roomApproved = approved.filter(b =>
+                            !b.roomId || b.roomId.toString() === (mappedRoom.rawId ? mappedRoom.rawId.toString() : mappedRoom.id.toString()) || b.roomName === mappedRoom.roomName
+                        );
+                        setRoomOccupants(roomApproved.length > 0 ? roomApproved : approved);
+                    }
+                })
+                .catch((err) => console.log('[RoomManagement] Occupants fetch error:', err))
+                .finally(() => setLoadingRoomOccupants(false));
+        }
     };
 
     const saveRoomChanges = async (formRoom) => {
@@ -251,6 +277,230 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                     </View>
                 )}
             </View>
+        );
+    }
+
+    if (selectedManageRoom) {
+        const room = selectedManageRoom;
+        const totCap = room.totCap || room.totalCapacity || 1;
+        const remCap = room.remainingSpaces != null ? room.remainingSpaces : (room.raw?.remainingSpaces != null ? room.raw.remainingSpaces : totCap);
+        const occCount = Math.max(0, totCap - remCap);
+        const isAvail = remCap > 0;
+
+        return (
+            <SafeAreaView style={styles.container}>
+                <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+                {/* Header */}
+                <View style={styles.header}>
+                    <TouchableOpacity style={styles.backBtn} onPress={() => setSelectedManageRoom(null)} activeOpacity={0.8}>
+                        <Ionicons name="arrow-back" size={20} color="#133E32" />
+                    </TouchableOpacity>
+                    <View style={styles.breadcrumbRow}>
+                        <Text style={styles.breadcrumbLink}>{displayPropertyName}</Text>
+                        <Ionicons name="chevron-forward" size={14} color="#94A3B8" style={{ marginHorizontal: 4 }} />
+                        <Text style={styles.breadcrumbCurrent} numberOfLines={1}>{room.roomName}</Text>
+                    </View>
+                    <View style={{ width: 36 }} />
+                </View>
+
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+                    {/* Cover Image & Badges */}
+                    <View style={styles.imageWrapper}>
+                        {room.imageUrl ? (
+                            <Image source={{ uri: room.imageUrl }} style={styles.cardImage} resizeMode="cover" />
+                        ) : (
+                            <View style={[styles.cardImage, { backgroundColor: '#E6F0EC', justifyContent: 'center', alignItems: 'center' }]}>
+                                <Ionicons name="bed-outline" size={54} color="#133E32" />
+                            </View>
+                        )}
+                        <View style={[styles.statusTag, isAvail ? styles.statusActive : styles.statusFull]}>
+                            <Text style={[styles.statusTagText, { color: isAvail ? '#065F46' : '#991B1B' }]}>
+                                {isAvail ? 'VACANCIES' : 'FULLY OCCUPIED'}
+                            </Text>
+                        </View>
+                        <View style={styles.rentTypeTag}>
+                            <Ionicons name="pricetag-outline" size={11} color="#133E32" style={{ marginRight: 3 }} />
+                            <Text style={styles.rentTypeTagText}>{room.type || 'Per Person Basis'}</Text>
+                        </View>
+                    </View>
+
+                    {/* Quick Action Grid (4 Cards) */}
+                    <Text style={[styles.sectionTitle, { marginTop: 18 }]}>Quick Actions</Text>
+                    <View style={styles.quickGrid}>
+                        {/* 1. Edit Card */}
+                        <TouchableOpacity style={styles.actionCard} onPress={() => setEditingRoom(room)} activeOpacity={0.85}>
+                            <View style={styles.iconCircle}>
+                                <Ionicons name="pencil-outline" size={24} color="#133E32" />
+                            </View>
+                            <Text style={styles.actionCardTitle}>Edit</Text>
+                        </TouchableOpacity>
+
+                        {/* 2. Add Image Card */}
+                        <TouchableOpacity style={styles.actionCard} onPress={() => setEditingRoom(room)} activeOpacity={0.85}>
+                            <View style={styles.iconCircle}>
+                                <Ionicons name="add-circle-outline" size={26} color="#133E32" />
+                            </View>
+                            <Text style={styles.actionCardTitle}>Add Image</Text>
+                        </TouchableOpacity>
+
+                        {/* 3. Bookings Card */}
+                        <TouchableOpacity style={styles.actionCard} onPress={() => onOpenBookings ? onOpenBookings(property) : Alert.alert('Bookings', 'Opening room bookings.')} activeOpacity={0.85}>
+                            <View style={styles.iconCircle}>
+                                <Ionicons name="calendar-outline" size={24} color="#133E32" />
+                            </View>
+                            <Text style={styles.actionCardTitle}>Bookings</Text>
+                        </TouchableOpacity>
+
+                        {/* 4. Occupants Card */}
+                        <TouchableOpacity style={styles.actionCard} onPress={() => setIsOccupantsModalOpen(true)} activeOpacity={0.85}>
+                            <View style={styles.iconCircle}>
+                                <Ionicons name="people-outline" size={24} color="#133E32" />
+                            </View>
+                            <Text style={styles.actionCardTitle}>Occupants</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Room Specifications Card */}
+                    <Text style={styles.sectionTitle}>Room Specifications</Text>
+                    <View style={styles.infoCard}>
+                        <View style={styles.infoRow}>
+                            <View style={styles.infoIconWrapper}>
+                                <Ionicons name="bed-outline" size={20} color="#133E32" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.infoLabel}>BEDS & BATHROOMS</Text>
+                                <Text style={styles.infoValue}>
+                                    {room.beds || 1} Bed(s) • {room.washrooms || 1} {room.washroomType || 'Common'} Bath
+                                </Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.divider} />
+
+                        <View style={styles.infoRow}>
+                            <View style={styles.infoIconWrapper}>
+                                <Ionicons name="pricetag-outline" size={20} color="#133E32" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.infoLabel}>MONTHLY RENT</Text>
+                                <Text style={styles.infoValue}>
+                                    LKR {(room.price || room.monthlyPrice || 0).toLocaleString()} {room.rentType === 'PER_ROOM' ? '/ room' : '/ person'}
+                                </Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.divider} />
+
+                        <View style={styles.infoRow}>
+                            <View style={styles.infoIconWrapper}>
+                                <Ionicons name="people-outline" size={20} color="#133E32" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.infoLabel}>CAPACITY & VACANCY STATUS</Text>
+                                <Text style={styles.infoValue}>
+                                    {occCount} / {totCap} Occupied ({remCap} Free Spaces)
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Occupants Details Summary */}
+                    <View style={{ marginBottom: 20 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                            <Text style={styles.sectionTitle}>Occupants Details Summary ({roomOccupants.length})</Text>
+                            <TouchableOpacity onPress={() => setIsOccupantsModalOpen(true)}>
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: '#133E32' }}>View All</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {loadingRoomOccupants ? (
+                            <ActivityIndicator size="small" color="#133E32" style={{ marginVertical: 15 }} />
+                        ) : roomOccupants.length > 0 ? (
+                            roomOccupants.map((occ, idx) => {
+                                const name = occ.seekerName || occ.userName || 'Occupant';
+                                const initial = name.charAt(0).toUpperCase();
+                                let avatar = occ.seekerAvatarUrl || occ.seekerAvatar;
+                                if (avatar && typeof avatar === 'string' && avatar.startsWith('/')) {
+                                    const baseUrl = api.getBaseUrl ? api.getBaseUrl() : 'http://192.168.1.100:8080';
+                                    avatar = `${baseUrl}${avatar}`;
+                                }
+                                const phone = occ.seekerPhone || occ.seekerWhatsapp || '';
+
+                                return (
+                                    <View
+                                        key={occ.id || idx}
+                                        style={{
+                                            backgroundColor: '#FFFFFF',
+                                            borderRadius: 16,
+                                            padding: 14,
+                                            marginBottom: 10,
+                                            borderWidth: 1,
+                                            borderColor: '#E2E8F0',
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                        }}
+                                    >
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                            {avatar ? (
+                                                <Image source={{ uri: avatar }} style={{ width: 44, height: 44, borderRadius: 22, marginRight: 12 }} />
+                                            ) : (
+                                                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#E6F0EC', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                                                    <Text style={{ fontSize: 18, fontWeight: '900', color: '#133E32' }}>{initial}</Text>
+                                                </View>
+                                            )}
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ fontSize: 15, fontWeight: '800', color: '#0F172A' }}>{name}</Text>
+                                                <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Approved Occupant</Text>
+                                            </View>
+                                        </View>
+
+                                        {phone ? (
+                                            <TouchableOpacity
+                                                style={{
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    backgroundColor: '#25D366',
+                                                    paddingHorizontal: 12,
+                                                    paddingVertical: 7,
+                                                    borderRadius: 10,
+                                                }}
+                                                onPress={() => {
+                                                    const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+                                                    const formatted = cleanPhone.startsWith('0') ? '94' + cleanPhone.substring(1) : cleanPhone;
+                                                    const msg = encodeURIComponent(`Hi ${name}, contacting you regarding ${room.roomName} on BoardingHub.`);
+                                                    Linking.openURL(`whatsapp://send?phone=${formatted}&text=${msg}`).catch(() => {
+                                                        Linking.openURL(`https://wa.me/${formatted}?text=${msg}`);
+                                                    });
+                                                }}
+                                                activeOpacity={0.85}
+                                            >
+                                                <Ionicons name="logo-whatsapp" size={15} color="#FFFFFF" style={{ marginRight: 5 }} />
+                                                <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFF' }}>WhatsApp</Text>
+                                            </TouchableOpacity>
+                                        ) : null}
+                                    </View>
+                                );
+                            })
+                        ) : (
+                            <View style={{ backgroundColor: '#FFFFFF', borderRadius: 14, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderStyle: 'dashed' }}>
+                                <Ionicons name="people-outline" size={28} color="#94A3B8" style={{ marginBottom: 4 }} />
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: '#133E32' }}>No occupants in this room yet</Text>
+                            </View>
+                        )}
+                    </View>
+                </ScrollView>
+
+                {/* Occupants Detail Modal */}
+                <OccupantDetailsModal
+                    visible={isOccupantsModalOpen}
+                    onClose={() => setIsOccupantsModalOpen(false)}
+                    occupants={roomOccupants}
+                    loading={loadingRoomOccupants}
+                    title={`${room.roomName} Occupants`}
+                />
+            </SafeAreaView>
         );
     }
 
@@ -506,6 +756,78 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '800',
         color: '#FFFFFF',
+    },
+
+    /* Room Control Hub & Section Styles */
+    sectionTitle: {
+        fontSize: 17,
+        fontWeight: '900',
+        color: '#0F172A',
+        marginBottom: 12,
+    },
+    quickGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        marginBottom: 22,
+    },
+    actionCard: {
+        width: '48%',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        paddingVertical: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    iconCircle: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#E6F0EC',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    actionCardTitle: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+    infoCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 18,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        marginBottom: 20,
+    },
+    infoIconWrapper: {
+        width: 38,
+        height: 38,
+        borderRadius: 10,
+        backgroundColor: '#E6F0EC',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    infoLabel: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#64748B',
+        letterSpacing: 0.5,
+        marginBottom: 2,
+    },
+    infoValue: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#0F172A',
     },
 
     /* Filter & Search Card */

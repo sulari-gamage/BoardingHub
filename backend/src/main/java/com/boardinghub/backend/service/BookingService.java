@@ -83,6 +83,11 @@ public class BookingService {
                 .stream().map(this::mapToBookingResponse).collect(Collectors.toList());
     }
 
+    public List<BookingResponse> getBookingsByPropertyId(Long propertyId) {
+        return bookingRepository.findByPropertyId(propertyId)
+                .stream().map(this::mapToBookingResponse).collect(Collectors.toList());
+    }
+
     @Transactional
     public BookingResponse updateBookingStatus(Long bookingId, BookingStatusUpdateDTO dto, String userEmail) {
         BookingRequest booking = bookingRepository.findById(bookingId)

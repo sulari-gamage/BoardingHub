@@ -132,7 +132,7 @@ async function request(endpoint, options = {}) {
 
         if (!response.ok) {
             const errorMessage = data?.message || data?.error || `Server error (${response.status})`;
-            console.error('[API] ✗  Error:', errorMessage);
+            console.warn('[API] ✗  Error:', errorMessage);
             throw new Error(errorMessage);
         }
 
@@ -272,6 +272,16 @@ export const api = {
 
         getOwnerRequests: async () => {
             return await request('/bookings/owner-requests', { method: 'GET' });
+        },
+
+        getByPropertyId: async (propertyId) => {
+            try {
+                const reqs = await request('/bookings/owner-requests', { method: 'GET' });
+                if (Array.isArray(reqs)) {
+                    return reqs.filter(b => String(b.propertyId) === String(propertyId));
+                }
+            } catch (e) { }
+            return [];
         },
 
         updateStatus: async (id, status) => {

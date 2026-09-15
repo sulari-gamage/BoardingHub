@@ -490,11 +490,11 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     statusPending: { backgroundColor: '#FEF3C7' },
-    statusApproved: { backgroundColor: '#E6F0EC' },
+    statusApproved: { backgroundColor: '#DCFCE7' },
     statusRejected: { backgroundColor: '#FEE2E2' },
     statusText: { fontSize: 11, fontWeight: '900' },
     statusTextPending: { color: '#B45309' },
-    statusTextApproved: { color: '#133E32' },
+    statusTextApproved: { color: '#15803D' },
     statusTextRejected: { color: '#991B1B' },
 
     divider: {

@@ -568,7 +568,6 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                                 const url = await uploadImage(p.uri);
                                 if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
                                     uploadedRoomPhotos.push(url);
-                                    if (!imagesList.includes(url)) imagesList.push(url);
                                 }
                             }
                         }
