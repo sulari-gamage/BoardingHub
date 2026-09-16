@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, UrlTile } from 'react-native-maps';
 import * as Location from 'expo-location';
 import api from '../../services/api';
 
@@ -147,10 +147,16 @@ export default function MapViewScreen({ onSelectBoarding, onBack, onToggleListVi
             <View style={styles.mapContainer}>
                 <MapView
                     style={StyleSheet.absoluteFillObject}
+                    mapType={Platform.OS === 'android' ? 'none' : 'standard'}
                     initialRegion={initialRegion}
                     showsUserLocation={true}
                     showsMyLocationButton={false}
                 >
+                    <UrlTile
+                        urlTemplate="https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+                        maximumZ={19}
+                        tileSize={256}
+                    />
                     {properties.map((p) => (
                         <Marker
                             key={p.id}

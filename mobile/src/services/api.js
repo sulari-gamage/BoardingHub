@@ -255,6 +255,12 @@ export const api = {
         delete: async (id) => {
             return await request(`/properties/${id}`, { method: 'DELETE' });
         },
+
+        geocode: async (address, city = '') => {
+            const queryParams = new URLSearchParams({ address });
+            if (city) queryParams.append('city', city);
+            return await request(`/properties/geocode?${queryParams.toString()}`, { method: 'GET' });
+        },
     },
 
     // Booking Services

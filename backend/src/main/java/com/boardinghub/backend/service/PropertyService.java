@@ -20,7 +20,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.boardinghub.backend.repository.ReviewRepository;
+import com.boardinghub.backend.dto.response.GeocodeResponse;
+import com.boardinghub.backend.service.GeocodingService;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PropertyService {
@@ -28,11 +32,24 @@ public class PropertyService {
     private final BoardingPropertyRepository propertyRepository;
     private final UserRepository userRepository;
     private final ReviewRepository reviewRepository;
+    private final GeocodingService geocodingService;
 
     @Transactional
     public PropertyResponse createProperty(PropertyRequest request, String ownerEmail) {
         User owner = userRepository.findByEmail(ownerEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Owner user not found with email: " + ownerEmail));
+
+        Double lat = request.getLatitude();
+        Double lng = request.getLongitude();
+
+        // Auto-geocode if coordinates missing or zero
+        if ((lat == null || lat == 0.0) || (lng == null || lng == 0.0)) {
+            GeocodeResponse geoRes = geocodingService.geocodeAddress(request.getAddress(), request.getCity());
+            if (geoRes != null && geoRes.isSuccess()) {
+                lat = geoRes.getLatitude();
+                lng = geoRes.getLongitude();
+            }
+        }
 
         BoardingProperty property = BoardingProperty.builder()
                 .title(request.getTitle())
@@ -42,8 +59,8 @@ public class PropertyService {
                 .district(request.getDistrict())
                 .genderPreference(request.getGenderPreference())
                 .monthlyRent(request.getMonthlyRent())
-                .latitude(request.getLatitude())
-                .longitude(request.getLongitude())
+                .latitude(lat)
+                .longitude(lng)
                 .propertyNature(request.getPropertyNature())
                 .roomsCount(request.getRoomsCount())
                 .bedsCount(request.getBedsCount())
@@ -118,6 +135,16 @@ public class PropertyService {
             throw new IllegalArgumentException("You are not authorized to update this property");
         }
 
+        Double lat = request.getLatitude();
+        Double lng = request.getLongitude();
+        if ((lat == null || lat == 0.0) || (lng == null || lng == 0.0)) {
+            GeocodeResponse geoRes = geocodingService.geocodeAddress(request.getAddress(), request.getCity());
+            if (geoRes != null && geoRes.isSuccess()) {
+                lat = geoRes.getLatitude();
+                lng = geoRes.getLongitude();
+            }
+        }
+
         property.setTitle(request.getTitle());
         property.setDescription(request.getDescription());
         property.setAddress(request.getAddress());
@@ -125,8 +152,8 @@ public class PropertyService {
         property.setDistrict(request.getDistrict());
         property.setGenderPreference(request.getGenderPreference());
         property.setMonthlyRent(request.getMonthlyRent());
-        property.setLatitude(request.getLatitude());
-        property.setLongitude(request.getLongitude());
+        property.setLatitude(lat);
+        property.setLongitude(lng);
         property.setPropertyNature(request.getPropertyNature());
         property.setRoomsCount(request.getRoomsCount());
         property.setBedsCount(request.getBedsCount());

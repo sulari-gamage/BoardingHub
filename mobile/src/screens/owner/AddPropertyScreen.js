@@ -16,11 +16,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, UrlTile } from 'react-native-maps';
 import * as Location from 'expo-location';
 import api from '../../services/api';
 import { uploadImage } from '../../services/uploadService';
 import AddRoomScreen from './AddRoomScreen';
+import MapComponent from '../../components/MapComponent';
 
 const AMENITY_MAP = {
     wifi: 'High-Speed WiFi',
@@ -271,6 +272,16 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
         anuradhapura: { lat: 8.3114, lng: 80.4037, city: 'Anuradhapura' },
         trincomalee: { lat: 8.5874, lng: 81.2152, city: 'Trincomalee' },
         batticaloa: { lat: 7.7170, lng: 81.7000, city: 'Batticaloa' },
+        hambantota: { lat: 6.1246, lng: 81.1185, city: 'Hambantota' },
+        tangalle: { lat: 6.0243, lng: 80.7941, city: 'Tangalle' },
+        tissamaharama: { lat: 6.2804, lng: 81.2858, city: 'Tissamaharama' },
+        ambalantota: { lat: 6.1228, lng: 81.0252, city: 'Ambalantota' },
+        beliatta: { lat: 6.0460, lng: 80.7423, city: 'Beliatta' },
+        kataragama: { lat: 6.4136, lng: 81.3323, city: 'Kataragama' },
+        walasmulla: { lat: 6.1438, lng: 80.6976, city: 'Walasmulla' },
+        suriyawewa: { lat: 6.3267, lng: 81.0003, city: 'Suriyawewa' },
+        ranna: { lat: 6.0694, lng: 80.8841, city: 'Ranna' },
+        weeraketiya: { lat: 6.1444, lng: 80.7601, city: 'Weeraketiya' },
     };
 
     const formatAddressLineByLine = (addrStr) => {
@@ -296,20 +307,53 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
         return raw;
     };
 
+    const [geocodeStatusMsg, setGeocodeStatusMsg] = useState('');
+    const [isGeocoding, setIsGeocoding] = useState(false);
+
     const triggerGeocode = (addrStr, cityStr) => {
         const query = cleanAddressForGeocoding(addrStr, cityStr);
         if (!query || query.length < 3) return;
 
-        Location.geocodeAsync(query)
-            .then((results) => {
-                if (results && results.length > 0) {
-                    const { latitude, longitude } = results[0];
-                    if (latitude && longitude) {
-                        setMapCoords({ lat: latitude, lng: longitude });
-                    }
+        setIsGeocoding(true);
+        setGeocodeStatusMsg('Locating address on map...');
+
+        api.properties.geocode(addrStr, cityStr)
+            .then((res) => {
+                setIsGeocoding(false);
+                if (res && res.success && res.latitude && res.longitude) {
+                    setMapCoords({ lat: res.latitude, lng: res.longitude });
+                    setGeocodeStatusMsg(res.message || 'Location pinned on map!');
+                } else {
+                    // Fallback to client-side expo-location geocoding
+                    Location.geocodeAsync(query)
+                        .then((results) => {
+                            if (results && results.length > 0 && results[0].latitude && results[0].longitude) {
+                                setMapCoords({ lat: results[0].latitude, lng: results[0].longitude });
+                                setGeocodeStatusMsg('Location pinned on map.');
+                            } else {
+                                setGeocodeStatusMsg('Could not find address. Drag map pin to set location manually.');
+                            }
+                        })
+                        .catch(() => {
+                            setGeocodeStatusMsg('Could not find address. Drag map pin to set location manually.');
+                        });
                 }
             })
-            .catch((err) => console.log('[AddPropertyScreen] Geocode error:', err.message));
+            .catch(() => {
+                setIsGeocoding(false);
+                Location.geocodeAsync(query)
+                    .then((results) => {
+                        if (results && results.length > 0 && results[0].latitude && results[0].longitude) {
+                            setMapCoords({ lat: results[0].latitude, lng: results[0].longitude });
+                            setGeocodeStatusMsg('Location pinned on map.');
+                        } else {
+                            setGeocodeStatusMsg('Could not find address. Drag map pin to set location manually.');
+                        }
+                    })
+                    .catch(() => {
+                        setGeocodeStatusMsg('Could not find address. Drag map pin to set location manually.');
+                    });
+            });
     };
 
     const handleSearchChange = (text) => {
@@ -835,6 +879,56 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                                     onChangeText={setDistrict}
                                 />
                             </View>
+                        </View>
+
+                        {/* Interactive Geocoded Map Section */}
+                        <View style={{ marginTop: 14, marginBottom: 16 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Ionicons name="map" size={16} color="#133E32" />
+                                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A' }}>
+                                        Property Location Map *
+                                    </Text>
+                                </View>
+                                <TouchableOpacity
+                                    onPress={handleGetCurrentLocation}
+                                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E6F0EC', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 }}
+                                    activeOpacity={0.8}
+                                >
+                                    <Ionicons name="locate" size={13} color="#133E32" style={{ marginRight: 4 }} />
+                                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#133E32' }}>Use My Location</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 10 }}>
+                                💡 Map updates automatically based on address. <Text style={{ fontWeight: '800', color: '#133E32' }}>Drag and drop the pin</Text> to correct the exact location.
+                            </Text>
+
+                            {geocodeStatusMsg ? (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 10 }}>
+                                    {isGeocoding ? (
+                                        <ActivityIndicator size="small" color="#133E32" style={{ marginRight: 8 }} />
+                                    ) : (
+                                        <Ionicons name="information-circle-outline" size={15} color="#133E32" style={{ marginRight: 6 }} />
+                                    )}
+                                    <Text style={{ fontSize: 12, color: '#334155', flex: 1, fontWeight: '600' }}>
+                                        {geocodeStatusMsg}
+                                    </Text>
+                                </View>
+                            ) : null}
+
+                            <MapComponent
+                                latitude={mapCoords.lat || mapCoords.latitude || 6.9271}
+                                longitude={mapCoords.lng || mapCoords.longitude || 79.8612}
+                                title={propertyName || 'Boarding Property'}
+                                description="Drag to adjust exact location"
+                                height={210}
+                                draggable={true}
+                                onDragEnd={(newCoords) => {
+                                    setMapCoords({ lat: newCoords.latitude, lng: newCoords.longitude });
+                                    setGeocodeStatusMsg(`Marker pinned to (${newCoords.latitude.toFixed(5)}, ${newCoords.longitude.toFixed(5)})`);
+                                }}
+                            />
                         </View>
 
                         {/* Property Nature (Room-Based vs Whole House) */}

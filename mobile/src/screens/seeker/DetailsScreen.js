@@ -18,8 +18,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import MapView, { Marker, UrlTile } from 'react-native-maps';
 import BookingRequestModal from '../../components/BookingRequestModal';
 import api from '../../services/api';
+import MapComponent from '../../components/MapComponent';
 
 export default function DetailsScreen({
     boarding = {},
@@ -30,7 +32,8 @@ export default function DetailsScreen({
     onOpenGallery,
     onOpenReviews,
     onOpenMap,
-    onViewOwnerProperties
+    onViewOwnerProperties,
+    currentUser = null
 }) {
     const [isSaved, setIsSaved] = useState(isSavedProp);
 
@@ -688,8 +691,11 @@ export default function DetailsScreen({
                                                             ]}
                                                             onPress={() => {
                                                                 const rId = roomItem.id || roomItem.roomNumber;
-                                                                setSelectedRoom(rId);
-                                                                setIsBookingModalVisible(true);
+                                                                if (selectedRoom === rId) {
+                                                                    setSelectedRoom('shared');
+                                                                } else {
+                                                                    setSelectedRoom(rId);
+                                                                }
                                                             }}
                                                             activeOpacity={0.8}
                                                         >
@@ -738,7 +744,13 @@ export default function DetailsScreen({
                                         </View>
                                         <TouchableOpacity
                                             style={styles.selectRoomBtn}
-                                            onPress={() => setSelectedRoom('default')}
+                                            onPress={() => {
+                                                if (selectedRoom === 'default') {
+                                                    setSelectedRoom('shared');
+                                                } else {
+                                                    setSelectedRoom('default');
+                                                }
+                                            }}
                                             activeOpacity={0.8}
                                         >
                                             <Ionicons
@@ -980,6 +992,40 @@ export default function DetailsScreen({
                             </TouchableOpacity>
                         )}
                     </View>
+
+                    {/* Interactive Property Location Map Section */}
+                    <View style={{ marginBottom: 24 }}>
+                        <Text style={styles.sectionHeading}>Property Location</Text>
+                        <View style={{
+                            backgroundColor: '#FFFFFF',
+                            borderRadius: 18,
+                            padding: 14,
+                            borderWidth: 1,
+                            borderColor: '#E2E8F0',
+                            shadowColor: '#0F172A',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.05,
+                            shadowRadius: 6,
+                            elevation: 2,
+                        }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                                <Ionicons name="location" size={18} color="#133E32" style={{ marginRight: 6 }} />
+                                <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A', flex: 1 }} numberOfLines={1}>
+                                    {location}
+                                </Text>
+                            </View>
+
+                            <MapComponent
+                                latitude={mapCoords.lat || mapCoords.latitude || 6.9271}
+                                longitude={mapCoords.lng || mapCoords.longitude || 79.8612}
+                                title={title}
+                                description={location}
+                                height={210}
+                                draggable={false}
+                                showDirectionsBtn={true}
+                            />
+                        </View>
+                    </View>
                 </View>
             </ScrollView>
 
@@ -989,6 +1035,7 @@ export default function DetailsScreen({
                 onClose={() => setIsBookingModalVisible(false)}
                 boarding={boarding}
                 initialSelectedRoomId={selectedRoom}
+                currentUser={currentUser}
                 onSubmitBooking={(bookingData) => {
                     if (onBookSuccess) onBookSuccess(bookingData);
                 }}
@@ -1362,28 +1409,33 @@ export default function DetailsScreen({
                             onPress={() => {
                                 if (selectedRoomModalData) {
                                     const rId = selectedRoomModalData.id || selectedRoomModalData.roomNumber || 'shared';
-                                    setSelectedRoom(rId);
+                                    if (selectedRoom === rId) {
+                                        setSelectedRoom('shared');
+                                    } else {
+                                        setSelectedRoom(rId);
+                                    }
                                 }
                                 setIsRoomModalVisible(false);
-                                setIsBookingModalVisible(true);
                             }}
                             activeOpacity={0.85}
                         >
                             <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                            <Text style={styles.modalSelectBtnText}>Select Room & Book Now</Text>
+                            <Text style={styles.modalSelectBtnText}>Select Room</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
 
             {/* Fixed Bottom Action Bar */}
-            <View style={styles.bottomFixedBar}>
-                <View>
-                    <Text style={styles.bottomPriceVal}>Rs.{price}</Text>
-                    <TouchableOpacity>
-                        <Text style={styles.bottomViewDetailsLink}>View Details</Text>
-                    </TouchableOpacity>
-                </View>
+            <View style={[styles.bottomFixedBar, !isAnnexType && { justifyContent: 'center' }]}>
+                {isAnnexType && (
+                    <View>
+                        <Text style={styles.bottomPriceVal}>Rs.{price}</Text>
+                        <TouchableOpacity>
+                            <Text style={styles.bottomViewDetailsLink}>View Details</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 <TouchableOpacity
                     style={styles.bookNowBtn}

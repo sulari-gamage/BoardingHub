@@ -577,6 +577,7 @@ export default function App() {
               setSearchInitialQuery(ownerName);
               navigateTo('SEARCH');
             }}
+            currentUser={currentUser}
           />
         ) : currentScreen === 'IMAGE_GALLERY' ? (
           <ImageGalleryScreen

@@ -14,7 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
 
-export default function BookingRequestModal({ visible, onClose, boarding = {}, onSubmitBooking, initialSelectedRoomId = null }) {
+export default function BookingRequestModal({ visible, onClose, boarding = {}, onSubmitBooking, initialSelectedRoomId = null, currentUser = null }) {
     const isWholeHouse =
         boarding.propertyNature === 'WHOLE_HOUSE' ||
         boarding.propertyNature === 'ANNEX' ||
@@ -253,132 +253,212 @@ export default function BookingRequestModal({ visible, onClose, boarding = {}, o
         Alert.alert('Contact Owner', `Calling ${ownerName} at ${ownerPhone}...`);
     };
 
+    // Gender detection helpers for warning modal checks
+    const getUserGender = () => {
+        const raw = (
+            currentUser?.gender ||
+            currentUser?.genderPreference ||
+            currentUser?.genderType ||
+            currentUser?.raw?.gender ||
+            ''
+        ).toString().toUpperCase();
+
+        if (raw.includes('FEMALE') || raw.includes('GIRL') || raw.includes('WOMEN') || raw.includes('WOMAN') || raw === 'F') {
+            return 'FEMALE';
+        }
+        if (raw.includes('MALE') || raw.includes('BOY') || raw.includes('MEN') || raw.includes('MAN') || raw === 'M') {
+            return 'MALE';
+        }
+        return null;
+    };
+
+    const getBoardingGender = () => {
+        let raw = '';
+        if (!isWholeHouse && selectedBookingType) {
+            const matchedRoom = rooms.find(r => r.id === selectedBookingType);
+            if (matchedRoom?.genderPreference || matchedRoom?.genderType || matchedRoom?.gender) {
+                raw = matchedRoom.genderPreference || matchedRoom.genderType || matchedRoom.gender;
+            }
+        }
+        if (!raw) {
+            raw = boarding.genderPreference || boarding.genderType || boarding.gender || boarding.raw?.genderPreference || '';
+        }
+        raw = raw.toString().toUpperCase();
+
+        if (raw.includes('FEMALE') || raw.includes('GIRL') || raw.includes('GIRLS')) {
+            return 'GIRLS_ONLY';
+        }
+        if (raw.includes('MALE') || raw.includes('BOY') || raw.includes('BOYS')) {
+            return 'BOYS_ONLY';
+        }
+        return 'ANY';
+    };
+
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = () => {
-        Alert.alert(
-            'Confirm Booking Request 📩',
-            `Are you sure you want to send a booking request for "${propertyTitle}" for ${peopleCount} occupant(s)?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Submit Request',
-                    style: 'default',
-                    onPress: async () => {
-                        let roomTypeLabel = isWholeHouse ? 'Annex / Whole House' : 'Whole House';
-                        let roomId = null;
-                        let bookingTypeEnum = isWholeHouse ? (boarding.propertyType === 'ANNEX' || boarding.propertyNature === 'ANNEX' ? 'ANNEX' : 'WHOLE_HOUSE') : 'ROOM_BASED';
+        const seekerGender = getUserGender();
+        const targetGender = getBoardingGender();
 
-                        if (!isWholeHouse) {
-                            const matchedRoom = rooms.find(r => r.id === selectedBookingType);
-                            if (matchedRoom) {
-                                roomTypeLabel = `${matchedRoom.number || matchedRoom.roomNumber || 'Room'} (${matchedRoom.type || matchedRoom.roomType || 'Shared'})`;
-                                roomId = matchedRoom.id;
-                            }
-                        }
+        const proceedWithSubmitConfirmation = () => {
+            Alert.alert(
+                'Confirm Booking Request 📩',
+                `Are you sure you want to send a booking request for "${propertyTitle}" for ${peopleCount} occupant(s)?`,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Submit Request',
+                        style: 'default',
+                        onPress: async () => {
+                            let roomTypeLabel = isWholeHouse ? 'Annex / Whole House' : 'Whole House';
+                            let roomId = null;
+                            let bookingTypeEnum = isWholeHouse ? (boarding.propertyType === 'ANNEX' || boarding.propertyNature === 'ANNEX' ? 'ANNEX' : 'WHOLE_HOUSE') : 'ROOM_BASED';
 
-                        // Format moveInDate to YYYY-MM-DD for Spring Boot LocalDate compatibility
-                        let formattedDateStr = moveInDate;
-                        if (selectedDate instanceof Date) {
-                            const yyyy = selectedDate.getFullYear();
-                            const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
-                            const dd = String(selectedDate.getDate()).padStart(2, '0');
-                            formattedDateStr = `${yyyy}-${mm}-${dd}`;
-                        } else if (moveInDate.includes('/')) {
-                            const parts = moveInDate.split('/');
-                            if (parts.length === 3) {
-                                formattedDateStr = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
-                            }
-                        }
-
-                        const backendPayload = {
-                            propertyId: boarding.id,
-                            roomId: (roomId && !isNaN(roomId)) ? Number(roomId) : (roomId ? roomId : null),
-                            bookingType: bookingTypeEnum,
-                            occupantsCount: peopleCount,
-                            moveInDate: formattedDateStr,
-                            notes: message
-                        };
-
-                        setIsSubmitting(true);
-                        try {
-                            // Persist to backend PostgreSQL database via API
-                            let apiResult = null;
-                            if (boarding.id && !isNaN(boarding.id)) {
-                                apiResult = await api.bookings.create(backendPayload);
-                                console.log('[BookingRequestModal] Successfully persisted booking to database:', apiResult);
+                            if (!isWholeHouse) {
+                                const matchedRoom = rooms.find(r => r.id === selectedBookingType);
+                                if (matchedRoom) {
+                                    roomTypeLabel = `${matchedRoom.number || matchedRoom.roomNumber || 'Room'} (${matchedRoom.type || matchedRoom.roomType || 'Shared'})`;
+                                    roomId = matchedRoom.id;
+                                }
                             }
 
-                            const nowIso = new Date().toISOString();
-                            const nowFormatted = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                            // Format moveInDate to YYYY-MM-DD for Spring Boot LocalDate compatibility
+                            let formattedDateStr = moveInDate;
+                            if (selectedDate instanceof Date) {
+                                const yyyy = selectedDate.getFullYear();
+                                const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                                const dd = String(selectedDate.getDate()).padStart(2, '0');
+                                formattedDateStr = `${yyyy}-${mm}-${dd}`;
+                            } else if (moveInDate.includes('/')) {
+                                const parts = moveInDate.split('/');
+                                if (parts.length === 3) {
+                                    formattedDateStr = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+                                }
+                            }
 
-                            const bookingData = {
-                                id: apiResult?.id ? `booking_${apiResult.id}` : `booking_${Date.now()}`,
-                                propertyId: boarding.id || 'p1',
-                                title: propertyTitle,
-                                location: boarding.location || 'Moratuwa, Sri Lanka',
-                                date: moveInDate,
-                                moveInDate: moveInDate,
-                                createdAt: apiResult?.createdAt || nowIso,
-                                requestSentDate: apiResult?.createdAt ? new Date(apiResult.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : nowFormatted,
+                            const backendPayload = {
+                                propertyId: boarding.id,
+                                roomId: (roomId && !isNaN(roomId)) ? Number(roomId) : (roomId ? roomId : null),
                                 bookingType: bookingTypeEnum,
-                                roomId: roomId,
-                                roomType: roomTypeLabel,
                                 occupantsCount: peopleCount,
-                                peopleCount,
-                                message,
-                                notes: message,
-                                status: 'PENDING',
-                                price: boarding.price || 15000,
-                                imageUrl: boarding.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
-                                description: boarding.description,
-                                ownerName,
-                                ownerPhone
+                                moveInDate: formattedDateStr,
+                                notes: message
                             };
 
-                            if (onSubmitBooking) {
-                                onSubmitBooking(bookingData);
+                            setIsSubmitting(true);
+                            try {
+                                // Persist to backend PostgreSQL database via API
+                                let apiResult = null;
+                                if (boarding.id && !isNaN(boarding.id)) {
+                                    apiResult = await api.bookings.create(backendPayload);
+                                    console.log('[BookingRequestModal] Successfully persisted booking to database:', apiResult);
+                                }
+
+                                const nowIso = new Date().toISOString();
+                                const nowFormatted = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+                                const bookingData = {
+                                    id: apiResult?.id ? `booking_${apiResult.id}` : `booking_${Date.now()}`,
+                                    propertyId: boarding.id || 'p1',
+                                    title: propertyTitle,
+                                    location: boarding.location || 'Moratuwa, Sri Lanka',
+                                    date: moveInDate,
+                                    moveInDate: moveInDate,
+                                    createdAt: apiResult?.createdAt || nowIso,
+                                    requestSentDate: apiResult?.createdAt ? new Date(apiResult.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : nowFormatted,
+                                    bookingType: bookingTypeEnum,
+                                    roomId: roomId,
+                                    roomType: roomTypeLabel,
+                                    occupantsCount: peopleCount,
+                                    peopleCount,
+                                    message,
+                                    notes: message,
+                                    status: 'PENDING',
+                                    price: boarding.price || 15000,
+                                    imageUrl: boarding.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
+                                    description: boarding.description,
+                                    ownerName,
+                                    ownerPhone
+                                };
+
+                                if (onSubmitBooking) {
+                                    onSubmitBooking(bookingData);
+                                }
+                                Alert.alert('Request Sent! 🎉', 'Your booking request has been submitted and stored successfully.');
+                                onClose();
+                            } catch (err) {
+                                console.error('[BookingRequestModal] Database save failed:', err?.message);
+                                // Fallback client callback so UI workflow remains responsive
+                                const nowIso = new Date().toISOString();
+                                const nowFormatted = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                const fallbackData = {
+                                    id: `booking_${Date.now()}`,
+                                    propertyId: boarding.id || 'p1',
+                                    title: propertyTitle,
+                                    location: boarding.location || 'Moratuwa, Sri Lanka',
+                                    date: moveInDate,
+                                    moveInDate: moveInDate,
+                                    createdAt: nowIso,
+                                    requestSentDate: nowFormatted,
+                                    bookingType: bookingTypeEnum,
+                                    roomId: roomId,
+                                    roomType: roomTypeLabel,
+                                    occupantsCount: peopleCount,
+                                    peopleCount,
+                                    message,
+                                    notes: message,
+                                    status: 'PENDING',
+                                    price: boarding.price || 15000,
+                                    imageUrl: boarding.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
+                                    description: boarding.description,
+                                    ownerName,
+                                    ownerPhone
+                                };
+                                if (onSubmitBooking) onSubmitBooking(fallbackData);
+                                Alert.alert('Request Sent 📩', 'Your booking request was recorded.');
+                                onClose();
+                            } finally {
+                                setIsSubmitting(false);
                             }
-                            Alert.alert('Request Sent! 🎉', 'Your booking request has been submitted and stored successfully.');
-                            onClose();
-                        } catch (err) {
-                            console.error('[BookingRequestModal] Database save failed:', err?.message);
-                            // Fallback client callback so UI workflow remains responsive
-                            const nowIso = new Date().toISOString();
-                            const nowFormatted = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                            const fallbackData = {
-                                id: `booking_${Date.now()}`,
-                                propertyId: boarding.id || 'p1',
-                                title: propertyTitle,
-                                location: boarding.location || 'Moratuwa, Sri Lanka',
-                                date: moveInDate,
-                                moveInDate: moveInDate,
-                                createdAt: nowIso,
-                                requestSentDate: nowFormatted,
-                                bookingType: bookingTypeEnum,
-                                roomId: roomId,
-                                roomType: roomTypeLabel,
-                                occupantsCount: peopleCount,
-                                peopleCount,
-                                message,
-                                notes: message,
-                                status: 'PENDING',
-                                price: boarding.price || 15000,
-                                imageUrl: boarding.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
-                                description: boarding.description,
-                                ownerName,
-                                ownerPhone
-                            };
-                            if (onSubmitBooking) onSubmitBooking(fallbackData);
-                            Alert.alert('Request Sent 📩', 'Your booking request was recorded.');
-                            onClose();
-                        } finally {
-                            setIsSubmitting(false);
                         }
                     }
-                }
-            ]
-        );
+                ]
+            );
+        };
+
+        if (seekerGender === 'MALE' && targetGender === 'GIRLS_ONLY') {
+            Alert.alert(
+                'Gender Preference Warning ⚠️',
+                `This boarding option is specified as "Girls Only". As a male seeker, are you sure you want to proceed with sending a booking request?`,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Proceed Anyway',
+                        style: 'destructive',
+                        onPress: proceedWithSubmitConfirmation
+                    }
+                ]
+            );
+            return;
+        }
+
+        if (seekerGender === 'FEMALE' && targetGender === 'BOYS_ONLY') {
+            Alert.alert(
+                'Gender Preference Warning ⚠️',
+                `This boarding option is specified as "Boys Only". As a female seeker, are you sure you want to proceed with sending a booking request?`,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Proceed Anyway',
+                        style: 'destructive',
+                        onPress: proceedWithSubmitConfirmation
+                    }
+                ]
+            );
+            return;
+        }
+
+        proceedWithSubmitConfirmation();
     };
 
     const getSelectedLabel = () => {
@@ -578,9 +658,99 @@ export default function BookingRequestModal({ visible, onClose, boarding = {}, o
                                 </View>
                             )}
 
+                            {/* Monthly Rent Breakdown Summary Card */}
+                            {(() => {
+                                const currentRoom = rooms.find(r =>
+                                    String(r.id) === String(selectedBookingType) ||
+                                    String(r.roomNumber) === String(selectedBookingType) ||
+                                    String(r.number) === String(selectedBookingType)
+                                ) || rooms[0];
+
+                                const extractPrice = (rm) => {
+                                    if (isWholeHouse) {
+                                        const p = boarding.price || boarding.monthlyRent || boarding.rent || boarding.raw?.price || 0;
+                                        return typeof p === 'number' ? p : (parseFloat(p) || 0);
+                                    }
+                                    if (!rm) {
+                                        const bp = boarding.price || boarding.monthlyRent || boarding.rent || 0;
+                                        return typeof bp === 'number' ? bp : (parseFloat(bp) || 0);
+                                    }
+                                    const val = (
+                                        rm.pricePerPerson ??
+                                        rm.monthlyRent ??
+                                        rm.price ??
+                                        rm.rent ??
+                                        rm.cost ??
+                                        rm.rentPerMonth ??
+                                        rm.pricePerRoom ??
+                                        rm.raw?.pricePerPerson ??
+                                        rm.raw?.monthlyRent ??
+                                        rm.raw?.price ??
+                                        boarding.price ??
+                                        0
+                                    );
+                                    return typeof val === 'number' ? val : (parseFloat(val) || 0);
+                                };
+
+                                const unitPrice = extractPrice(currentRoom);
+                                const totalMonthlyRent = isWholeHouse
+                                    ? unitPrice
+                                    : (unitPrice * peopleCount);
+
+                                return (
+                                    <View style={styles.rentSummaryCard}>
+                                        <View style={styles.rentSummaryHeaderRow}>
+                                            <View style={styles.rentSummaryHeaderLeft}>
+                                                <View style={styles.rentIconBox}>
+                                                    <Ionicons name="receipt-outline" size={16} color="#133E32" />
+                                                </View>
+                                                <Text style={styles.rentSummaryTitle}>Monthly Rent Breakdown</Text>
+                                            </View>
+                                            <View style={styles.rentBasisBadge}>
+                                                <Text style={styles.rentBasisBadgeText}>
+                                                    {isWholeHouse ? 'Full Annex' : 'Per Person Basis'}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        <View style={styles.rentCardDivider} />
+
+                                        {!isWholeHouse ? (
+                                            <>
+                                                <View style={styles.rentDetailRow}>
+                                                    <Text style={styles.rentDetailLabel}>Price per person / month</Text>
+                                                    <Text style={styles.rentDetailValue}>Rs. {Number(unitPrice).toLocaleString()}</Text>
+                                                </View>
+
+                                                <View style={styles.rentDetailRow}>
+                                                    <Text style={styles.rentDetailLabel}>Requested Occupants</Text>
+                                                    <Text style={styles.rentDetailValue}>{peopleCount} Space{peopleCount > 1 ? 's' : ''}</Text>
+                                                </View>
+
+                                                <View style={[styles.rentDetailRow, styles.rentTotalRow]}>
+                                                    <Text style={styles.rentDetailTotalLabel}>Total Monthly Rent</Text>
+                                                    <Text style={styles.totalRentHighlight}>
+                                                        Rs. {Number(totalMonthlyRent).toLocaleString()}
+                                                        <Text style={styles.totalRentMonthSuffix}> / mo</Text>
+                                                    </Text>
+                                                </View>
+                                            </>
+                                        ) : (
+                                            <View style={[styles.rentDetailRow, styles.rentTotalRow, { marginTop: 4 }]}>
+                                                <Text style={styles.rentDetailTotalLabel}>Total Monthly Rent (Annex)</Text>
+                                                <Text style={styles.totalRentHighlight}>
+                                                    Rs. {Number(unitPrice).toLocaleString()}
+                                                    <Text style={styles.totalRentMonthSuffix}> / mo</Text>
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                );
+                            })()}
+
                             {/* Message to Owner */}
                             <Text style={styles.inputLabel}>
-                                <Ionicons name="chatbox-ellipses-outline" size={15} color="#1B4D3E" />  Message to Owner
+                                <Ionicons name="chatbox-ellipses-outline" size={15} color="#133E32" />  Message to Owner
                             </Text>
                             <TextInput
                                 style={styles.textArea}
@@ -1259,19 +1429,114 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#1B4D3E',
-        height: 50,
-        borderRadius: 12,
-        shadowColor: '#1B4D3E',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
-        elevation: 3,
+        backgroundColor: '#133E32',
+        height: 52,
+        borderRadius: 14,
+        marginTop: 6,
+        marginBottom: 10,
+        shadowColor: '#133E32',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 4,
     },
     submitBtnText: {
         fontSize: 15,
-        fontWeight: '900',
+        fontWeight: '800',
         color: '#FFFFFF',
+    },
+
+    /* Professional Rent Summary Card */
+    rentSummaryCard: {
+        backgroundColor: '#FFFFFF',
+        borderColor: '#E2E8F0',
+        borderWidth: 1,
+        borderRadius: 14,
+        padding: 14,
+        marginVertical: 14,
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    rentSummaryHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    rentSummaryHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    rentIconBox: {
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        backgroundColor: '#E6F4EA',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 8,
+    },
+    rentSummaryTitle: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+    rentBasisBadge: {
+        backgroundColor: '#E6F4EA',
+        borderColor: '#A7F3D0',
+        borderWidth: 1,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+    },
+    rentBasisBadgeText: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#133E32',
+    },
+    rentCardDivider: {
+        height: 1,
+        backgroundColor: '#F1F5F9',
+        marginVertical: 10,
+    },
+    rentDetailRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
+    rentDetailLabel: {
+        fontSize: 13,
+        color: '#64748B',
+        fontWeight: '600',
+    },
+    rentDetailValue: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#1E293B',
+    },
+    rentTotalRow: {
+        marginTop: 4,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+    },
+    rentDetailTotalLabel: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+    totalRentHighlight: {
+        fontSize: 17,
+        fontWeight: '900',
+        color: '#059669',
+    },
+    totalRentMonthSuffix: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#059669',
     },
 });
 

@@ -3,6 +3,8 @@ package com.boardinghub.backend.controller;
 import com.boardinghub.backend.dto.request.PropertyRequest;
 import com.boardinghub.backend.dto.response.PropertyResponse;
 import com.boardinghub.backend.enums.GenderPreference;
+import com.boardinghub.backend.dto.response.GeocodeResponse;
+import com.boardinghub.backend.service.GeocodingService;
 import com.boardinghub.backend.service.PropertyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,19 @@ import java.util.List;
 public class PropertyController {
 
     private final PropertyService propertyService;
+    private final GeocodingService geocodingService;
+
+    @GetMapping("/geocode")
+    public ResponseEntity<GeocodeResponse> geocodePropertyAddress(
+            @RequestParam String address,
+            @RequestParam(required = false) String city
+    ) {
+        GeocodeResponse response = geocodingService.geocodeAddress(address, city);
+        if (!response.isSuccess()) {
+            return ResponseEntity.badRequest().body(response);
+        }
+        return ResponseEntity.ok(response);
+    }
 
     @PostMapping
     @PreAuthorize("hasRole('OWNER')")

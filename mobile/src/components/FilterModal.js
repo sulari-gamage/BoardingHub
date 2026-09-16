@@ -337,7 +337,7 @@ export default function FilterModal({ visible, onClose, onApply, initialFilters 
                             <Text style={styles.presetLabel}>Quick Presets:</Text>
                             <View style={styles.presetChipRow}>
                                 {[
-                                    { id: 'ALL', label: 'Any Price' },
+                                    { id: 'ALL', label: 'All Prices' },
                                     { id: '<15k', label: '< 15k' },
                                     { id: '15k-30k', label: '15k - 30k' },
                                     { id: '30k-50k', label: '30k - 50k' },
@@ -365,7 +365,6 @@ export default function FilterModal({ visible, onClose, onApply, initialFilters 
                             <Text style={styles.sectionTitle}>3. Gender Preference</Text>
                             <View style={styles.segmentRow}>
                                 {[
-                                    { id: 'ANY', label: 'Any Gender / Mixed' },
                                     { id: 'MALE', label: 'Boys Only' },
                                     { id: 'FEMALE', label: 'Girls Only' },
                                 ].map((item) => {
@@ -374,7 +373,7 @@ export default function FilterModal({ visible, onClose, onApply, initialFilters 
                                         <TouchableOpacity
                                             key={item.id}
                                             style={[styles.segmentBtn, isActive && styles.segmentBtnActive]}
-                                            onPress={() => setSelectedGender(item.id)}
+                                            onPress={() => setSelectedGender(isActive ? 'ANY' : item.id)}
                                             activeOpacity={0.8}
                                         >
                                             <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>
