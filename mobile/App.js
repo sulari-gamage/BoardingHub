@@ -59,9 +59,9 @@ export default function App() {
   const [savedBoardings, setSavedBoardings] = useState([]);
   const [searchInitialQuery, setSearchInitialQuery] = useState('');
 
-  // Load saved boardings from Backend / AsyncStorage on app mount / user login
+  // Load saved boardings & user bookings from Backend / AsyncStorage on app mount / user login
   useEffect(() => {
-    const loadSavedBoardings = async () => {
+    const loadUserData = async () => {
       try {
         if (currentUser) {
           const remoteFavorites = await api.favorites.getSaved();
@@ -81,8 +81,17 @@ export default function App() {
             setSavedBoardings(formatted);
             const userKey = currentUser?.id || currentUser?.email;
             api.storage.setItem(`@saved_boardings_${userKey}`, JSON.stringify(formatted)).catch(() => { });
-            return;
           }
+
+          try {
+            const bookingsData = await api.bookings.getMyBookings();
+            if (Array.isArray(bookingsData)) {
+              setUserBookings(bookingsData);
+            }
+          } catch (bErr) {
+            console.log('[App] Error fetching seeker bookings:', bErr?.message);
+          }
+          return;
         }
 
         // Fallback to local storage
@@ -93,15 +102,15 @@ export default function App() {
           const parsed = JSON.parse(savedData);
           if (Array.isArray(parsed)) {
             setSavedBoardings(parsed);
-            return;
           }
+        } else {
+          setSavedBoardings([]);
         }
-        setSavedBoardings([]);
       } catch (error) {
         console.log('[App] Error loading saved boardings:', error);
       }
     };
-    loadSavedBoardings();
+    loadUserData();
   }, [currentUser]);
 
   const handleToggleSaveBoarding = async (boarding) => {
@@ -190,6 +199,11 @@ export default function App() {
   // After a booking is placed, navigate to confirmation screen
   const handleAddBooking = (booking) => {
     setSelectedBooking(booking);
+    setUserBookings((prev) => [booking, ...prev]);
+    // Also re-fetch from backend asynchronously
+    api.bookings.getMyBookings().then((data) => {
+      if (Array.isArray(data)) setUserBookings(data);
+    }).catch(() => { });
     setCurrentScreen('BOOKING_CONFIRMATION');
   };
 

@@ -309,6 +309,9 @@ export default function BookingRequestModal({ visible, onClose, boarding = {}, o
                                 console.log('[BookingRequestModal] Successfully persisted booking to database:', apiResult);
                             }
 
+                            const nowIso = new Date().toISOString();
+                            const nowFormatted = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
                             const bookingData = {
                                 id: apiResult?.id ? `booking_${apiResult.id}` : `booking_${Date.now()}`,
                                 propertyId: boarding.id || 'p1',
@@ -316,6 +319,8 @@ export default function BookingRequestModal({ visible, onClose, boarding = {}, o
                                 location: boarding.location || 'Moratuwa, Sri Lanka',
                                 date: moveInDate,
                                 moveInDate: moveInDate,
+                                createdAt: apiResult?.createdAt || nowIso,
+                                requestSentDate: apiResult?.createdAt ? new Date(apiResult.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : nowFormatted,
                                 bookingType: bookingTypeEnum,
                                 roomId: roomId,
                                 roomType: roomTypeLabel,
@@ -339,6 +344,8 @@ export default function BookingRequestModal({ visible, onClose, boarding = {}, o
                         } catch (err) {
                             console.error('[BookingRequestModal] Database save failed:', err?.message);
                             // Fallback client callback so UI workflow remains responsive
+                            const nowIso = new Date().toISOString();
+                            const nowFormatted = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                             const fallbackData = {
                                 id: `booking_${Date.now()}`,
                                 propertyId: boarding.id || 'p1',
@@ -346,6 +353,8 @@ export default function BookingRequestModal({ visible, onClose, boarding = {}, o
                                 location: boarding.location || 'Moratuwa, Sri Lanka',
                                 date: moveInDate,
                                 moveInDate: moveInDate,
+                                createdAt: nowIso,
+                                requestSentDate: nowFormatted,
                                 bookingType: bookingTypeEnum,
                                 roomId: roomId,
                                 roomType: roomTypeLabel,

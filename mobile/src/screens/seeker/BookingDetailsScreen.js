@@ -93,6 +93,23 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
         fetchLiveOwnerData();
     }, [booking.propertyId]);
 
+    const formatSubmissionDate = (bookingObj) => {
+        if (!bookingObj) return 'N/A';
+        const rawDate = bookingObj.requestSentDate || bookingObj.dateRequested || bookingObj.createdAt || bookingObj.requestDate;
+        if (!rawDate) return 'Recently';
+        try {
+            const d = new Date(rawDate);
+            if (!isNaN(d.getTime())) {
+                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+            return String(rawDate);
+        } catch (e) {
+            return String(rawDate);
+        }
+    };
+
+    const requestSentDateFormatted = formatSubmissionDate(booking);
+
     const title = booking.title || 'Boarding Property';
     const location = booking.location || 'Moratuwa, Sri Lanka';
     const date = booking.date || 'Sep 10, 2026';
@@ -118,7 +135,7 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
     const timelineSteps = [
         {
             label: 'Booking Request Sent',
-            date: booking.date || 'Submitted',
+            date: requestSentDateFormatted,
             done: true
         },
         {
@@ -346,7 +363,7 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
                 <View style={styles.summaryCard}>
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Request Sent Date</Text>
-                        <Text style={styles.summaryVal}>{booking.createdAt || booking.requestDate || booking.date || 'N/A'}</Text>
+                        <Text style={styles.summaryVal}>{requestSentDateFormatted}</Text>
                     </View>
 
                     <View style={styles.summaryDivider} />

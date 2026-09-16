@@ -130,6 +130,23 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
         );
     };
 
+    const formatRequestSentDate = (reqObj) => {
+        if (!reqObj) return 'N/A';
+        const rawDate = reqObj.requestSentDate || reqObj.dateRequested || reqObj.createdAt || reqObj.requestDate;
+        if (!rawDate) return 'Recently';
+        try {
+            const d = new Date(rawDate);
+            if (!isNaN(d.getTime())) {
+                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+            return String(rawDate);
+        } catch (e) {
+            return String(rawDate);
+        }
+    };
+
+    const requestSentDateFormatted = formatRequestSentDate(currentRequest);
+
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
@@ -234,7 +251,7 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={styles.detailLabel}>REQUEST SENT DATE</Text>
-                        <Text style={styles.detailValue}>{currentRequest.createdAt || currentRequest.requestDate || currentRequest.date || 'N/A'}</Text>
+                        <Text style={styles.detailValue}>{requestSentDateFormatted}</Text>
                     </View>
                 </View>
 
@@ -254,14 +271,14 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
                 {(() => {
                     const rawStatus = currentRequest.status || 'PENDING';
                     const isApproved = rawStatus === 'ACCEPTED' || rawStatus === 'APPROVED';
-                    const isRejected = rawStatus === 'REJECTED' || rawStatus === 'DECLINED';
+                    const isRejected = rawStatus === 'DECLINED' || rawStatus === 'REJECTED';
                     const isCancelled = rawStatus === 'CANCELLED';
                     const isResponded = isApproved || isRejected || isCancelled;
 
                     const moveInReached = isMoveInDateReached(currentRequest.moveInDate || currentRequest.date);
 
                     const timelineSteps = [
-                        { label: 'Booking Request Sent', date: currentRequest.date || 'Submitted', done: true },
+                        { label: 'Booking Request Sent', date: requestSentDateFormatted, done: true },
                         { label: 'Owner Review', date: 'Review Completed', done: true },
                         { label: 'Owner Response', date: isApproved ? 'Approved by Owner' : isRejected ? 'Declined by Owner' : isCancelled ? 'Request Cancelled' : 'Pending Decision', done: isResponded },
                         { label: 'Move-in Status', date: isApproved ? (moveInReached ? 'Moved In (Date Reached)' : `Scheduled for ${currentRequest.moveInDate || 'Move-in Date'}`) : (isRejected ? 'Declined' : isCancelled ? 'Cancelled' : 'Pending Approval'), done: isApproved && moveInReached }

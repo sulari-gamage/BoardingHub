@@ -31,6 +31,7 @@ export default function ProfileScreen({
     const [profile, setProfile] = useState(null);
     const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || '');
     const [loading, setLoading] = useState(false);
+    const [myBookings, setMyBookings] = useState(userBookings || []);
 
     // Edit Profile Modal State
     const [isEditProfileVisible, setIsEditProfileVisible] = useState(false);
@@ -50,7 +51,14 @@ export default function ProfileScreen({
 
     useEffect(() => {
         loadUserProfile();
+        loadMyBookings();
     }, []);
+
+    useEffect(() => {
+        if (Array.isArray(userBookings)) {
+            setMyBookings(userBookings);
+        }
+    }, [userBookings]);
 
     const loadUserProfile = async () => {
         try {
@@ -65,11 +73,29 @@ export default function ProfileScreen({
         }
     };
 
+    const loadMyBookings = async () => {
+        try {
+            const data = await api.bookings.getMyBookings();
+            if (data && Array.isArray(data)) {
+                setMyBookings(data);
+            }
+        } catch (err) {
+            console.log('[ProfileScreen] Bookings fetch error:', err.message);
+        }
+    };
+
     const userName = profile?.name || currentUser?.name || 'User Renter';
     const userEmail = profile?.email || currentUser?.email || 'seeker@email.com';
     const userPhone = profile?.phone || currentUser?.phone || 'Not provided';
     const currentAvatar = avatarUrl || profile?.avatarUrl || currentUser?.avatarUrl || null;
     const hasAvatar = Boolean(currentAvatar && typeof currentAvatar === 'string' && currentAvatar.trim().length > 0);
+
+    const activeBookingsList = (myBookings && myBookings.length > 0) ? myBookings : userBookings;
+    const pendingRequestsCount = Array.isArray(activeBookingsList)
+        ? activeBookingsList.filter(
+            (b) => b && (b.status === 'PENDING' || b.status === 'Pending')
+        ).length
+        : 0;
 
     const handlePickAvatar = async () => {
         try {
@@ -276,7 +302,7 @@ export default function ProfileScreen({
                         activeOpacity={0.8}
                     >
                         <Ionicons name="paper-plane-outline" size={24} color="#133E32" style={styles.statIcon} />
-                        <Text style={styles.statVal}>{userBookings.length}</Text>
+                        <Text style={styles.statVal}>{pendingRequestsCount}</Text>
                         <Text style={styles.statLabel}>My Requests</Text>
                     </TouchableOpacity>
                 </View>

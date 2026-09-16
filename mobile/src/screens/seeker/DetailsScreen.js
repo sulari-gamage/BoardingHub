@@ -12,7 +12,8 @@ import {
     Linking,
     Dimensions,
     Modal,
-    ActivityIndicator
+    ActivityIndicator,
+    Share
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -300,8 +301,27 @@ export default function DetailsScreen({
         });
     };
 
-    const handleShare = () => {
-        Alert.alert("Share Property", `Share link for "${title}" copied to clipboard!`);
+    const handleShare = async () => {
+        try {
+            const propertyId = boarding.id || '';
+            const shareUrl = `https://boardinghub.app/property/${propertyId}`;
+            const messageText = `Check out "${title}" on BoardingHub! 🏡\n📍 Location: ${location}\n💰 Price: Rs. ${price} / month\n\nLink: ${shareUrl}`;
+
+            await Share.share(
+                {
+                    title: title,
+                    message: messageText,
+                    url: shareUrl,
+                },
+                {
+                    dialogTitle: `Share ${title}`,
+                    subject: title,
+                }
+            );
+        } catch (error) {
+            console.log('[DetailsScreen] Share error:', error?.message);
+            Alert.alert('Share Error', 'Could not open device share options.');
+        }
     };
 
     return (

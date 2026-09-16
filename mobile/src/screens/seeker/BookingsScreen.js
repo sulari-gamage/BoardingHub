@@ -57,6 +57,8 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
             location: b.location || 'Moratuwa, Sri Lanka',
             date: b.moveInDate ? new Date(b.moveInDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Pending Date',
             moveInDateRaw: b.moveInDate,
+            createdAt: b.createdAt,
+            requestSentDate: b.createdAt ? new Date(b.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
             roomType: b.roomName ? `${b.roomName} (${b.roomType || 'Room'})` : (b.roomType ? `${b.roomType} Room` : 'Whole Property / Annex'),
             bookingType: b.bookingType || 'ROOM_BASED',
             status: b.status === 'APPROVED' ? 'ACCEPTED' : b.status,
