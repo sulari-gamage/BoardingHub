@@ -11,22 +11,22 @@ export default function BoardingCard({ item, onPress, isSaved, onToggleSave }) {
     const getGenderInfo = () => {
         const raw = item.genderPreference || item.genderType || item.gender || item.genderPref || item.genderPre;
         if (!raw) {
-            return { label: 'Any', icon: 'male-female-outline', color: '#1B4D3E', bg: '#E6F0EC', border: '#C3DCD4' };
+            return { label: 'Any Gender / Mixed', color: '#1B4D3E', bg: '#E6F0EC', border: '#C3DCD4' };
         }
         const s = String(raw).toUpperCase();
         if (s.includes('GIRL') || s.includes('FEMALE') || s.includes('WOMEN') || s === 'GIRLS') {
-            return { label: 'Girls', icon: 'female', color: '#BE185D', bg: '#FCE7F3', border: '#FBCFE8' };
+            return { label: 'Girls Only', color: '#BE185D', bg: '#FCE7F3', border: '#FBCFE8' };
         }
         if (s.includes('BOY') || s.includes('MALE') || s.includes('MEN') || s === 'BOYS') {
-            return { label: 'Boys', icon: 'male', color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' };
+            return { label: 'Boys Only', color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' };
         }
-        return { label: 'Any', icon: 'male-female-outline', color: '#1B4D3E', bg: '#E6F0EC', border: '#C3DCD4' };
+        return { label: 'Any Gender / Mixed', color: '#1B4D3E', bg: '#E6F0EC', border: '#C3DCD4' };
     };
 
     const genderInfo = getGenderInfo();
 
     return (
-        <View style={styles.card}>
+        <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
             {/* Cover Image */}
             <View style={styles.imageContainer}>
                 <Image source={{ uri: item.imageUrl }} style={styles.image} resizeMode="cover" />
@@ -64,7 +64,6 @@ export default function BoardingCard({ item, onPress, isSaved, onToggleSave }) {
                         {item.title}
                     </Text>
                     <View style={[styles.genderBadge, { backgroundColor: genderInfo.bg, borderColor: genderInfo.border }]}>
-                        <Ionicons name={genderInfo.icon} size={11} color={genderInfo.color} style={{ marginRight: 3 }} />
                         <Text style={[styles.genderBadgeText, { color: genderInfo.color }]}>
                             {genderInfo.label}
                         </Text>
@@ -124,7 +123,7 @@ export default function BoardingCard({ item, onPress, isSaved, onToggleSave }) {
                     </TouchableOpacity>
                 </View>
             </View>
-        </View>
+        </TouchableOpacity>
     );
 }
 

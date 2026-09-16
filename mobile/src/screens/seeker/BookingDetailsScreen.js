@@ -10,7 +10,8 @@ import {
     Alert,
     Platform,
     Linking,
-    ActivityIndicator
+    ActivityIndicator,
+    Share
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -234,6 +235,29 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
         );
     };
 
+    const handleShareBooking = async () => {
+        try {
+            const propertyId = booking.propertyId || (booking.property && booking.property.id) || '';
+            const shareUrl = propertyId ? `https://boardinghub.app/property/${propertyId}` : 'https://boardinghub.app';
+            const messageText = `📋 Boarding Request Details:\n🏡 Property: ${title}\n📍 Location: ${location}\n🛏️ Room / Nature: ${roomType}\n📅 Move-in Date: ${targetMoveInDate}\n💰 Price: Rs. ${price} / month\n⚡ Status: ${status}\n\nView details: ${shareUrl}`;
+
+            await Share.share(
+                {
+                    title: `Booking Request - ${title}`,
+                    message: messageText,
+                    url: shareUrl,
+                },
+                {
+                    dialogTitle: `Share Booking Request Details`,
+                    subject: `Booking Request Details - ${title}`,
+                }
+            );
+        } catch (error) {
+            console.log('[BookingDetailsScreen] Share error:', error?.message);
+            Alert.alert('Share Error', 'Could not open device share options.');
+        }
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -244,7 +268,7 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
                     <Ionicons name="arrow-back" size={20} color="#0F172A" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Booking Details</Text>
-                <TouchableOpacity style={styles.shareBtn} activeOpacity={0.8}>
+                <TouchableOpacity style={styles.shareBtn} onPress={handleShareBooking} activeOpacity={0.8}>
                     <Ionicons name="share-social-outline" size={20} color="#1B4D3E" />
                 </TouchableOpacity>
             </View>

@@ -365,9 +365,9 @@ export default function FilterModal({ visible, onClose, onApply, initialFilters 
                             <Text style={styles.sectionTitle}>3. Gender Preference</Text>
                             <View style={styles.segmentRow}>
                                 {[
-                                    { id: 'ANY', label: 'Any Gender', icon: 'people-outline' },
-                                    { id: 'MALE', label: 'Boys Only', icon: 'male-outline' },
-                                    { id: 'FEMALE', label: 'Girls Only', icon: 'female-outline' },
+                                    { id: 'ANY', label: 'Any Gender / Mixed' },
+                                    { id: 'MALE', label: 'Boys Only' },
+                                    { id: 'FEMALE', label: 'Girls Only' },
                                 ].map((item) => {
                                     const isActive = selectedGender === item.id;
                                     return (
@@ -377,12 +377,6 @@ export default function FilterModal({ visible, onClose, onApply, initialFilters 
                                             onPress={() => setSelectedGender(item.id)}
                                             activeOpacity={0.8}
                                         >
-                                            <Ionicons
-                                                name={item.icon}
-                                                size={16}
-                                                color={isActive ? '#133E32' : '#64748B'}
-                                                style={{ marginBottom: 2 }}
-                                            />
                                             <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>
                                                 {item.label}
                                             </Text>

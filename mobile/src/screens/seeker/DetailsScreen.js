@@ -1279,8 +1279,15 @@ export default function DetailsScreen({
                                 </View>
                                 {selectedRoomModalData?.genderPreference && (
                                     <View style={styles.modalSpecChipFull}>
-                                        <Ionicons name="man-woman-outline" size={15} color="#1B4D3E" style={{ marginRight: 8 }} />
-                                        <Text style={styles.modalSpecText}>Gender Preference: <Text style={{ fontWeight: '800', color: '#0F172A' }}>{selectedRoomModalData.genderPreference}</Text></Text>
+                                        <Ionicons name="person-outline" size={15} color="#1B4D3E" style={{ marginRight: 8 }} />
+                                        <Text style={styles.modalSpecText}>Gender Preference: <Text style={{ fontWeight: '800', color: '#0F172A' }}>
+                                            {(() => {
+                                                const s = String(selectedRoomModalData.genderPreference).toUpperCase();
+                                                if (s.includes('FEMALE') || s.includes('GIRL') || s === 'GIRLS') return 'Girls Only';
+                                                if (s.includes('MALE') || s.includes('BOY') || s === 'BOYS') return 'Boys Only';
+                                                return 'Any Gender / Mixed';
+                                            })()}
+                                        </Text></Text>
                                     </View>
                                 )}
                             </View>

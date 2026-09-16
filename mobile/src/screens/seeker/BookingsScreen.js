@@ -125,7 +125,15 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {filteredBookings.length > 0 ? (
                     filteredBookings.map((item) => (
-                        <View key={item.id} style={styles.bookingCard}>
+                        <TouchableOpacity
+                            key={item.id}
+                            style={styles.bookingCard}
+                            onPress={() => {
+                                if (onViewBookingDetails) onViewBookingDetails(item);
+                                else if (onSelectBoarding) onSelectBoarding(item);
+                            }}
+                            activeOpacity={0.9}
+                        >
                             {/* Image & Status Badge */}
                             <View style={styles.imageContainer}>
                                 {item.imageUrl ? (
@@ -198,9 +206,10 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
                                     activeOpacity={0.85}
                                 >
                                     <Text style={styles.viewDetailsBtnText}>View Details</Text>
+                                    <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
                                 </TouchableOpacity>
                             </View>
-                        </View>
+                        </TouchableOpacity>
                     ))
                 ) : (
                     <View style={styles.emptyContainer}>
@@ -371,16 +380,20 @@ const styles = StyleSheet.create({
     viewDetailsBtn: {
         height: 46,
         borderRadius: 12,
-        borderWidth: 1.5,
-        borderColor: '#133E32',
+        backgroundColor: '#133E32',
+        flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        shadowColor: '#133E32',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+        elevation: 3,
     },
     viewDetailsBtnText: {
         fontSize: 14,
         fontWeight: '800',
-        color: '#133E32',
+        color: '#FFFFFF',
     },
 
     /* Empty State */

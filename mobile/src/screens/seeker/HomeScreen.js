@@ -274,7 +274,7 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
             totalSpaces: p.totalCapacity || (p.rooms ? p.rooms.reduce((acc, r) => acc + (r.totalCapacity || 1), 0) : 1),
             remainingSpaces: p.remainingSpaces != null ? p.remainingSpaces : (p.rooms ? p.rooms.reduce((acc, r) => acc + (r.remainingSpaces != null ? r.remainingSpaces : Math.max(0, (r.totalCapacity || 1) - (r.occupied || 0))), 0) : 1),
             rawGender: p.genderPreference,
-            genderPreference: p.genderPreference === 'MALE_ONLY' ? 'Boys Only' : p.genderPreference === 'FEMALE_ONLY' ? 'Girls Only' : 'Any Gender',
+            genderPreference: p.genderPreference === 'MALE_ONLY' ? 'Boys Only' : p.genderPreference === 'FEMALE_ONLY' ? 'Girls Only' : 'Any Gender / Mixed',
             image: (p.imageUrls && p.imageUrls.length > 0)
                 ? { uri: p.imageUrls[0] }
                 : (p.images && p.images.length > 0)
@@ -457,7 +457,7 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
 
                 {/* "Popular Boardings" Vertical Section */}
                 <View style={styles.sectionHeaderRow}>
-                    <Text style={styles.sectionTitle}>Popular Boardings</Text>
+                    <Text style={styles.sectionTitle}>Registered Boardings</Text>
                 </View>
 
                 {/* Filter Chips */}

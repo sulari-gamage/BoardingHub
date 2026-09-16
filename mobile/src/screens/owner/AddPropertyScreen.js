@@ -84,8 +84,8 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
     const [propertyNature, setPropertyNature] = useState(dbSource.rooms && dbSource.rooms.length > 0 ? 'ROOM_BASED' : 'WHOLE_HOUSE');
     const [description, setDescription] = useState(dbSource.description || '');
     const [genderPreference, setGenderPreference] = useState(
-        dbSource.genderPreference === 'FEMALE_ONLY' ? 'Female Only' :
-            dbSource.genderPreference === 'MALE_ONLY' ? 'Male Only' : 'Mixed'
+        dbSource.genderPreference === 'FEMALE_ONLY' ? 'Girls Only' :
+            dbSource.genderPreference === 'MALE_ONLY' ? 'Boys Only' : 'Any Gender / Mixed'
     );
 
 
@@ -530,9 +530,9 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
             try {
                 // 1. Map GenderPreference to backend Enum (ANY, MALE_ONLY, FEMALE_ONLY)
                 let mappedGender = 'ANY';
-                if (genderPreference === 'Female Only') mappedGender = 'FEMALE_ONLY';
-                else if (genderPreference === 'Male Only') mappedGender = 'MALE_ONLY';
-                else if (genderPreference === 'Mixed') mappedGender = 'ANY';
+                if (genderPreference === 'Girls Only' || genderPreference === 'Female Only') mappedGender = 'FEMALE_ONLY';
+                else if (genderPreference === 'Boys Only' || genderPreference === 'Male Only') mappedGender = 'MALE_ONLY';
+                else mappedGender = 'ANY';
 
                 // 2. Location coordinates from dynamic map selection
                 const lat = mapCoords.lat || 6.9271;
@@ -1375,7 +1375,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                         {/* Gender Preference */}
                         <Text style={styles.fieldLabel}>Gender Preference</Text>
                         <View style={styles.genderContainer}>
-                            {['Mixed', 'Female Only', 'Male Only'].map((pref) => {
+                            {['Any Gender / Mixed', 'Girls Only', 'Boys Only'].map((pref) => {
                                 const isSelected = genderPreference === pref;
                                 return (
                                     <TouchableOpacity

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, StatusBar, View } from 'react-native';
+import { StyleSheet, StatusBar, View, BackHandler } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './src/services/api';
@@ -46,6 +46,7 @@ import AdminMoreScreen from './src/screens/admin/AdminMoreScreen';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('LOGIN');
+  const [navigationHistory, setNavigationHistory] = useState(['LOGIN']);
   const [userRole, setUserRole] = useState('SEEKER'); // 'SEEKER' | 'OWNER' | 'ADMIN'
   const [currentUser, setCurrentUser] = useState(null); // populated from API on login/register
   const [selectedBoarding, setSelectedBoarding] = useState(null);
@@ -53,11 +54,73 @@ export default function App() {
   const [selectedOwnerRequest, setSelectedOwnerRequest] = useState(null);
   const [selectedAdminUser, setSelectedAdminUser] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [previousScreen, setPreviousScreen] = useState('HOME');
   const [userBookings, setUserBookings] = useState([]);
   const [ownerRequests, setOwnerRequests] = useState([]);
   const [savedBoardings, setSavedBoardings] = useState([]);
   const [searchInitialQuery, setSearchInitialQuery] = useState('');
+
+  // Navigation Stack Helpers
+  const navigateTo = (screen) => {
+    setNavigationHistory((prev) => {
+      if (prev[prev.length - 1] === screen) return prev;
+      return [...prev, screen];
+    });
+    setCurrentScreen(screen);
+  };
+
+  const resetStackTo = (screen) => {
+    setNavigationHistory([screen]);
+    setCurrentScreen(screen);
+  };
+
+  const getRoleHome = () => {
+    if (userRole === 'ADMIN') return 'ADMIN_DASHBOARD';
+    if (userRole === 'OWNER') return 'OWNER_HOME';
+    return 'HOME';
+  };
+
+  const goBack = () => {
+    const roleHome = getRoleHome();
+
+    // Main navigation bar screens for each role
+    const seekerMainTabs = ['SEARCH', 'FAVORITES', 'BOOKINGS', 'PROFILE'];
+    const ownerMainTabs = ['OWNER_PROPERTIES', 'OWNER_REQUESTS', 'OWNER_PROFILE'];
+    const adminMainTabs = ['ADMIN_PENDING_PROPERTIES', 'ADMIN_USER_MANAGEMENT', 'ADMIN_MORE', 'ADMIN_BOOKING_MONITORING', 'ADMIN_ANALYTICS'];
+    const isMainTab = [...seekerMainTabs, ...ownerMainTabs, ...adminMainTabs].includes(currentScreen);
+
+    if (isMainTab) {
+      setCurrentScreen(roleHome);
+      setNavigationHistory([roleHome]);
+      return true;
+    }
+
+    setNavigationHistory((prev) => {
+      if (prev.length > 1) {
+        const nextHistory = prev.slice(0, prev.length - 1);
+        const topScreen = nextHistory[nextHistory.length - 1];
+        setCurrentScreen(topScreen);
+        return nextHistory;
+      }
+
+      const currentTop = prev[0];
+      if (currentTop !== roleHome && currentTop !== 'LOGIN' && currentTop !== 'REGISTER') {
+        setCurrentScreen(roleHome);
+        return [roleHome];
+      }
+      return prev;
+    });
+    return true; // Return true to indicate hardware back press handled
+  };
+
+  // Hardware Back Button Event Listener
+  useEffect(() => {
+    const onHardwareBack = () => {
+      return goBack();
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
+    return () => subscription.remove();
+  }, [userRole]);
 
   // Load saved boardings & user bookings from Backend / AsyncStorage on app mount / user login
   useEffect(() => {
@@ -138,7 +201,6 @@ export default function App() {
     // Sync with database backend if logged in
     try {
       if (currentUser) {
-        // Check if property ID is a valid numeric DB id (mock boardings have IDs like 'n1', 'p1')
         if (isNaN(propId) || propId <= 0) {
           console.log('[App] Property ID is non-numeric (mock/offline property); stored in local device storage only.');
           return;
@@ -182,18 +244,14 @@ export default function App() {
   };
 
   // Navigation Handlers
-  const handleSelectBoarding = (boarding, origin = 'HOME') => {
+  const handleSelectBoarding = (boarding) => {
     setSelectedBoarding(boarding);
-    // If we're already coming from a main tab screen, store it as originScreen
-    if (origin !== 'DETAILS') {
-      setPreviousScreen(origin);
-    }
-    setCurrentScreen('DETAILS');
+    navigateTo('DETAILS');
   };
 
   const handleSelectOwnerProperty = (prop) => {
     setSelectedOwnerProperty(prop);
-    setCurrentScreen('OWNER_PROPERTY_DETAIL');
+    navigateTo('OWNER_PROPERTY_DETAIL');
   };
 
   // After a booking is placed, navigate to confirmation screen
@@ -204,13 +262,12 @@ export default function App() {
     api.bookings.getMyBookings().then((data) => {
       if (Array.isArray(data)) setUserBookings(data);
     }).catch(() => { });
-    setCurrentScreen('BOOKING_CONFIRMATION');
+    navigateTo('BOOKING_CONFIRMATION');
   };
 
   const handleViewBookingDetails = (booking) => {
     setSelectedBooking(booking);
-    setPreviousScreen(currentScreen);
-    setCurrentScreen('BOOKING_DETAILS');
+    navigateTo('BOOKING_DETAILS');
   };
 
   const handleOpenGallery = (boarding) => {
@@ -218,77 +275,63 @@ export default function App() {
       setSelectedBoarding(boarding);
       if (userRole === 'OWNER') setSelectedOwnerProperty(boarding);
     }
-    // Only set previousScreen if not already in DETAILS
-    if (currentScreen !== 'DETAILS') {
-      setPreviousScreen(currentScreen);
-    }
-    setCurrentScreen('IMAGE_GALLERY');
+    navigateTo('IMAGE_GALLERY');
   };
 
   const handleOpenMap = (boarding) => {
     if (boarding) setSelectedBoarding(boarding);
-    if (currentScreen !== 'DETAILS') {
-      setPreviousScreen(currentScreen);
-    }
-    setCurrentScreen('MAP_VIEW');
+    navigateTo('MAP_VIEW');
   };
 
   const handleOpenReviews = (boarding) => {
     if (boarding) setSelectedBoarding(boarding);
-    if (currentScreen !== 'DETAILS') {
-      setPreviousScreen(currentScreen);
-    }
-    setCurrentScreen('REVIEWS');
+    navigateTo('REVIEWS');
   };
 
   const handleOpenNotifications = () => {
-    setPreviousScreen(currentScreen);
-    setCurrentScreen('NOTIFICATIONS');
+    navigateTo('NOTIFICATIONS');
   };
 
   const handleNavigateTab = (tab) => {
     if (userRole === 'ADMIN') {
-      if (tab === 'Dashboard' || tab === 'ADMIN_DASHBOARD') setCurrentScreen('ADMIN_DASHBOARD');
-      else if (tab === 'Listings' || tab === 'ADMIN_PENDING_PROPERTIES') setCurrentScreen('ADMIN_PENDING_PROPERTIES');
-      else if (tab === 'Users' || tab === 'ADMIN_USER_MANAGEMENT') setCurrentScreen('ADMIN_USER_MANAGEMENT');
-      else if (tab === 'More' || tab === 'ADMIN_MORE') setCurrentScreen('ADMIN_MORE');
-      else if (tab === 'Bookings' || tab === 'ADMIN_BOOKING_MONITORING') setCurrentScreen('ADMIN_BOOKING_MONITORING');
-      else if (tab === 'Analytics' || tab === 'ADMIN_ANALYTICS') setCurrentScreen('ADMIN_ANALYTICS');
-      else if (tab === 'ADMIN_PROPERTY_REVIEW') setCurrentScreen('ADMIN_PROPERTY_REVIEW');
+      if (tab === 'Dashboard' || tab === 'ADMIN_DASHBOARD') resetStackTo('ADMIN_DASHBOARD');
+      else if (tab === 'Listings' || tab === 'ADMIN_PENDING_PROPERTIES') navigateTo('ADMIN_PENDING_PROPERTIES');
+      else if (tab === 'Users' || tab === 'ADMIN_USER_MANAGEMENT') navigateTo('ADMIN_USER_MANAGEMENT');
+      else if (tab === 'More' || tab === 'ADMIN_MORE') navigateTo('ADMIN_MORE');
+      else if (tab === 'Bookings' || tab === 'ADMIN_BOOKING_MONITORING') navigateTo('ADMIN_BOOKING_MONITORING');
+      else if (tab === 'Analytics' || tab === 'ADMIN_ANALYTICS') navigateTo('ADMIN_ANALYTICS');
+      else if (tab === 'ADMIN_PROPERTY_REVIEW') navigateTo('ADMIN_PROPERTY_REVIEW');
       return;
     }
 
     if (userRole === 'OWNER') {
-      if (tab === 'Dashboard' || tab === 'OWNER_HOME' || tab === 'HOME') setCurrentScreen('OWNER_HOME');
-      else if (tab === 'Properties' || tab === 'OWNER_PROPERTIES') setCurrentScreen('OWNER_PROPERTIES');
-      else if (tab === 'Requests' || tab === 'OWNER_REQUESTS') setCurrentScreen('OWNER_REQUESTS');
-      else if (tab === 'Profile' || tab === 'PROFILE' || tab === 'OwnerProfile' || tab === 'OWNER_PROFILE') setCurrentScreen('OWNER_PROFILE');
-      else if (tab === 'REVIEWS') {
-        setPreviousScreen('PROFILE');
-        setCurrentScreen('REVIEWS');
-      }
-      else if (tab === 'NOTIFICATIONS') setCurrentScreen('NOTIFICATIONS');
+      if (tab === 'Dashboard' || tab === 'OWNER_HOME' || tab === 'HOME') resetStackTo('OWNER_HOME');
+      else if (tab === 'Properties' || tab === 'OWNER_PROPERTIES') navigateTo('OWNER_PROPERTIES');
+      else if (tab === 'Requests' || tab === 'OWNER_REQUESTS') navigateTo('OWNER_REQUESTS');
+      else if (tab === 'Profile' || tab === 'PROFILE' || tab === 'OwnerProfile' || tab === 'OWNER_PROFILE') navigateTo('OWNER_PROFILE');
+      else if (tab === 'REVIEWS') navigateTo('REVIEWS');
+      else if (tab === 'NOTIFICATIONS') navigateTo('NOTIFICATIONS');
       return;
     }
 
-    if (tab === 'HOME') setCurrentScreen('HOME');
-    else if (tab === 'SEARCH') setCurrentScreen('SEARCH');
-    else if (tab === 'FAVORITES') setCurrentScreen('FAVORITES');
-    else if (tab === 'BOOKINGS') setCurrentScreen('BOOKINGS');
-    else if (tab === 'PROFILE' || tab === 'Profile') setCurrentScreen('PROFILE');
-    else if (tab === 'NOTIFICATIONS') setCurrentScreen('NOTIFICATIONS');
-    else if (tab === 'REVIEWS') setCurrentScreen('REVIEWS');
-    else if (tab === 'MAP_VIEW') setCurrentScreen('MAP_VIEW');
+    if (tab === 'HOME' || tab === 'Home') resetStackTo('HOME');
+    else if (tab === 'SEARCH' || tab === 'Search') navigateTo('SEARCH');
+    else if (tab === 'FAVORITES' || tab === 'Favorites') navigateTo('FAVORITES');
+    else if (tab === 'BOOKINGS' || tab === 'Bookings') navigateTo('BOOKINGS');
+    else if (tab === 'PROFILE' || tab === 'Profile') navigateTo('PROFILE');
+    else if (tab === 'NOTIFICATIONS') navigateTo('NOTIFICATIONS');
+    else if (tab === 'REVIEWS') navigateTo('REVIEWS');
+    else if (tab === 'MAP_VIEW') navigateTo('MAP_VIEW');
   };
 
   const handleSwitchToOwner = () => {
     setUserRole('OWNER');
-    setCurrentScreen('OWNER_HOME');
+    resetStackTo('OWNER_HOME');
   };
 
   const handleSwitchToSeeker = () => {
     setUserRole('SEEKER');
-    setCurrentScreen('HOME');
+    resetStackTo('HOME');
   };
 
   const handleLogout = async () => {
@@ -298,7 +341,7 @@ export default function App() {
     setCurrentUser(null);
     setSavedBoardings([]);
     setUserRole('SEEKER');
-    setCurrentScreen('LOGIN');
+    resetStackTo('LOGIN');
   };
 
   return (
@@ -309,18 +352,18 @@ export default function App() {
         {/* Central Screen Router */}
         {currentScreen === 'REGISTER' ? (
           <RegisterScreen
-            onNavigateToLogin={() => setCurrentScreen('LOGIN')}
+            onNavigateToLogin={() => resetStackTo('LOGIN')}
             onRegisterSuccess={(role, userData) => {
               setCurrentUser(userData);
               if (role === 'Admins' || role === 'Admin') {
                 setUserRole('ADMIN');
-                setCurrentScreen('ADMIN_DASHBOARD');
+                resetStackTo('ADMIN_DASHBOARD');
               } else if (role === 'Owner' || role === 'Owners') {
                 setUserRole('OWNER');
-                setCurrentScreen('OWNER_HOME');
+                resetStackTo('OWNER_HOME');
               } else {
                 setUserRole('SEEKER');
-                setCurrentScreen('HOME');
+                resetStackTo('HOME');
               }
             }}
           />
@@ -330,16 +373,16 @@ export default function App() {
               setCurrentUser(userData);
               if (role === 'Admins' || role === 'Admin') {
                 setUserRole('ADMIN');
-                setCurrentScreen('ADMIN_DASHBOARD');
+                resetStackTo('ADMIN_DASHBOARD');
               } else if (role === 'Owners' || role === 'Owner') {
                 setUserRole('OWNER');
-                setCurrentScreen('OWNER_HOME');
+                resetStackTo('OWNER_HOME');
               } else {
                 setUserRole('SEEKER');
-                setCurrentScreen('HOME');
+                resetStackTo('HOME');
               }
             }}
-            onNavigateToRegister={() => setCurrentScreen('REGISTER')}
+            onNavigateToRegister={() => navigateTo('REGISTER')}
           />
         ) : currentScreen === 'OWNER_HOME' ? (
           <OwnerHomeScreen
@@ -347,9 +390,9 @@ export default function App() {
             currentUser={currentUser}
             onNavigateTab={handleNavigateTab}
             onOpenNotifications={handleOpenNotifications}
-            onViewAllRequests={() => setCurrentScreen('OWNER_REQUESTS')}
-            onReviewRequest={() => setCurrentScreen('OWNER_REQUESTS')}
-            onViewPropertyDetails={() => setCurrentScreen('OWNER_PROPERTIES')}
+            onViewAllRequests={() => navigateTo('OWNER_REQUESTS')}
+            onReviewRequest={() => navigateTo('OWNER_REQUESTS')}
+            onViewPropertyDetails={() => navigateTo('OWNER_PROPERTIES')}
           />
         ) : currentScreen === 'OWNER_PROPERTIES' ? (
           <OwnerPropertiesScreen
@@ -358,34 +401,34 @@ export default function App() {
             onNavigateTab={handleNavigateTab}
             onAddNewProperty={() => {
               setSelectedOwnerProperty(null);
-              setCurrentScreen('ADD_PROPERTY');
+              navigateTo('ADD_PROPERTY');
             }}
             onSelectProperty={handleSelectOwnerProperty}
           />
         ) : currentScreen === 'OWNER_PROPERTY_DETAIL' ? (
           <OwnerPropertyDetailScreen
             property={selectedOwnerProperty}
-            onBack={() => setCurrentScreen('OWNER_PROPERTIES')}
-            onOpenRooms={() => setCurrentScreen('ROOM_MANAGEMENT')}
+            onBack={goBack}
+            onOpenRooms={() => navigateTo('ROOM_MANAGEMENT')}
             onOpenGallery={() => handleOpenGallery(selectedOwnerProperty)}
-            onEditProperty={() => setCurrentScreen('ADD_PROPERTY')}
-            onOpenBookings={() => setCurrentScreen('OWNER_REQUESTS')}
+            onEditProperty={() => navigateTo('ADD_PROPERTY')}
+            onOpenBookings={() => navigateTo('OWNER_REQUESTS')}
             onPropertyUpdated={(updatedProp) => setSelectedOwnerProperty(updatedProp)}
           />
         ) : currentScreen === 'ROOM_MANAGEMENT' ? (
           <RoomManagementScreen
             property={selectedOwnerProperty}
             propertyName={selectedOwnerProperty?.title || 'Boarding Property'}
-            onBack={() => setCurrentScreen('OWNER_PROPERTY_DETAIL')}
-            onAddRoom={() => setCurrentScreen('ADD_ROOM')}
-            onOpenBookings={() => setCurrentScreen('OWNER_REQUESTS')}
+            onBack={goBack}
+            onAddRoom={() => navigateTo('ADD_ROOM')}
+            onOpenBookings={() => navigateTo('OWNER_REQUESTS')}
             onOpenGallery={() => handleOpenGallery(selectedOwnerProperty)}
             onPropertyUpdated={(updatedProp) => setSelectedOwnerProperty(updatedProp)}
           />
         ) : currentScreen === 'ADD_ROOM' ? (
           <AddRoomScreen
-            onBack={() => setCurrentScreen('ROOM_MANAGEMENT')}
-            onSaveRoom={() => setCurrentScreen('ROOM_MANAGEMENT')}
+            onBack={goBack}
+            onSaveRoom={goBack}
           />
         ) : currentScreen === 'OWNER_REQUESTS' ? (
           <OwnerRequestsScreen
@@ -397,20 +440,20 @@ export default function App() {
             onNavigateTab={handleNavigateTab}
             onSelectRequest={(req) => {
               setSelectedOwnerRequest(req);
-              setCurrentScreen('BOOKING_REQUEST_DETAIL');
+              navigateTo('BOOKING_REQUEST_DETAIL');
             }}
           />
         ) : currentScreen === 'BOOKING_REQUEST_DETAIL' ? (
           <BookingRequestDetailScreen
             request={selectedOwnerRequest}
-            onBack={() => setCurrentScreen('OWNER_REQUESTS')}
+            onBack={goBack}
             onAccept={(id) => {
               handleApproveRequest(id || selectedOwnerRequest?.id);
-              setCurrentScreen('OWNER_REQUESTS');
+              goBack();
             }}
             onReject={(id) => {
               handleRejectRequest(id || selectedOwnerRequest?.id);
-              setCurrentScreen('OWNER_REQUESTS');
+              goBack();
             }}
           />
         ) : currentScreen === 'OWNER_PROFILE' ? (
@@ -426,29 +469,27 @@ export default function App() {
           <AddPropertyScreen
             currentUser={currentUser}
             propertyToEdit={selectedOwnerProperty}
-            onBack={() => setCurrentScreen('OWNER_PROPERTIES')}
-            onSaveProperty={() => {
-              setCurrentScreen('OWNER_PROPERTIES');
-            }}
+            onBack={goBack}
+            onSaveProperty={goBack}
           />
         ) : currentScreen === 'ADMIN_DASHBOARD' ? (
           <AdminDashboardScreen
             activeTab="Dashboard"
             onNavigateTab={handleNavigateTab}
-            onOpenPendingReview={() => setCurrentScreen('ADMIN_PENDING_PROPERTIES')}
+            onOpenPendingReview={() => navigateTo('ADMIN_PENDING_PROPERTIES')}
           />
         ) : currentScreen === 'ADMIN_PENDING_PROPERTIES' ? (
           <AdminPendingPropertiesScreen
             activeTab="Listings"
             onNavigateTab={handleNavigateTab}
             onOpenNotifications={handleOpenNotifications}
-            onSelectProperty={() => setCurrentScreen('ADMIN_PROPERTY_REVIEW')}
+            onSelectProperty={() => navigateTo('ADMIN_PROPERTY_REVIEW')}
           />
         ) : currentScreen === 'ADMIN_PROPERTY_REVIEW' ? (
           <AdminPropertyReviewScreen
-            onBack={() => setCurrentScreen('ADMIN_PENDING_PROPERTIES')}
-            onApprove={() => setCurrentScreen('ADMIN_PENDING_PROPERTIES')}
-            onReject={() => setCurrentScreen('ADMIN_PENDING_PROPERTIES')}
+            onBack={goBack}
+            onApprove={goBack}
+            onReject={goBack}
           />
         ) : currentScreen === 'ADMIN_USER_MANAGEMENT' ? (
           <AdminUserManagementScreen
@@ -456,13 +497,13 @@ export default function App() {
             onNavigateTab={handleNavigateTab}
             onSelectUser={(user) => {
               setSelectedAdminUser(user);
-              setCurrentScreen('ADMIN_USER_DETAIL');
+              navigateTo('ADMIN_USER_DETAIL');
             }}
           />
         ) : currentScreen === 'ADMIN_USER_DETAIL' ? (
           <AdminUserDetailScreen
             user={selectedAdminUser}
-            onBack={() => setCurrentScreen('ADMIN_USER_MANAGEMENT')}
+            onBack={goBack}
           />
         ) : currentScreen === 'ADMIN_BOOKING_MONITORING' ? (
           <AdminBookingMonitoringScreen
@@ -479,9 +520,9 @@ export default function App() {
           <AdminMoreScreen
             activeTab="More"
             onNavigateTab={handleNavigateTab}
-            onNavigateScreen={(scr) => setCurrentScreen(scr)}
+            onNavigateScreen={(scr) => navigateTo(scr)}
             onOpenNotifications={handleOpenNotifications}
-            onLogout={() => setCurrentScreen('LOGIN')}
+            onLogout={handleLogout}
           />
         ) : currentScreen === 'SEARCH' ? (
           <SearchScreen
@@ -489,7 +530,7 @@ export default function App() {
             initialSearchQuery={searchInitialQuery}
             savedBoardings={savedBoardings}
             onToggleSaveBoarding={handleToggleSaveBoarding}
-            onSelectBoarding={(b) => handleSelectBoarding(b, 'SEARCH')}
+            onSelectBoarding={handleSelectBoarding}
             onNavigateTab={(tab) => {
               setSearchInitialQuery('');
               handleNavigateTab(tab);
@@ -500,14 +541,14 @@ export default function App() {
             currentUser={currentUser}
             savedBoardings={savedBoardings}
             onToggleSaveBoarding={handleToggleSaveBoarding}
-            onSelectBoarding={(b) => handleSelectBoarding(b, 'FAVORITES')}
+            onSelectBoarding={handleSelectBoarding}
             onNavigateTab={handleNavigateTab}
           />
         ) : currentScreen === 'BOOKINGS' ? (
           <BookingsScreen
             currentUser={currentUser}
             bookings={userBookings}
-            onSelectBoarding={(b) => handleSelectBoarding(b, 'BOOKINGS')}
+            onSelectBoarding={handleSelectBoarding}
             onViewBookingDetails={handleViewBookingDetails}
             onNavigateTab={handleNavigateTab}
           />
@@ -527,22 +568,21 @@ export default function App() {
             boarding={selectedBoarding}
             isSaved={savedBoardings.some((b) => b.id === selectedBoarding.id)}
             onToggleSave={() => handleToggleSaveBoarding(selectedBoarding)}
-            onBack={() => setCurrentScreen(previousScreen || 'HOME')}
+            onBack={goBack}
             onBookSuccess={handleAddBooking}
             onOpenGallery={() => handleOpenGallery(selectedBoarding)}
             onOpenReviews={() => handleOpenReviews(selectedBoarding)}
             onOpenMap={() => handleOpenMap(selectedBoarding)}
             onViewOwnerProperties={(ownerName) => {
               setSearchInitialQuery(ownerName);
-              setPreviousScreen('DETAILS');
-              setCurrentScreen('SEARCH');
+              navigateTo('SEARCH');
             }}
           />
         ) : currentScreen === 'IMAGE_GALLERY' ? (
           <ImageGalleryScreen
             boarding={selectedBoarding || selectedOwnerProperty || {}}
             isOwner={userRole === 'OWNER'}
-            onBack={() => setCurrentScreen(previousScreen || (userRole === 'OWNER' ? 'OWNER_PROPERTY_DETAIL' : 'DETAILS'))}
+            onBack={goBack}
             onPropertyUpdated={(updated) => {
               setSelectedOwnerProperty(updated);
               setSelectedBoarding(updated);
@@ -550,20 +590,20 @@ export default function App() {
           />
         ) : currentScreen === 'MAP_VIEW' ? (
           <MapViewScreen
-            onSelectBoarding={(b) => handleSelectBoarding(b, 'MAP_VIEW')}
-            onBack={() => setCurrentScreen(previousScreen || 'HOME')}
-            onToggleListView={() => setCurrentScreen('SEARCH')}
+            onSelectBoarding={handleSelectBoarding}
+            onBack={goBack}
+            onToggleListView={() => navigateTo('SEARCH')}
           />
         ) : currentScreen === 'BOOKING_CONFIRMATION' ? (
           <BookingConfirmationScreen
             booking={selectedBooking || {}}
-            onGoToBookings={() => setCurrentScreen('BOOKINGS')}
-            onGoHome={() => setCurrentScreen('HOME')}
+            onGoToBookings={() => navigateTo('BOOKINGS')}
+            onGoHome={() => resetStackTo('HOME')}
           />
         ) : currentScreen === 'BOOKING_DETAILS' ? (
           <BookingDetailsScreen
             booking={selectedBooking || {}}
-            onBack={() => setCurrentScreen(previousScreen || 'BOOKINGS')}
+            onBack={goBack}
             onCancelBooking={(id) => {
               setUserBookings((prev) => prev.filter((b) => b.id !== id));
             }}
@@ -572,14 +612,8 @@ export default function App() {
           <ReviewsScreen
             boarding={selectedBoarding || {}}
             currentUser={currentUser}
-            mode={previousScreen === 'PROFILE' || previousScreen === 'OWNER_PROFILE' ? 'MY_REVIEWS' : 'PROPERTY'}
-            onBack={() => {
-              if (previousScreen === 'PROFILE' || previousScreen === 'OWNER_PROFILE') {
-                setCurrentScreen(userRole === 'OWNER' ? 'OWNER_PROFILE' : 'PROFILE');
-              } else {
-                setCurrentScreen(previousScreen || (userRole === 'OWNER' ? 'OWNER_HOME' : 'DETAILS'));
-              }
-            }}
+            mode={userRole === 'OWNER' ? 'MY_REVIEWS' : 'PROPERTY'}
+            onBack={goBack}
             onReviewAdded={(updatedBoarding) => {
               setSelectedBoarding(updatedBoarding);
               setSavedBoardings((prev) =>
@@ -589,9 +623,9 @@ export default function App() {
           />
         ) : currentScreen === 'NOTIFICATIONS' ? (
           <NotificationsScreen
-            onBack={() => setCurrentScreen(previousScreen || 'HOME')}
+            onBack={goBack}
             onSelectNotification={(notif) => {
-              if (notif.type === 'BOOKING') setCurrentScreen('BOOKINGS');
+              if (notif.type === 'BOOKING') navigateTo('BOOKINGS');
             }}
           />
         ) : (
@@ -600,7 +634,7 @@ export default function App() {
             savedBoardings={savedBoardings}
             onToggleSaveBoarding={handleToggleSaveBoarding}
             onUserUpdated={handleUserUpdated}
-            onSelectBoarding={(b) => handleSelectBoarding(b, 'HOME')}
+            onSelectBoarding={handleSelectBoarding}
             onNavigateTab={handleNavigateTab}
             onOpenNotifications={handleOpenNotifications}
           />
