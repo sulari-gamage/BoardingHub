@@ -298,6 +298,10 @@ export const api = {
         delete: async (id) => {
             return await request(`/bookings/${id}`, { method: 'DELETE' });
         },
+
+        deleteBooking: async (id) => {
+            return await request(`/bookings/${id}`, { method: 'DELETE' });
+        },
     },
 
     // Review Services

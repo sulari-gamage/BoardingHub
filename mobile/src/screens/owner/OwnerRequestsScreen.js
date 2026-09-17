@@ -26,7 +26,7 @@ export default function OwnerRequestsScreen({
     activeTab = 'Requests',
     currentUser
 }) {
-    const [filterCategory, setFilterCategory] = useState('ALL');
+    const [filterCategory, setFilterCategory] = useState('PENDING');
     const [apiRequests, setApiRequests] = useState([]);
     const [loading, setLoading] = useState(false);
 
@@ -171,7 +171,7 @@ export default function OwnerRequestsScreen({
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await api.bookings.deleteBooking(id);
+                            await api.bookings.updateStatus(id, 'REMOVED');
                             Alert.alert('Occupant Removed', 'The occupant was removed and availability restored.');
                             loadOwnerRequests();
                         } catch (error) {
@@ -190,6 +190,7 @@ export default function OwnerRequestsScreen({
             if (filterCategory === 'PENDING') return r.status === 'PENDING';
             if (filterCategory === 'APPROVED') return r.status === 'APPROVED';
             if (filterCategory === 'REJECTED') return r.status === 'REJECTED';
+            if (filterCategory === 'REMOVED') return r.status === 'REMOVED';
             return true;
         })
         .sort((a, b) => (b.occupantsCount || 1) - (a.occupantsCount || 1));
@@ -212,7 +213,7 @@ export default function OwnerRequestsScreen({
 
             {/* Filter Chips */}
             <View style={styles.filterBar}>
-                {['ALL', 'PENDING', 'APPROVED', 'REJECTED'].map((cat) => (
+                {['PENDING', 'APPROVED', 'REJECTED', 'REMOVED'].map((cat) => (
                     <TouchableOpacity
                         key={cat}
                         style={[styles.filterChip, filterCategory === cat && styles.filterChipActive]}

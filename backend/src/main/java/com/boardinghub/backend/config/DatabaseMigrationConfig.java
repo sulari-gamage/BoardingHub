@@ -30,5 +30,13 @@ public class DatabaseMigrationConfig implements CommandLineRunner {
         } catch (Exception e) {
             System.out.println("ℹ️ Database schema migration notice (user_id rename): " + e.getMessage());
         }
+
+        try {
+            // Drop old status check constraint on booking_requests table in PostgreSQL to allow REMOVED status
+            jdbcTemplate.execute("ALTER TABLE booking_requests DROP CONSTRAINT IF EXISTS booking_requests_status_check;");
+            System.out.println("✅ Successfully dropped booking_requests_status_check constraint for REMOVED status.");
+        } catch (Exception e) {
+            System.out.println("ℹ️ Database schema migration notice (booking_requests_status_check drop): " + e.getMessage());
+        }
     }
 }

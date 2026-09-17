@@ -145,7 +145,7 @@ export default function OccupantDetailsModal({
                                                                 onPress: async () => {
                                                                     try {
                                                                         if (occ.id) {
-                                                                            await api.bookings.deleteBooking(occ.id);
+                                                                            await api.bookings.updateStatus(occ.id, 'REMOVED');
                                                                         }
                                                                         Alert.alert('Occupant Removed', `${name} has been removed from bookings.`);
                                                                         if (onRemoveOccupant) onRemoveOccupant(occ.id);
