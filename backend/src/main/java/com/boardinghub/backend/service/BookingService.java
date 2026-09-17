@@ -135,11 +135,17 @@ public class BookingService {
                     prop.setTotalOccupied(totalOcc);
                     propertyRepository.save(prop);
                 }
+
+                // Auto-reject other PENDING requests if this room is now fully occupied
+                autoRejectPendingRequestsForFilledUnit(room, prop, booking.getId());
             } else if (prop != null) {
                 // Whole house or property-level booking
                 int currentOcc = prop.getTotalOccupied() != null ? prop.getTotalOccupied() : 0;
                 prop.setTotalOccupied(currentOcc + booking.getOccupantsCount());
                 propertyRepository.save(prop);
+
+                // Auto-reject other PENDING requests if this property is now fully occupied
+                autoRejectPendingRequestsForFilledUnit(null, prop, booking.getId());
             }
         }
 
@@ -268,5 +274,46 @@ public class BookingService {
                 .notes(b.getNotes())
                 .createdAt(b.getCreatedAt())
                 .build();
+    }
+
+    private void autoRejectPendingRequestsForFilledUnit(Room room, BoardingProperty prop, Long currentBookingId) {
+        if (room != null) {
+            // If room remaining spaces <= 0, auto reject all other pending requests for this room
+            if (room.getRemainingSpaces() != null && room.getRemainingSpaces() <= 0) {
+                List<BookingRequest> pendingRoomReqs = bookingRepository.findByRoomIdAndStatus(room.getId(), BookingStatus.PENDING);
+                for (BookingRequest req : pendingRoomReqs) {
+                    if (!req.getId().equals(currentBookingId)) {
+                        req.setStatus(BookingStatus.REJECTED);
+                        bookingRepository.save(req);
+                    }
+                }
+            }
+            // If all rooms in property are now filled, auto reject any remaining pending property requests
+            if (prop != null && prop.getRooms() != null) {
+                boolean allFilled = prop.getRooms().stream()
+                        .allMatch(r -> r.getRemainingSpaces() != null && r.getRemainingSpaces() <= 0);
+                if (allFilled) {
+                    List<BookingRequest> pendingPropReqs = bookingRepository.findByPropertyIdAndStatus(prop.getId(), BookingStatus.PENDING);
+                    for (BookingRequest req : pendingPropReqs) {
+                        if (!req.getId().equals(currentBookingId)) {
+                            req.setStatus(BookingStatus.REJECTED);
+                            bookingRepository.save(req);
+                        }
+                    }
+                }
+            }
+        } else if (prop != null) {
+            int cap = prop.getTotalCapacity() != null ? prop.getTotalCapacity() : 1;
+            int occ = prop.getTotalOccupied() != null ? prop.getTotalOccupied() : 0;
+            if ((cap - occ) <= 0) {
+                List<BookingRequest> pendingPropReqs = bookingRepository.findByPropertyIdAndStatus(prop.getId(), BookingStatus.PENDING);
+                for (BookingRequest req : pendingPropReqs) {
+                    if (!req.getId().equals(currentBookingId)) {
+                        req.setStatus(BookingStatus.REJECTED);
+                        bookingRepository.save(req);
+                    }
+                }
+            }
+        }
     }
 }

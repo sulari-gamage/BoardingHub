@@ -19,7 +19,8 @@ export default function OccupantDetailsModal({
     onClose,
     occupants = [],
     loading = false,
-    title = 'Current Occupants'
+    title = 'Current Occupants',
+    onRemoveOccupant
 }) {
     const formatWhatsAppPhone = (phoneStr) => {
         if (!phoneStr) return '94771234567';
@@ -118,18 +119,50 @@ export default function OccupantDetailsModal({
                                             </View>
                                         </View>
 
-                                        {phone ? (
-                                            <View style={styles.actionsRow}>
+                                        <View style={styles.actionsRow}>
+                                            {phone ? (
                                                 <TouchableOpacity
                                                     style={styles.whatsappBtn}
                                                     onPress={() => handleWhatsAppPress(name, phone)}
                                                     activeOpacity={0.85}
                                                 >
                                                     <Ionicons name="logo-whatsapp" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-                                                    <Text style={styles.whatsappBtnText}>WhatsApp Chat ({phone})</Text>
+                                                    <Text style={styles.whatsappBtnText}>WhatsApp Chat</Text>
                                                 </TouchableOpacity>
-                                            </View>
-                                        ) : null}
+                                            ) : null}
+
+                                            <TouchableOpacity
+                                                style={styles.removeBtn}
+                                                onPress={() => {
+                                                    Alert.alert(
+                                                        'Remove Occupant 🔴',
+                                                        `Are you sure you want to remove ${name} from this property booking? This will restore property availability.`,
+                                                        [
+                                                            { text: 'Cancel', style: 'cancel' },
+                                                            {
+                                                                text: 'Remove Occupant',
+                                                                style: 'destructive',
+                                                                onPress: async () => {
+                                                                    try {
+                                                                        if (occ.id) {
+                                                                            await api.bookings.deleteBooking(occ.id);
+                                                                        }
+                                                                        Alert.alert('Occupant Removed', `${name} has been removed from bookings.`);
+                                                                        if (onRemoveOccupant) onRemoveOccupant(occ.id);
+                                                                    } catch (err) {
+                                                                        Alert.alert('Error', err.message || 'Could not remove occupant.');
+                                                                    }
+                                                                }
+                                                            }
+                                                        ]
+                                                    );
+                                                }}
+                                                activeOpacity={0.85}
+                                            >
+                                                <Ionicons name="trash-outline" size={15} color="#DC2626" style={{ marginRight: 4 }} />
+                                                <Text style={styles.removeBtnText}>Remove</Text>
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
                                 );
                             })
@@ -259,20 +292,39 @@ const styles = StyleSheet.create({
         paddingTop: 10,
         borderTopWidth: 1,
         borderTopColor: '#F1F5F9',
+        flexDirection: 'row',
+        gap: 10,
     },
     whatsappBtn: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#25D366',
         paddingVertical: 9,
-        paddingHorizontal: 14,
+        paddingHorizontal: 12,
         borderRadius: 12,
     },
     whatsappBtnText: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: '800',
         color: '#FFFFFF',
+    },
+    removeBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FEF2F2',
+        borderWidth: 1,
+        borderColor: '#FECACA',
+        paddingVertical: 9,
+        paddingHorizontal: 14,
+        borderRadius: 12,
+    },
+    removeBtnText: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#DC2626',
     },
     emptyContainer: {
         alignItems: 'center',

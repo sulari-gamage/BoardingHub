@@ -160,6 +160,30 @@ export default function OwnerRequestsScreen({
         );
     };
 
+    const handleRemoveOccupant = async (id, seekerName) => {
+        Alert.alert(
+            'Remove Occupant 🔴',
+            `Are you sure you want to remove ${seekerName || 'this occupant'} from the property booking? This will restore property availability.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Remove Occupant',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await api.bookings.deleteBooking(id);
+                            Alert.alert('Occupant Removed', 'The occupant was removed and availability restored.');
+                            loadOwnerRequests();
+                        } catch (error) {
+                            console.log('Error removing occupant:', error);
+                            Alert.alert('Action Failed', error.message || 'Could not remove occupant.');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     // Filter & Sort by highest number of requested occupants first (descending)
     const filteredRequests = displayRequests
         .filter(r => {
@@ -333,6 +357,17 @@ export default function OwnerRequestsScreen({
                                         <Text style={styles.acceptText}>
                                             {isFilled ? 'Already Filled' : 'Approve Request'}
                                         </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ) : item.status === 'APPROVED' ? (
+                                <View style={styles.actionsRow}>
+                                    <TouchableOpacity
+                                        style={[styles.declineBtn, { backgroundColor: '#FEF2F2', borderColor: '#FECACA', flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }]}
+                                        onPress={() => handleRemoveOccupant(item.id, item.tenantName)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Ionicons name="trash-outline" size={15} color="#DC2626" style={{ marginRight: 6 }} />
+                                        <Text style={[styles.declineText, { color: '#DC2626', fontWeight: '800' }]}>Remove Occupant</Text>
                                     </TouchableOpacity>
                                 </View>
                             ) : null}

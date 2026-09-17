@@ -24,4 +24,5 @@ public class RoomResponse {
     private String imageUrl;
     private Boolean isElectricityIncluded;
     private Boolean isWaterIncluded;
+    private Boolean isFilled;
 }

@@ -287,6 +287,30 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
                     : 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5',
         };
     }).filter((item) => {
+        // Seeker Availability Filter: Hide fully booked / filled-out properties
+        const isAnnex = item.propertyNature === 'WHOLE_HOUSE';
+        if (isAnnex) {
+            const totCap = item.totalCapacity || item.totalSpaces || 1;
+            const totOcc = item.totalOccupied != null ? item.totalOccupied : 0;
+            const remSpaces = item.remainingSpaces != null ? item.remainingSpaces : (totCap - totOcc);
+            if (item.isFilled || remSpaces <= 0 || totOcc >= totCap) {
+                return false;
+            }
+        } else {
+            // Room-based property: hide if ALL rooms are filled out
+            const roomsList = item.rooms || [];
+            const hasAvailableRoom = roomsList.length > 0
+                ? roomsList.some(r => {
+                    const rTot = r.totalCapacity || 1;
+                    const rRem = r.remainingSpaces != null ? r.remainingSpaces : (rTot - (r.occupied || 0));
+                    return rRem > 0 && !r.isFilled;
+                })
+                : (item.remainingSpaces > 0 && !item.isFilled);
+            if (item.isFilled || !hasAvailableRoom) {
+                return false;
+            }
+        }
+
         // Property Type filter
         if (selectedFilter === 'ROOM_BASED' && item.propertyNature !== 'ROOM_BASED') {
             return false;

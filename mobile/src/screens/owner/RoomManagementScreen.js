@@ -588,7 +588,12 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                             const rName = room.roomName || room.number || 'Unit';
 
                             return (
-                                <View key={room.id} style={styles.propertyCard}>
+                                <TouchableOpacity
+                                    key={room.id}
+                                    style={[styles.propertyCard, (!isAvail || room.raw?.isFilled) && styles.filledRoomRedBorder]}
+                                    onPress={() => handleManageRoom(room)}
+                                    activeOpacity={0.9}
+                                >
                                     {/* Top Cover Image Box */}
                                     <View style={styles.imageWrapper}>
                                         {room.imageUrl ? (
@@ -659,12 +664,12 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                                                 onPress={() => handleManageRoom(room)}
                                                 activeOpacity={0.85}
                                             >
-                                                <Text style={styles.manageBtnText}>Manage</Text>
-                                                <Ionicons name="chevron-forward" size={14} color="#133E32" />
+                                                <Text style={styles.manageBtnText}>Manage & Occupants</Text>
+                                                <Ionicons name="chevron-forward" size={14} color="#133E32" style={{ marginLeft: 2 }} />
                                             </TouchableOpacity>
                                         </View>
                                     </View>
-                                </View>
+                                </TouchableOpacity>
                             );
                         })
                     )
@@ -1093,5 +1098,10 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#64748B',
         marginTop: 4,
+    },
+    filledRoomRedBorder: {
+        borderColor: '#DC2626',
+        borderWidth: 2.5,
+        elevation: 4,
     },
 });

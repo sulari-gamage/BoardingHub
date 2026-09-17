@@ -2,11 +2,17 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function BoardingCard({ item, onPress, isSaved, onToggleSave }) {
+export default function BoardingCard({ item, onPress, isSaved, onToggleSave, isOwner = false }) {
     const isAnnex = item.propertyNature === 'WHOLE_HOUSE';
     const totalRooms = item.roomsCount || (item.rooms ? item.rooms.length : 1);
     const availableRooms = item.rooms ? item.rooms.filter(r => (r.remainingSpaces != null ? r.remainingSpaces : (r.totalCapacity - r.occupied)) > 0).length : totalRooms;
     const totalSpaces = item.totalSpaces != null ? item.totalSpaces : (item.rooms ? item.rooms.reduce((sum, r) => sum + (r.remainingSpaces != null ? r.remainingSpaces : Math.max(0, (r.totalCapacity || 1) - (r.occupied || 0))), 0) : (item.remainingSpaces || 1));
+
+    const isFilled = item.isFilled != null ? item.isFilled : (
+        isAnnex
+            ? ((item.remainingSpaces != null ? item.remainingSpaces : ((item.totalCapacity || item.totalSpaces || 1) - (item.totalOccupied || 0))) <= 0)
+            : (item.rooms && item.rooms.length > 0 ? item.rooms.every(r => (r.remainingSpaces != null ? r.remainingSpaces <= 0 : ((r.totalCapacity || 1) - (r.occupied || 0)) <= 0)) : (item.remainingSpaces != null ? item.remainingSpaces <= 0 : availableRooms === 0))
+    );
 
     const getGenderInfo = () => {
         const raw = item.genderPreference || item.genderType || item.gender || item.genderPref || item.genderPre;
@@ -26,7 +32,7 @@ export default function BoardingCard({ item, onPress, isSaved, onToggleSave }) {
     const genderInfo = getGenderInfo();
 
     return (
-        <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
+        <TouchableOpacity style={[styles.card, (isOwner && isFilled) && styles.cardFilledRed]} onPress={onPress} activeOpacity={0.9}>
             {/* Cover Image */}
             <View style={styles.imageContainer}>
                 <Image source={{ uri: item.imageUrl }} style={styles.image} resizeMode="cover" />
@@ -36,6 +42,11 @@ export default function BoardingCard({ item, onPress, isSaved, onToggleSave }) {
                         {isAnnex ? 'Annex / Whole House' : 'Room-Based'}
                     </Text>
                 </View>
+                {(isOwner && isFilled) && (
+                    <View style={styles.fullyBookedBadgeOverlay}>
+                        <Text style={styles.fullyBookedBadgeText}>FULLY BOOKED</Text>
+                    </View>
+                )}
 
                 {/* Top Right: Heart Button & Rating Badge */}
                 <View style={styles.topRightOverlay}>
@@ -330,5 +341,24 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '800',
         color: '#FFFFFF',
+    },
+    cardFilledRed: {
+        borderColor: '#DC2626',
+        borderWidth: 2.5,
+    },
+    fullyBookedBadgeOverlay: {
+        position: 'absolute',
+        bottom: 10,
+        right: 10,
+        backgroundColor: '#DC2626',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    fullyBookedBadgeText: {
+        fontSize: 10,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        letterSpacing: 0.5,
     },
 });

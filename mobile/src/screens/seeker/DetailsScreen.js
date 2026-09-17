@@ -586,186 +586,194 @@ export default function DetailsScreen({
                     )}
 
                     {/* Available Rooms Section (Room-Based Boardings Only) */}
-                    {!isAnnexType && (
-                        <>
-                            <Text style={styles.sectionHeading}>Available Rooms</Text>
-                            {boarding.rooms && boarding.rooms.length > 0 ? (
-                                <ScrollView
-                                    horizontal={true}
-                                    showsHorizontalScrollIndicator={false}
-                                    contentContainerStyle={{ paddingRight: 10, paddingBottom: 6 }}
-                                    style={{ marginBottom: 20 }}
-                                >
-                                    {boarding.rooms.map((roomItem, index) => {
-                                        const isSelected = selectedRoom === (roomItem.id || `room_${index}`);
-                                        const rawRoomPrice = roomItem.monthlyPrice || roomItem.monthlyRent || roomItem.price || price;
-                                        const capacity = roomItem.totalCapacity || 1;
-                                        const rentType = (roomItem.rentType || '').toUpperCase();
+                    {!isAnnexType && (() => {
+                        const availableRoomsList = (boarding.rooms || []).filter(r => {
+                            const tot = r.totalCapacity || 1;
+                            const rem = r.remainingSpaces != null ? r.remainingSpaces : (tot - (r.occupied || 0));
+                            return rem > 0 && !r.isFilled;
+                        });
 
-                                        // Calculate total per-room monthly rent for this room
-                                        let perRoomPrice = rawRoomPrice;
-                                        if (rentType === 'PER_PERSON' || rentType === 'PERSON') {
-                                            perRoomPrice = Math.round(rawRoomPrice * capacity);
-                                        }
+                        return (
+                            <>
+                                <Text style={styles.sectionHeading}>Available Rooms</Text>
+                                {availableRoomsList.length > 0 ? (
+                                    <ScrollView
+                                        horizontal={true}
+                                        showsHorizontalScrollIndicator={false}
+                                        contentContainerStyle={{ paddingRight: 10, paddingBottom: 6 }}
+                                        style={{ marginBottom: 20 }}
+                                    >
+                                        {availableRoomsList.map((roomItem, index) => {
+                                            const isSelected = selectedRoom === (roomItem.id || `room_${index}`);
+                                            const rawRoomPrice = roomItem.monthlyPrice || roomItem.monthlyRent || roomItem.price || price;
+                                            const capacity = roomItem.totalCapacity || 1;
+                                            const rentType = (roomItem.rentType || '').toUpperCase();
 
-                                        const roomPriceFormatted = perRoomPrice.toLocaleString();
-                                        const roomImgUri = roomItem.imageUrl || roomItem.image || (imagesList && imagesList.length > 0 ? imagesList[index % imagesList.length] : 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=600');
+                                            // Calculate total per-room monthly rent for this room
+                                            let perRoomPrice = rawRoomPrice;
+                                            if (rentType === 'PER_PERSON' || rentType === 'PERSON') {
+                                                perRoomPrice = Math.round(rawRoomPrice * capacity);
+                                            }
 
-                                        // Formatted Title: Room Name (Room Type)
-                                        const baseRoomName = roomItem.roomName || roomItem.roomNumber || roomItem.name || `Room ${index + 1}`;
+                                            const roomPriceFormatted = perRoomPrice.toLocaleString();
+                                            const roomImgUri = roomItem.imageUrl || roomItem.image || (imagesList && imagesList.length > 0 ? imagesList[index % imagesList.length] : 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=600');
 
-                                        // Build special feature pills list
-                                        const featurePills = [];
-                                        const bathCount = roomItem.washrooms || (roomItem.washroomType || roomItem.hasAttachedBathroom ? 1 : null);
-                                        if (bathCount != null) {
-                                            featurePills.push({ icon: 'water-outline', label: `${bathCount} ${bathCount === 1 ? 'Bath' : 'Baths'}` });
-                                        }
-                                        if (roomItem.isAirConditioned != null) {
-                                            featurePills.push({ icon: 'snow-outline', label: roomItem.isAirConditioned ? 'AC' : 'Non-AC' });
-                                        }
-                                        if (roomItem.isFurnished != null) {
-                                            featurePills.push({ icon: 'cube-outline', label: roomItem.isFurnished ? 'Furnished' : 'Unfurnished' });
-                                        }
-                                        if (roomItem.beds) {
-                                            featurePills.push({ icon: 'bed-outline', label: `${roomItem.beds} Bed(s)` });
-                                        }
-                                        if (roomItem.totalCapacity) {
-                                            featurePills.push({ icon: 'people-outline', label: `Cap: ${roomItem.totalCapacity}` });
-                                        }
+                                            // Formatted Title: Room Name (Room Type)
+                                            const baseRoomName = roomItem.roomName || roomItem.roomNumber || roomItem.name || `Room ${index + 1}`;
 
-                                        return (
-                                            <View key={roomItem.id || index} style={styles.horizontalRoomCard}>
-                                                {/* Room Header Image */}
-                                                <View style={styles.roomImageContainer}>
-                                                    <Image
-                                                        source={{ uri: roomImgUri }}
-                                                        style={styles.roomCardImage}
-                                                        resizeMode="cover"
-                                                    />
-                                                    <View style={styles.roomImageBadge}>
-                                                        <Ionicons name="people-outline" size={11} color="#1B4D3E" style={{ marginRight: 3 }} />
-                                                        <Text style={styles.roomImageBadgeText}>
-                                                            {roomItem.remainingSpaces != null ? `${roomItem.remainingSpaces} Left` : `Cap: ${roomItem.totalCapacity || 1}`}
-                                                        </Text>
-                                                    </View>
-                                                </View>
+                                            // Build special feature pills list
+                                            const featurePills = [];
+                                            const bathCount = roomItem.washrooms || (roomItem.washroomType || roomItem.hasAttachedBathroom ? 1 : null);
+                                            if (bathCount != null) {
+                                                featurePills.push({ icon: 'water-outline', label: `${bathCount} ${bathCount === 1 ? 'Bath' : 'Baths'}` });
+                                            }
+                                            if (roomItem.isAirConditioned != null) {
+                                                featurePills.push({ icon: 'snow-outline', label: roomItem.isAirConditioned ? 'AC' : 'Non-AC' });
+                                            }
+                                            if (roomItem.isFurnished != null) {
+                                                featurePills.push({ icon: 'cube-outline', label: roomItem.isFurnished ? 'Furnished' : 'Unfurnished' });
+                                            }
+                                            if (roomItem.beds) {
+                                                featurePills.push({ icon: 'bed-outline', label: `${roomItem.beds} Bed(s)` });
+                                            }
+                                            if (roomItem.totalCapacity) {
+                                                featurePills.push({ icon: 'people-outline', label: `Cap: ${roomItem.totalCapacity}` });
+                                            }
 
-                                                {/* Room Details Content Body */}
-                                                <View style={styles.roomCardContentBody}>
-                                                    {/* Room Title */}
-                                                    <Text style={styles.roomTypeTitle} numberOfLines={1}>
-                                                        {baseRoomName}
-                                                        {roomItem.roomType ? (
-                                                            <Text style={{ fontWeight: '500', fontSize: 12, color: '#64748B' }}>
-                                                                {` (${roomItem.roomType})`}
+                                            return (
+                                                <View key={roomItem.id || index} style={styles.horizontalRoomCard}>
+                                                    {/* Room Header Image */}
+                                                    <View style={styles.roomImageContainer}>
+                                                        <Image
+                                                            source={{ uri: roomImgUri }}
+                                                            style={styles.roomCardImage}
+                                                            resizeMode="cover"
+                                                        />
+                                                        <View style={styles.roomImageBadge}>
+                                                            <Ionicons name="people-outline" size={11} color="#1B4D3E" style={{ marginRight: 3 }} />
+                                                            <Text style={styles.roomImageBadgeText}>
+                                                                {roomItem.remainingSpaces != null ? `${roomItem.remainingSpaces} Left` : `Cap: ${roomItem.totalCapacity || 1}`}
                                                             </Text>
-                                                        ) : null}
-                                                    </Text>
-
-                                                    {/* Special Room Features Pills */}
-                                                    {featurePills.length > 0 && (
-                                                        <View style={styles.roomFeaturePillsRow}>
-                                                            {featurePills.map((pill, pIdx) => (
-                                                                <View key={pIdx} style={styles.roomFeaturePill}>
-                                                                    <Ionicons name={pill.icon} size={10} color="#133E32" style={{ marginRight: 3 }} />
-                                                                    <Text style={styles.roomFeaturePillText}>{pill.label}</Text>
-                                                                </View>
-                                                            ))}
                                                         </View>
-                                                    )}
-
-                                                    <View style={styles.roomCardDivider} />
-
-                                                    {/* Price Row */}
-                                                    <View style={styles.roomPriceContainer}>
-                                                        <Text style={styles.roomPriceText}>Rs.{roomPriceFormatted}</Text>
-                                                        <Text style={styles.roomPricePeriod}> / room / month</Text>
                                                     </View>
 
-                                                    {/* Buttons Row: Swapped Order -> [Select Room] then [View >] */}
-                                                    <View style={styles.roomActionButtonsRow}>
-                                                        <TouchableOpacity
-                                                            style={[
-                                                                styles.selectRoomCardBtn,
-                                                                selectedRoom === (roomItem.id || roomItem.roomNumber) && styles.selectRoomCardBtnActive
-                                                            ]}
-                                                            onPress={() => {
-                                                                const rId = roomItem.id || roomItem.roomNumber;
-                                                                if (selectedRoom === rId) {
-                                                                    setSelectedRoom('shared');
-                                                                } else {
-                                                                    setSelectedRoom(rId);
-                                                                }
-                                                            }}
-                                                            activeOpacity={0.8}
-                                                        >
-                                                            <Ionicons
-                                                                name={selectedRoom === (roomItem.id || roomItem.roomNumber) ? "checkmark-circle" : "add-circle-outline"}
-                                                                size={13}
-                                                                color={selectedRoom === (roomItem.id || roomItem.roomNumber) ? "#FFFFFF" : "#1B4D3E"}
-                                                                style={{ marginRight: 4 }}
-                                                            />
-                                                            <Text style={[
-                                                                styles.selectRoomCardBtnText,
-                                                                selectedRoom === (roomItem.id || roomItem.roomNumber) && styles.selectRoomCardBtnTextActive
-                                                            ]}>
-                                                                {selectedRoom === (roomItem.id || roomItem.roomNumber) ? 'Selected' : 'Select'}
-                                                            </Text>
-                                                        </TouchableOpacity>
+                                                    {/* Room Details Content Body */}
+                                                    <View style={styles.roomCardContentBody}>
+                                                        {/* Room Title */}
+                                                        <Text style={styles.roomTypeTitle} numberOfLines={1}>
+                                                            {baseRoomName}
+                                                            {roomItem.roomType ? (
+                                                                <Text style={{ fontWeight: '500', fontSize: 12, color: '#64748B' }}>
+                                                                    {` (${roomItem.roomType})`}
+                                                                </Text>
+                                                            ) : null}
+                                                        </Text>
 
-                                                        <TouchableOpacity
-                                                            style={styles.viewRoomBtn}
-                                                            onPress={() => handleOpenRoomModal(roomItem)}
-                                                            activeOpacity={0.85}
-                                                        >
-                                                            <Text style={styles.viewRoomBtnText}>View</Text>
-                                                            <Ionicons name="chevron-forward" size={13} color="#FFFFFF" style={{ marginLeft: 2 }} />
-                                                        </TouchableOpacity>
+                                                        {/* Special Room Features Pills */}
+                                                        {featurePills.length > 0 && (
+                                                            <View style={styles.roomFeaturePillsRow}>
+                                                                {featurePills.map((pill, pIdx) => (
+                                                                    <View key={pIdx} style={styles.roomFeaturePill}>
+                                                                        <Ionicons name={pill.icon} size={10} color="#133E32" style={{ marginRight: 3 }} />
+                                                                        <Text style={styles.roomFeaturePillText}>{pill.label}</Text>
+                                                                    </View>
+                                                                ))}
+                                                            </View>
+                                                        )}
+
+                                                        <View style={styles.roomCardDivider} />
+
+                                                        {/* Price Row */}
+                                                        <View style={styles.roomPriceContainer}>
+                                                            <Text style={styles.roomPriceText}>Rs.{roomPriceFormatted}</Text>
+                                                            <Text style={styles.roomPricePeriod}> / room / month</Text>
+                                                        </View>
+
+                                                        {/* Buttons Row: Swapped Order -> [Select Room] then [View >] */}
+                                                        <View style={styles.roomActionButtonsRow}>
+                                                            <TouchableOpacity
+                                                                style={[
+                                                                    styles.selectRoomCardBtn,
+                                                                    selectedRoom === (roomItem.id || roomItem.roomNumber) && styles.selectRoomCardBtnActive
+                                                                ]}
+                                                                onPress={() => {
+                                                                    const rId = roomItem.id || roomItem.roomNumber;
+                                                                    if (selectedRoom === rId) {
+                                                                        setSelectedRoom('shared');
+                                                                    } else {
+                                                                        setSelectedRoom(rId);
+                                                                    }
+                                                                }}
+                                                                activeOpacity={0.8}
+                                                            >
+                                                                <Ionicons
+                                                                    name={selectedRoom === (roomItem.id || roomItem.roomNumber) ? "checkmark-circle" : "add-circle-outline"}
+                                                                    size={13}
+                                                                    color={selectedRoom === (roomItem.id || roomItem.roomNumber) ? "#FFFFFF" : "#1B4D3E"}
+                                                                    style={{ marginRight: 4 }}
+                                                                />
+                                                                <Text style={[
+                                                                    styles.selectRoomCardBtnText,
+                                                                    selectedRoom === (roomItem.id || roomItem.roomNumber) && styles.selectRoomCardBtnTextActive
+                                                                ]}>
+                                                                    {selectedRoom === (roomItem.id || roomItem.roomNumber) ? 'Selected' : 'Select'}
+                                                                </Text>
+                                                            </TouchableOpacity>
+
+                                                            <TouchableOpacity
+                                                                style={styles.viewRoomBtn}
+                                                                onPress={() => handleOpenRoomModal(roomItem)}
+                                                                activeOpacity={0.85}
+                                                            >
+                                                                <Text style={styles.viewRoomBtnText}>View</Text>
+                                                                <Ionicons name="chevron-forward" size={13} color="#FFFFFF" style={{ marginLeft: 2 }} />
+                                                            </TouchableOpacity>
+                                                        </View>
                                                     </View>
                                                 </View>
+                                            );
+                                        })}
+                                    </ScrollView>
+                                ) : (
+                                    <View style={styles.roomCard}>
+                                        <View style={styles.roomHeaderRow}>
+                                            <Text style={styles.roomTypeTitle}>Entire Property / Shared Room</Text>
+                                            <View style={styles.roomCardBadge}>
+                                                <Ionicons name="people-outline" size={13} color="#1B4D3E" style={{ marginRight: 4 }} />
+                                                <Text style={styles.roomBadgeText}>Available</Text>
                                             </View>
-                                        );
-                                    })}
-                                </ScrollView>
-                            ) : (
-                                <View style={styles.roomCard}>
-                                    <View style={styles.roomHeaderRow}>
-                                        <Text style={styles.roomTypeTitle}>Entire Property / Shared Room</Text>
-                                        <View style={styles.roomCardBadge}>
-                                            <Ionicons name="people-outline" size={13} color="#1B4D3E" style={{ marginRight: 4 }} />
-                                            <Text style={styles.roomBadgeText}>Available</Text>
+                                        </View>
+                                        <View style={styles.roomCardDivider} />
+                                        <View style={styles.roomFooterRow}>
+                                            <View>
+                                                <Text style={styles.roomPriceText}>Rs.{price}</Text>
+                                                <Text style={styles.roomPricePeriod}>/ Month</Text>
+                                            </View>
+                                            <TouchableOpacity
+                                                style={styles.selectRoomBtn}
+                                                onPress={() => {
+                                                    if (selectedRoom === 'default') {
+                                                        setSelectedRoom('shared');
+                                                    } else {
+                                                        setSelectedRoom('default');
+                                                    }
+                                                }}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Ionicons
+                                                    name={selectedRoom === 'default' ? 'radio-button-on' : 'radio-button-off'}
+                                                    size={18}
+                                                    color="#1B4D3E"
+                                                    style={{ marginRight: 6 }}
+                                                />
+                                                <Text style={styles.selectRoomText}>Select Room</Text>
+                                            </TouchableOpacity>
                                         </View>
                                     </View>
-                                    <View style={styles.roomCardDivider} />
-                                    <View style={styles.roomFooterRow}>
-                                        <View>
-                                            <Text style={styles.roomPriceText}>Rs.{price}</Text>
-                                            <Text style={styles.roomPricePeriod}>/ Month</Text>
-                                        </View>
-                                        <TouchableOpacity
-                                            style={styles.selectRoomBtn}
-                                            onPress={() => {
-                                                if (selectedRoom === 'default') {
-                                                    setSelectedRoom('shared');
-                                                } else {
-                                                    setSelectedRoom('default');
-                                                }
-                                            }}
-                                            activeOpacity={0.8}
-                                        >
-                                            <Ionicons
-                                                name={selectedRoom === 'default' ? 'radio-button-on' : 'radio-button-off'}
-                                                size={18}
-                                                color="#1B4D3E"
-                                                style={{ marginRight: 6 }}
-                                            />
-                                            <Text style={styles.selectRoomText}>Select Room</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            )}
-                        </>
-                    )}
+                                )}
+                            </>
+                        );
+                    })()}
 
                     {/* Owner Details Card */}
                     <Text style={styles.sectionHeading}>Property Owner</Text>

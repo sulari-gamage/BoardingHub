@@ -132,7 +132,7 @@ export default function OwnerHomeScreen({
                         <View style={styles.iconCircleLight}>
                             <Ionicons name="checkmark-circle-outline" size={22} color="#133E32" />
                         </View>
-                        <Text style={styles.statLabel}>AVAILABLE</Text>
+                        <Text style={styles.statLabel}>AVAILABLE SPACES</Text>
                         <Text style={styles.statValue}>{availableSpaces}</Text>
                     </View>
 

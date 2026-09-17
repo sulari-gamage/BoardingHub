@@ -48,6 +48,7 @@ public class PropertyResponse {
     private Boolean isWaterIncluded;
 
     private Double rating;
+    private Boolean isFilled;
 
     private LocalDateTime createdAt;
 }

@@ -351,23 +351,31 @@ public class PropertyService {
                         .build()).collect(Collectors.toList()) : new ArrayList<>();
 
         List<RoomResponse> roomResponses = p.getRooms() != null ?
-                p.getRooms().stream().map(r -> RoomResponse.builder()
-                        .id(r.getId())
-                        .roomName(r.getRoomName())
-                        .roomType(r.getRoomType())
-                        .monthlyPrice(r.getMonthlyPrice())
-                        .totalCapacity(r.getTotalCapacity())
-                        .remainingSpaces(r.getRemainingSpaces())
-                        .occupied(r.getOccupied() != null ? r.getOccupied() : Math.max(0, (r.getTotalCapacity() != null ? r.getTotalCapacity() : 1) - (r.getRemainingSpaces() != null ? r.getRemainingSpaces() : 0)))
-                        .beds(r.getBeds())
-                        .washrooms(r.getWashrooms())
-                        .washroomType(r.getWashroomType())
-                        .amenities(r.getAmenities())
-                        .rentType(r.getRentType() != null ? r.getRentType() : "PER_PERSON")
-                        .imageUrl(r.getImageUrl())
-                        .isElectricityIncluded(r.getIsElectricityIncluded())
-                        .isWaterIncluded(r.getIsWaterIncluded())
-                        .build()).collect(Collectors.toList()) : new ArrayList<>();
+                p.getRooms().stream().map(r -> {
+                    int totCap = r.getTotalCapacity() != null ? r.getTotalCapacity() : 1;
+                    int remSpace = r.getRemainingSpaces() != null ? r.getRemainingSpaces() : Math.max(0, totCap - (r.getOccupied() != null ? r.getOccupied() : 0));
+                    int occCount = r.getOccupied() != null ? r.getOccupied() : Math.max(0, totCap - remSpace);
+                    boolean isRoomFilled = (remSpace <= 0);
+
+                    return RoomResponse.builder()
+                            .id(r.getId())
+                            .roomName(r.getRoomName())
+                            .roomType(r.getRoomType())
+                            .monthlyPrice(r.getMonthlyPrice())
+                            .totalCapacity(totCap)
+                            .remainingSpaces(remSpace)
+                            .occupied(occCount)
+                            .isFilled(isRoomFilled)
+                            .beds(r.getBeds())
+                            .washrooms(r.getWashrooms())
+                            .washroomType(r.getWashroomType())
+                            .amenities(r.getAmenities())
+                            .rentType(r.getRentType() != null ? r.getRentType() : "PER_PERSON")
+                            .imageUrl(r.getImageUrl())
+                            .isElectricityIncluded(r.getIsElectricityIncluded())
+                            .isWaterIncluded(r.getIsWaterIncluded())
+                            .build();
+                }).collect(Collectors.toList()) : new ArrayList<>();
 
         List<String> imageUrlList = p.getImages() != null ?
                 p.getImages().stream().map(PropertyImage::getImageUrl).collect(Collectors.toList()) : new ArrayList<>();
@@ -379,6 +387,17 @@ public class PropertyService {
                 double sum = reviews.stream().mapToInt(Review::getRating).sum();
                 avgRating = Math.round((sum / reviews.size()) * 10.0) / 10.0;
             }
+        }
+
+        boolean isRoomBasedNature = "ROOM_BASED".equals(p.getPropertyNature());
+        int finalTotCap = p.getTotalCapacity() != null ? p.getTotalCapacity() : (!roomResponses.isEmpty() ? roomResponses.stream().mapToInt(r -> r.getTotalCapacity() != null ? r.getTotalCapacity() : 1).sum() : (p.getBedsCount() != null ? p.getBedsCount() : 1));
+        int finalTotOcc = p.getTotalOccupied() != null ? p.getTotalOccupied() : (!roomResponses.isEmpty() ? roomResponses.stream().mapToInt(r -> r.getOccupied() != null ? r.getOccupied() : 0).sum() : 0);
+
+        boolean isPropFilled = false;
+        if (isRoomBasedNature) {
+            isPropFilled = !roomResponses.isEmpty() && roomResponses.stream().allMatch(r -> Boolean.TRUE.equals(r.getIsFilled()));
+        } else {
+            isPropFilled = (finalTotOcc >= finalTotCap);
         }
 
         return PropertyResponse.builder()
@@ -401,8 +420,8 @@ public class PropertyService {
                 .roomsCount(p.getRoomsCount())
                 .bedsCount(p.getBedsCount())
                 .bathsCount(p.getBathsCount())
-                .totalCapacity(p.getTotalCapacity() != null ? p.getTotalCapacity() : (p.getRooms() != null && !p.getRooms().isEmpty() ? p.getRooms().stream().mapToInt(r -> r.getTotalCapacity() != null ? r.getTotalCapacity() : 1).sum() : (p.getBedsCount() != null ? p.getBedsCount() : 1)))
-                .totalOccupied(p.getTotalOccupied() != null ? p.getTotalOccupied() : (p.getRooms() != null && !p.getRooms().isEmpty() ? p.getRooms().stream().mapToInt(r -> r.getOccupied() != null ? r.getOccupied() : Math.max(0, (r.getTotalCapacity() != null ? r.getTotalCapacity() : 1) - (r.getRemainingSpaces() != null ? r.getRemainingSpaces() : 0))).sum() : 0))
+                .totalCapacity(finalTotCap)
+                .totalOccupied(finalTotOcc)
                 .hasKitchen(p.getHasKitchen())
                 .isFurnished(p.getIsFurnished())
                 .isElectricityIncluded(p.getIsElectricityIncluded())
@@ -412,6 +431,7 @@ public class PropertyService {
                 .imageUrls(imageUrlList)
                 .rooms(roomResponses)
                 .rating(avgRating)
+                .isFilled(isPropFilled)
                 .createdAt(p.getCreatedAt())
                 .build();
     }

@@ -68,6 +68,51 @@ export default function OwnerPropertyDetailScreen({
         }
     }, [currentProperty?.id]);
 
+    const reloadPropertyAndOccupants = async () => {
+        if (!currentProperty?.id) return;
+        try {
+            setLoadingOccupants(true);
+            const [latestProp, latestBookings] = await Promise.all([
+                api.properties.getById(currentProperty.id).catch(() => null),
+                api.bookings.getByPropertyId(currentProperty.id).catch(() => [])
+            ]);
+
+            if (latestProp) {
+                const lTotal = (latestProp.rooms && latestProp.rooms.length > 0)
+                    ? latestProp.rooms.reduce((acc, r) => acc + (r.totalCapacity || 1), 0)
+                    : (latestProp.totalCapacity || latestProp.bedsCount || 1);
+                const lOcc = (latestProp.rooms && latestProp.rooms.length > 0)
+                    ? latestProp.rooms.reduce((acc, r) => acc + (r.occupied != null ? r.occupied : Math.max(0, (r.totalCapacity || 1) - (r.remainingSpaces != null ? r.remainingSpaces : 0))), 0)
+                    : (latestProp.totalOccupied != null ? latestProp.totalOccupied : 0);
+                const lAvail = Math.max(0, lTotal - lOcc);
+
+                setCurrentProperty({
+                    id: latestProp.id,
+                    title: latestProp.title,
+                    address: latestProp.address,
+                    city: latestProp.city,
+                    price: latestProp.monthlyRent || 0,
+                    totalRooms: lTotal,
+                    availableRooms: lAvail,
+                    rooms: latestProp.rooms || [],
+                    amenities: latestProp.amenities || [],
+                    raw: latestProp,
+                    imageUrls: latestProp.imageUrls,
+                    images: latestProp.images,
+                    imageUrl: (latestProp.imageUrls && latestProp.imageUrls.length > 0) ? latestProp.imageUrls[0] : null
+                });
+            }
+
+            if (latestBookings && Array.isArray(latestBookings)) {
+                setApprovedOccupants(latestBookings.filter(b => b.status === 'APPROVED'));
+            }
+        } catch (e) {
+            console.log('Error reloading property occupants:', e);
+        } finally {
+            setLoadingOccupants(false);
+        }
+    };
+
     useEffect(() => {
         if (!property) return;
 
@@ -157,6 +202,8 @@ export default function OwnerPropertyDetailScreen({
         });
     };
 
+    const isAnnex = (currentProperty?.propertyNature === 'WHOLE_HOUSE' || currentProperty?.raw?.propertyNature === 'WHOLE_HOUSE' || currentProperty?.propertyNature === 'ANNEX' || currentProperty?.raw?.propertyNature === 'ANNEX' || currentProperty?.boardingType === 'ANNEX' || currentProperty?.raw?.boardingType === 'ANNEX' || currentProperty?.boardingType === 'WHOLE_HOUSE');
+
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -199,53 +246,77 @@ export default function OwnerPropertyDetailScreen({
                     </View>
                 </View>
 
-                {/* Quick Actions Title */}
-                <Text style={styles.sectionTitle}>Quick Actions</Text>
-                <View style={styles.quickGrid}>
-                    {/* Rooms Card - Only for ROOM_BASED boarding properties */}
-                    {!(currentProperty?.propertyNature === 'WHOLE_HOUSE' || currentProperty?.raw?.propertyNature === 'WHOLE_HOUSE' || currentProperty?.propertyNature === 'ANNEX' || currentProperty?.raw?.propertyNature === 'ANNEX') && (
-                        <TouchableOpacity style={styles.actionCard} onPress={onOpenRooms} activeOpacity={0.85}>
-                            <View style={styles.iconCircle}>
-                                <Ionicons name="bed-outline" size={24} color="#133E32" />
+                {(currentProperty.availableRooms === 0 || currentProperty.raw?.isFilled) && (
+                    <View style={{ backgroundColor: '#FEF2F2', borderColor: '#DC2626', borderWidth: 1.5, borderRadius: 14, padding: 14, marginBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#DC2626', justifyContent: 'center', alignItems: 'center', marginRight: 10 }}>
+                                <Ionicons name="people" size={20} color="#FFFFFF" />
                             </View>
-                            <Text style={styles.actionCardTitle}>Rooms</Text>
-                        </TouchableOpacity>
-                    )}
-
-                    {/* Images Card */}
-                    <TouchableOpacity style={styles.actionCard} onPress={() => onOpenGallery && onOpenGallery(currentProperty)} activeOpacity={0.85}>
-                        <View style={styles.iconCircle}>
-                            <Ionicons name="add-circle-outline" size={26} color="#133E32" />
-                        </View>
-                        <Text style={styles.actionCardTitle}>Images</Text>
-                    </TouchableOpacity>
-
-                    {/* Edit Card */}
-                    <TouchableOpacity style={styles.actionCard} onPress={onEditProperty} activeOpacity={0.85}>
-                        <View style={styles.iconCircle}>
-                            <Ionicons name="pencil-outline" size={24} color="#133E32" />
-                        </View>
-                        <Text style={styles.actionCardTitle}>Edit</Text>
-                    </TouchableOpacity>
-
-                    {/* Booking Card */}
-                    <TouchableOpacity style={styles.actionCard} onPress={onOpenBookings} activeOpacity={0.85}>
-                        <View style={styles.iconCircle}>
-                            <Ionicons name="calendar-outline" size={24} color="#133E32" />
-                        </View>
-                        <Text style={styles.actionCardTitle}>Booking</Text>
-                    </TouchableOpacity>
-
-                    {/* Occupants Card - Only for Annex / Whole House (non-room-based) properties */}
-                    {(currentProperty?.propertyNature === 'WHOLE_HOUSE' || currentProperty?.raw?.propertyNature === 'WHOLE_HOUSE' || currentProperty?.propertyNature === 'ANNEX' || currentProperty?.raw?.propertyNature === 'ANNEX' || currentProperty?.boardingType === 'ANNEX' || currentProperty?.raw?.boardingType === 'ANNEX' || currentProperty?.boardingType === 'WHOLE_HOUSE') && (
-                        <TouchableOpacity style={styles.actionCard} onPress={() => setIsOccupantModalVisible(true)} activeOpacity={0.85}>
-                            <View style={styles.iconCircle}>
-                                <Ionicons name="people-outline" size={24} color="#133E32" />
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 14, fontWeight: '900', color: '#991B1B' }}>PROPERTY FULLY OCCUPIED</Text>
+                                <Text style={{ fontSize: 12, color: '#B91C1C', marginTop: 2 }}>All spaces filled. See booking summaries below.</Text>
                             </View>
-                            <Text style={styles.actionCardTitle}>Occupants</Text>
+                        </View>
+                        <TouchableOpacity
+                            style={{ backgroundColor: '#DC2626', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
+                            onPress={() => setIsOccupantModalVisible(true)}
+                        >
+                            <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFF' }}>Summaries</Text>
                         </TouchableOpacity>
-                    )}
-                </View>
+                    </View>
+                )}
+
+                {/* Quick Actions Title & Grid - Hidden if Annex Property is Fully Filled */}
+                {!(isAnnex && (currentProperty.availableRooms === 0 || currentProperty.raw?.isFilled)) && (
+                    <>
+                        <Text style={styles.sectionTitle}>Quick Actions</Text>
+                        <View style={styles.quickGrid}>
+                            {/* Rooms Card - Only for ROOM_BASED boarding properties */}
+                            {!(currentProperty?.propertyNature === 'WHOLE_HOUSE' || currentProperty?.raw?.propertyNature === 'WHOLE_HOUSE' || currentProperty?.propertyNature === 'ANNEX' || currentProperty?.raw?.propertyNature === 'ANNEX') && (
+                                <TouchableOpacity style={styles.actionCard} onPress={onOpenRooms} activeOpacity={0.85}>
+                                    <View style={styles.iconCircle}>
+                                        <Ionicons name="bed-outline" size={24} color="#133E32" />
+                                    </View>
+                                    <Text style={styles.actionCardTitle}>Rooms</Text>
+                                </TouchableOpacity>
+                            )}
+
+                            {/* Images Card */}
+                            <TouchableOpacity style={styles.actionCard} onPress={() => onOpenGallery && onOpenGallery(currentProperty)} activeOpacity={0.85}>
+                                <View style={styles.iconCircle}>
+                                    <Ionicons name="add-circle-outline" size={26} color="#133E32" />
+                                </View>
+                                <Text style={styles.actionCardTitle}>Images</Text>
+                            </TouchableOpacity>
+
+                            {/* Edit Card */}
+                            <TouchableOpacity style={styles.actionCard} onPress={onEditProperty} activeOpacity={0.85}>
+                                <View style={styles.iconCircle}>
+                                    <Ionicons name="pencil-outline" size={24} color="#133E32" />
+                                </View>
+                                <Text style={styles.actionCardTitle}>Edit</Text>
+                            </TouchableOpacity>
+
+                            {/* Booking Card */}
+                            <TouchableOpacity style={styles.actionCard} onPress={onOpenBookings} activeOpacity={0.85}>
+                                <View style={styles.iconCircle}>
+                                    <Ionicons name="calendar-outline" size={24} color="#133E32" />
+                                </View>
+                                <Text style={styles.actionCardTitle}>Booking</Text>
+                            </TouchableOpacity>
+
+                            {/* Occupants Card - Only for Annex / Whole House (non-room-based) properties */}
+                            {(currentProperty?.propertyNature === 'WHOLE_HOUSE' || currentProperty?.raw?.propertyNature === 'WHOLE_HOUSE' || currentProperty?.propertyNature === 'ANNEX' || currentProperty?.raw?.propertyNature === 'ANNEX' || currentProperty?.boardingType === 'ANNEX' || currentProperty?.raw?.boardingType === 'ANNEX' || currentProperty?.boardingType === 'WHOLE_HOUSE') && (
+                                <TouchableOpacity style={styles.actionCard} onPress={() => setIsOccupantModalVisible(true)} activeOpacity={0.85}>
+                                    <View style={styles.iconCircle}>
+                                        <Ionicons name="people-outline" size={24} color="#133E32" />
+                                    </View>
+                                    <Text style={styles.actionCardTitle}>Occupants</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    </>
+                )}
 
                 {/* Property Information */}
                 <Text style={styles.sectionTitle}>Property Information</Text>
@@ -562,6 +633,7 @@ export default function OwnerPropertyDetailScreen({
                 occupants={approvedOccupants}
                 loading={loadingOccupants}
                 title={`${currentProperty.title} Occupants`}
+                onRemoveOccupant={() => reloadPropertyAndOccupants()}
             />
         </SafeAreaView>
     );

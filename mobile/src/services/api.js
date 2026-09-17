@@ -282,12 +282,10 @@ export const api = {
 
         getByPropertyId: async (propertyId) => {
             try {
-                const reqs = await request('/bookings/owner-requests', { method: 'GET' });
-                if (Array.isArray(reqs)) {
-                    return reqs.filter(b => String(b.propertyId) === String(propertyId));
-                }
-            } catch (e) { }
-            return [];
+                return await request(`/bookings/property/${propertyId}`, { method: 'GET' });
+            } catch (e) {
+                return [];
+            }
         },
 
         updateStatus: async (id, status) => {

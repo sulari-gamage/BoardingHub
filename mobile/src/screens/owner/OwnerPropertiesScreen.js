@@ -147,88 +147,91 @@ export default function OwnerPropertiesScreen({
             {/* Properties Feed / Empty State */}
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {filteredProperties.length > 0 ? (
-                    filteredProperties.map((item) => (
-                        <TouchableOpacity
-                            key={item.id}
-                            style={styles.propertyCard}
-                            onPress={() => onSelectProperty && onSelectProperty(item)}
-                            activeOpacity={0.9}
-                        >
-                            <View style={styles.imageWrapper}>
-                                {item.imageUrl ? (
-                                    <Image source={{ uri: item.imageUrl }} style={styles.cardImage} />
-                                ) : (
-                                    <View style={[styles.cardImage, { backgroundColor: '#E6F0EC', justifyContent: 'center', alignItems: 'center' }]}>
-                                        <Ionicons name="home-outline" size={40} color="#133E32" />
-                                    </View>
-                                )}
-
-                                <View style={[styles.statusTag, item.availableRooms > 0 ? styles.statusActive : styles.statusFull]}>
-                                    <Text style={styles.statusTagText}>{item.availableRooms > 0 ? 'VACANCIES' : 'FULLY OCCUPIED'}</Text>
-                                </View>
-
-                                <View style={styles.ratingBadge}>
-                                    <Ionicons name="star" size={12} color="#D97706" style={{ marginRight: 3 }} />
-                                    <Text style={styles.ratingText}>{item.rating}</Text>
-                                </View>
-                            </View>
-
-                            <View style={styles.cardContent}>
-                                <View style={styles.titleRow}>
-                                    <Text style={styles.propertyTitle} numberOfLines={1}>{item.title}</Text>
-                                    {(item.roomsCount > 0 || (item.rooms && item.rooms.length > 0)) && (
-                                        <View style={styles.roomBadgeRight}>
-                                            <Ionicons name="bed-outline" size={12} color="#D97706" style={{ marginRight: 4 }} />
-                                            <Text style={styles.roomBadgeRightText}>
-                                                {(item.roomsCount || item.rooms.length)} {(item.roomsCount || item.rooms.length) === 1 ? 'Room' : 'Rooms'}
-                                            </Text>
+                    filteredProperties.map((item) => {
+                        const isCardFilled = item.raw?.isFilled != null ? item.raw.isFilled : (item.availableRooms === 0);
+                        return (
+                            <TouchableOpacity
+                                key={item.id}
+                                style={[styles.propertyCard, isCardFilled && styles.filledCardRedBorder]}
+                                onPress={() => onSelectProperty && onSelectProperty(item)}
+                                activeOpacity={0.9}
+                            >
+                                <View style={styles.imageWrapper}>
+                                    {item.imageUrl ? (
+                                        <Image source={{ uri: item.imageUrl }} style={styles.cardImage} />
+                                    ) : (
+                                        <View style={[styles.cardImage, { backgroundColor: '#E6F0EC', justifyContent: 'center', alignItems: 'center' }]}>
+                                            <Ionicons name="home-outline" size={40} color="#133E32" />
                                         </View>
                                     )}
-                                </View>
 
-                                <View style={styles.infoRow}>
-                                    <Ionicons name="location-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
-                                    <Text style={[styles.locationText, { flex: 1 }]} numberOfLines={1}>{item.location}</Text>
-                                </View>
-
-                                <View style={[styles.infoRow, { marginBottom: 16 }]}>
-                                    <Ionicons name="business-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
-                                    <Text style={[styles.locationText, { color: '#0F172A', fontWeight: '600', flex: 1 }]} numberOfLines={1}>{item.type}</Text>
-                                </View>
-
-                                <View style={styles.statsRow}>
-                                    <View style={styles.statBox}>
-                                        <Text style={styles.statBoxNum}>{item.totalRooms}</Text>
-                                        <Text style={styles.statBoxLabel}>Total Spaces</Text>
+                                    <View style={[styles.statusTag, item.availableRooms > 0 ? styles.statusActive : styles.statusFull]}>
+                                        <Text style={styles.statusTagText}>{item.availableRooms > 0 ? 'VACANCIES' : 'FULLY OCCUPIED'}</Text>
                                     </View>
-                                    <View style={styles.statBox}>
-                                        <Text style={[styles.statBoxNum, { color: '#D97706' }]}>{item.occupiedRooms}</Text>
-                                        <Text style={styles.statBoxLabel}>Occupied</Text>
-                                    </View>
-                                    <View style={styles.statBox}>
-                                        <Text style={[styles.statBoxNum, { color: item.availableRooms > 0 ? '#133E32' : '#DC2626' }]}>{item.availableRooms}</Text>
-                                        <Text style={styles.statBoxLabel}>Available</Text>
+
+                                    <View style={styles.ratingBadge}>
+                                        <Ionicons name="star" size={12} color="#D97706" style={{ marginRight: 3 }} />
+                                        <Text style={styles.ratingText}>{item.rating}</Text>
                                     </View>
                                 </View>
 
-                                <View style={styles.cardFooter}>
-                                    <Text style={styles.priceText}>
-                                        Rs. {item.price.toLocaleString()}{' '}
-                                        <Text style={styles.pricePeriod}>/ month</Text>
-                                    </Text>
+                                <View style={styles.cardContent}>
+                                    <View style={styles.titleRow}>
+                                        <Text style={styles.propertyTitle} numberOfLines={1}>{item.title}</Text>
+                                        {(item.roomsCount > 0 || (item.rooms && item.rooms.length > 0)) && (
+                                            <View style={styles.roomBadgeRight}>
+                                                <Ionicons name="bed-outline" size={12} color="#D97706" style={{ marginRight: 4 }} />
+                                                <Text style={styles.roomBadgeRightText}>
+                                                    {(item.roomsCount || item.rooms.length)} {(item.roomsCount || item.rooms.length) === 1 ? 'Room' : 'Rooms'}
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
 
-                                    <TouchableOpacity
-                                        style={styles.manageBtn}
-                                        onPress={() => onSelectProperty && onSelectProperty(item)}
-                                        activeOpacity={0.8}
-                                    >
-                                        <Text style={styles.manageBtnText}>Manage</Text>
-                                        <Ionicons name="chevron-forward" size={14} color="#133E32" />
-                                    </TouchableOpacity>
+                                    <View style={styles.infoRow}>
+                                        <Ionicons name="location-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
+                                        <Text style={[styles.locationText, { flex: 1 }]} numberOfLines={1}>{item.location}</Text>
+                                    </View>
+
+                                    <View style={[styles.infoRow, { marginBottom: 16 }]}>
+                                        <Ionicons name="business-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
+                                        <Text style={[styles.locationText, { color: '#0F172A', fontWeight: '600', flex: 1 }]} numberOfLines={1}>{item.type}</Text>
+                                    </View>
+
+                                    <View style={styles.statsRow}>
+                                        <View style={styles.statBox}>
+                                            <Text style={styles.statBoxNum}>{item.totalRooms}</Text>
+                                            <Text style={styles.statBoxLabel}>Total Spaces</Text>
+                                        </View>
+                                        <View style={styles.statBox}>
+                                            <Text style={[styles.statBoxNum, { color: '#D97706' }]}>{item.occupiedRooms}</Text>
+                                            <Text style={styles.statBoxLabel}>Occupied</Text>
+                                        </View>
+                                        <View style={styles.statBox}>
+                                            <Text style={[styles.statBoxNum, { color: item.availableRooms > 0 ? '#133E32' : '#DC2626' }]}>{item.availableRooms}</Text>
+                                            <Text style={styles.statBoxLabel}>Available</Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={styles.cardFooter}>
+                                        <Text style={styles.priceText}>
+                                            Rs. {item.price.toLocaleString()}{' '}
+                                            <Text style={styles.pricePeriod}>/ month</Text>
+                                        </Text>
+
+                                        <TouchableOpacity
+                                            style={styles.manageBtn}
+                                            onPress={() => onSelectProperty && onSelectProperty(item)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={styles.manageBtnText}>Manage</Text>
+                                            <Ionicons name="chevron-forward" size={14} color="#133E32" />
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
-                            </View>
-                        </TouchableOpacity>
-                    ))
+                            </TouchableOpacity>
+                        );
+                    })
                 ) : (
                     <View style={styles.emptyContainerCard}>
                         <View style={styles.emptyHeaderBadgeRow}>
@@ -696,5 +699,13 @@ const styles = StyleSheet.create({
     navLabelActive: {
         color: '#133E32',
         fontWeight: '900',
+    },
+    statusFull: {
+        backgroundColor: '#DC2626',
+    },
+    filledCardRedBorder: {
+        borderColor: '#DC2626',
+        borderWidth: 2.5,
+        elevation: 4,
     },
 });
