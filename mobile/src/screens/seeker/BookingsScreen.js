@@ -50,6 +50,10 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
             realImageUrl = `${baseUrl}${realImageUrl}`;
         }
 
+        const responseDateFormatted = (b.status !== 'PENDING' && b.updatedAt)
+            ? new Date(b.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : null;
+
         return {
             id: b.id.toString(),
             propertyId: b.propertyId,
@@ -58,6 +62,8 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
             date: b.moveInDate ? new Date(b.moveInDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Pending Date',
             moveInDateRaw: b.moveInDate,
             createdAt: b.createdAt,
+            updatedAt: b.updatedAt,
+            responseDate: responseDateFormatted,
             requestSentDate: b.createdAt ? new Date(b.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
             roomType: b.roomName ? `${b.roomName} (${b.roomType || 'Room'})` : (b.roomType ? `${b.roomType} Room` : 'Whole Property / Annex'),
             bookingType: b.bookingType || 'ROOM_BASED',
@@ -193,6 +199,16 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
                                     <Ionicons name="bed-outline" size={16} color="#475569" style={{ marginRight: 8 }} />
                                     <Text style={styles.infoText}>{item.roomType || 'Shared Room'}</Text>
                                 </View>
+
+                                {/* Owner Response Date Row */}
+                                {item.responseDate && item.status !== 'PENDING' ? (
+                                    <View style={styles.infoRow}>
+                                        <Ionicons name="checkmark-done-circle-outline" size={16} color="#166534" style={{ marginRight: 8 }} />
+                                        <Text style={[styles.infoText, { color: '#166534', fontWeight: '700' }]}>
+                                            Responded: {item.responseDate}
+                                        </Text>
+                                    </View>
+                                ) : null}
 
                                 <View style={styles.divider} />
 

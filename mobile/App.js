@@ -3,6 +3,7 @@ import { StyleSheet, StatusBar, View, BackHandler } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './src/services/api';
+import { registerForPushNotificationsAsync, setupNotificationListeners } from './src/services/notifications';
 
 // Auth Screens
 import LoginScreen from './src/screens/auth/LoginScreen';
@@ -175,6 +176,59 @@ export default function App() {
     };
     loadUserData();
   }, [currentUser]);
+
+  // Setup Push Notification Registration & Tap Listeners
+  useEffect(() => {
+    if (currentUser) {
+      registerForPushNotificationsAsync().catch(err => {
+        console.log('[App] Push registration notice:', err?.message);
+      });
+
+      const unsubscribe = setupNotificationListeners(
+        (notif) => {
+          console.log('[App] Foreground notification received:', notif?.request?.content?.title);
+        },
+        (tapData) => {
+          handleNotificationTap(tapData);
+        }
+      );
+
+      return () => {
+        if (unsubscribe) unsubscribe();
+      };
+    }
+  }, [currentUser, userRole]);
+
+  const handleNotificationTap = (notifData) => {
+    if (!notifData) {
+      navigateTo('NOTIFICATIONS');
+      return;
+    }
+    const { type, bookingId, propertyId, reviewId } = notifData;
+    console.log('[App] Routing notification tap with type:', type, 'data:', notifData);
+
+    if (type === 'BOOKING_REQUEST') {
+      if (userRole === 'OWNER') {
+        navigateTo('OWNER_REQUESTS');
+      } else {
+        navigateTo('BOOKINGS');
+      }
+    } else if (['BOOKING_APPROVED', 'BOOKING_REJECTED', 'BOOKING_CANCELLED', 'MOVE_IN_REMINDER'].includes(type)) {
+      if (userRole === 'OWNER') {
+        navigateTo('OWNER_REQUESTS');
+      } else {
+        navigateTo('BOOKINGS');
+      }
+    } else if (type === 'NEW_REVIEW') {
+      if (userRole === 'OWNER') {
+        navigateTo('REVIEWS');
+      } else {
+        navigateTo('REVIEWS');
+      }
+    } else {
+      navigateTo('NOTIFICATIONS');
+    }
+  };
 
   const handleToggleSaveBoarding = async (boarding) => {
     if (!boarding || !boarding.id) return;
@@ -626,7 +680,7 @@ export default function App() {
           <NotificationsScreen
             onBack={goBack}
             onSelectNotification={(notif) => {
-              if (notif.type === 'BOOKING') navigateTo('BOOKINGS');
+              handleNotificationTap(notif);
             }}
           />
         ) : (

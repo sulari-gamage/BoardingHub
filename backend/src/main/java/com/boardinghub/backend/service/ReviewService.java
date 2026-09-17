@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.boardinghub.backend.enums.NotificationType;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,6 +24,7 @@ public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final BoardingPropertyRepository propertyRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public ReviewResponse createReview(ReviewRequest request, String userEmail) {
@@ -49,6 +52,26 @@ public class ReviewService {
                 .build();
 
         Review savedReview = reviewRepository.save(review);
+
+        // Notify property owner if this is a property review
+        if (property != null && property.getOwner() != null) {
+            String title = "New Review ⭐";
+            String commentExcerpt = request.getComment() != null
+                    ? (request.getComment().length() > 60 ? request.getComment().substring(0, 57) + "..." : request.getComment())
+                    : "No comment";
+            String message = user.getName() + " submitted a " + request.getRating() + "-star review for " + property.getTitle() + ": \"" + commentExcerpt + "\"";
+
+            notificationService.createAndSendNotification(
+                    property.getOwner(),
+                    NotificationType.NEW_REVIEW,
+                    title,
+                    message,
+                    null,
+                    property.getId(),
+                    savedReview.getId()
+            );
+        }
+
         return mapToReviewResponse(savedReview);
     }
 

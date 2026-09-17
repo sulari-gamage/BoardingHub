@@ -132,6 +132,15 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
     const targetMoveInDate = booking.moveInDate || booking.date || date;
     const moveInReached = isMoveInDateReached(targetMoveInDate);
 
+    const ownerRespondedDateFormatted = (booking.updatedAt || booking.responseDate)
+        ? (function () {
+            try {
+                const d = new Date(booking.updatedAt || booking.responseDate);
+                return !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : String(booking.updatedAt || booking.responseDate);
+            } catch (e) { return String(booking.updatedAt || booking.responseDate); }
+        })()
+        : null;
+
     // Dynamic 4-step status timeline
     const timelineSteps = [
         {
@@ -146,7 +155,13 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
         },
         {
             label: 'Owner Response',
-            date: isApproved ? 'Approved by Owner' : isRejected ? 'Declined by Owner' : isCancelled ? 'Request Cancelled' : 'Pending Decision',
+            date: isApproved
+                ? (ownerRespondedDateFormatted ? `Approved on ${ownerRespondedDateFormatted}` : 'Approved by Owner')
+                : isRejected
+                    ? (ownerRespondedDateFormatted ? `Declined on ${ownerRespondedDateFormatted}` : 'Declined by Owner')
+                    : isCancelled
+                        ? 'Request Cancelled'
+                        : 'Pending Decision',
             done: isResponded
         },
         {
@@ -389,6 +404,16 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
                         <Text style={styles.summaryLabel}>Request Sent Date</Text>
                         <Text style={styles.summaryVal}>{requestSentDateFormatted}</Text>
                     </View>
+
+                    {isResponded && ownerRespondedDateFormatted && (
+                        <>
+                            <View style={styles.summaryDivider} />
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>Owner Response Date</Text>
+                                <Text style={[styles.summaryVal, { color: '#166534' }]}>{ownerRespondedDateFormatted}</Text>
+                            </View>
+                        </>
+                    )}
 
                     <View style={styles.summaryDivider} />
 

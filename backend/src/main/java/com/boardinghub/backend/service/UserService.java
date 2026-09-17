@@ -81,4 +81,12 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
     }
+
+    @Transactional
+    public void savePushToken(String email, String pushToken) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + email));
+        user.setPushToken(pushToken);
+        userRepository.save(user);
+    }
 }

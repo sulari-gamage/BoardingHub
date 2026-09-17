@@ -18,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.boardinghub.backend.enums.NotificationType;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,6 +31,7 @@ public class BookingService {
     private final BoardingPropertyRepository propertyRepository;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public BookingResponse createBookingRequest(BookingRequestCreateDTO request, String seekerEmail) {
@@ -66,6 +69,23 @@ public class BookingService {
                 .build();
 
         BookingRequest savedBooking = bookingRepository.save(booking);
+
+        // Notify property owner of new booking request
+        if (property.getOwner() != null) {
+            String unitInfo = (room != null) ? room.getRoomName() + " (" + (room.getRoomType() != null ? room.getRoomType() : "Room") + ")" : "Property";
+            String title = "New Booking Request 📩";
+            String message = seeker.getName() + " has requested to book " + unitInfo + " at " + property.getTitle() + ".";
+            notificationService.createAndSendNotification(
+                    property.getOwner(),
+                    NotificationType.BOOKING_REQUEST,
+                    title,
+                    message,
+                    savedBooking.getId(),
+                    property.getId(),
+                    null
+            );
+        }
+
         return mapToBookingResponse(savedBooking);
     }
 
@@ -175,6 +195,52 @@ public class BookingService {
 
         booking.setStatus(newStatus);
         BookingRequest updatedBooking = bookingRepository.save(booking);
+
+        // Trigger notification based on status change
+        if (newStatus == BookingStatus.APPROVED && booking.getSeeker() != null) {
+            String unitInfo = (booking.getRoom() != null) ? booking.getRoom().getRoomName() : "Boarding Place";
+            String title = "Booking Approved 🎉";
+            String message = "Your booking request for " + unitInfo + " at " + (booking.getProperty() != null ? booking.getProperty().getTitle() : "Boarding Place") + " has been approved.";
+            notificationService.createAndSendNotification(
+                    booking.getSeeker(),
+                    NotificationType.BOOKING_APPROVED,
+                    title,
+                    message,
+                    booking.getId(),
+                    booking.getProperty() != null ? booking.getProperty().getId() : null,
+                    null
+            );
+        } else if (newStatus == BookingStatus.REJECTED && booking.getSeeker() != null) {
+            String title = "Booking Request Update";
+            String message = "Your booking request for " + (booking.getProperty() != null ? booking.getProperty().getTitle() : "Boarding Place") + " was not accepted at this time.";
+            notificationService.createAndSendNotification(
+                    booking.getSeeker(),
+                    NotificationType.BOOKING_REJECTED,
+                    title,
+                    message,
+                    booking.getId(),
+                    booking.getProperty() != null ? booking.getProperty().getId() : null,
+                    null
+            );
+        } else if (newStatus == BookingStatus.CANCELLED) {
+            User targetUser = isSeekerOwnerOfBooking
+                    ? (booking.getProperty() != null ? booking.getProperty().getOwner() : null)
+                    : booking.getSeeker();
+            if (targetUser != null) {
+                String title = "Booking Cancelled ⚠️";
+                String message = "The booking for " + (booking.getProperty() != null ? booking.getProperty().getTitle() : "Boarding Place") + " has been cancelled.";
+                notificationService.createAndSendNotification(
+                        targetUser,
+                        NotificationType.BOOKING_CANCELLED,
+                        title,
+                        message,
+                        booking.getId(),
+                        booking.getProperty() != null ? booking.getProperty().getId() : null,
+                        null
+                );
+            }
+        }
+
         return mapToBookingResponse(updatedBooking);
     }
 
@@ -273,6 +339,7 @@ public class BookingService {
                 .status(b.getStatus())
                 .notes(b.getNotes())
                 .createdAt(b.getCreatedAt())
+                .updatedAt(b.getUpdatedAt())
                 .build();
     }
 

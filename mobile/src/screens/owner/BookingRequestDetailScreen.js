@@ -266,53 +266,6 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
                     </View>
                 </View>
 
-                {/* 3. Request Progress Timeline */}
-                <Text style={styles.sectionTitle}>Request Progress</Text>
-                {(() => {
-                    const rawStatus = currentRequest.status || 'PENDING';
-                    const isApproved = rawStatus === 'ACCEPTED' || rawStatus === 'APPROVED';
-                    const isRejected = rawStatus === 'DECLINED' || rawStatus === 'REJECTED';
-                    const isCancelled = rawStatus === 'CANCELLED';
-                    const isResponded = isApproved || isRejected || isCancelled;
-
-                    const moveInReached = isMoveInDateReached(currentRequest.moveInDate || currentRequest.date);
-
-                    const timelineSteps = [
-                        { label: 'Booking Request Sent', date: requestSentDateFormatted, done: true },
-                        { label: 'Owner Review', date: 'Review Completed', done: true },
-                        { label: 'Owner Response', date: isApproved ? 'Approved by Owner' : isRejected ? 'Declined by Owner' : isCancelled ? 'Request Cancelled' : 'Pending Decision', done: isResponded },
-                        { label: 'Move-in Status', date: isApproved ? (moveInReached ? 'Moved In (Date Reached)' : `Scheduled for ${currentRequest.moveInDate || 'Move-in Date'}`) : (isRejected ? 'Declined' : isCancelled ? 'Cancelled' : 'Pending Approval'), done: isApproved && moveInReached }
-                    ];
-
-                    return (
-                        <View style={styles.timelineCard}>
-                            {timelineSteps.map((step, idx) => (
-                                <View key={idx} style={styles.timelineItem}>
-                                    <View style={styles.timelineIconCol}>
-                                        <View style={[styles.timelineNode, step.done && styles.timelineNodeDone]}>
-                                            <Ionicons
-                                                name={step.done ? 'checkmark' : 'ellipse-outline'}
-                                                size={12}
-                                                color={step.done ? '#FFFFFF' : '#94A3B8'}
-                                            />
-                                        </View>
-                                        {idx < timelineSteps.length - 1 && (
-                                            <View style={[styles.timelineLine, step.done && styles.timelineLineDone]} />
-                                        )}
-                                    </View>
-
-                                    <View style={styles.timelineContent}>
-                                        <Text style={[styles.stepLabel, step.done && styles.stepLabelDone]}>
-                                            {step.label}
-                                        </Text>
-                                        <Text style={styles.stepDate}>{step.date}</Text>
-                                    </View>
-                                </View>
-                            ))}
-                        </View>
-                    );
-                })()}
-
                 {/* 4. Message Section */}
                 <Text style={styles.sectionTitle}>Message from {currentRequest.tenantName.split(' ')[0]}</Text>
 

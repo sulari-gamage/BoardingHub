@@ -42,4 +42,5 @@ public class BookingResponse {
     private String notes;
 
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

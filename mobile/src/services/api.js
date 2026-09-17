@@ -379,6 +379,32 @@ export const api = {
                 body: JSON.stringify(passwordData),
             });
         },
+
+        savePushToken: async (pushToken) => {
+            return await request('/users/push-token', {
+                method: 'POST',
+                body: JSON.stringify({ pushToken }),
+            });
+        },
+    },
+
+    // Notifications Service
+    notifications: {
+        getNotifications: async () => {
+            return await request(`/notifications?t=${Date.now()}`, { method: 'GET' });
+        },
+
+        getUnreadCount: async () => {
+            return await request(`/notifications/unread-count?t=${Date.now()}`, { method: 'GET' });
+        },
+
+        markAsRead: async (id) => {
+            return await request(`/notifications/${id}/read`, { method: 'PUT' });
+        },
+
+        markAllAsRead: async () => {
+            return await request('/notifications/read-all', { method: 'PUT' });
+        },
     },
 
     storage,

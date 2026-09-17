@@ -40,4 +40,13 @@ public class UserController {
         userService.changePassword(principal.getName(), request);
         return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
     }
+
+    @PostMapping("/push-token")
+    public ResponseEntity<Map<String, String>> savePushToken(
+            Principal principal,
+            @Valid @RequestBody com.boardinghub.backend.dto.request.PushTokenRequest request
+    ) {
+        userService.savePushToken(principal.getName(), request.getPushToken());
+        return ResponseEntity.ok(Map.of("message", "Push token saved successfully"));
+    }
 }

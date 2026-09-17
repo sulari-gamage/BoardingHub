@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import api from '../services/api';
 
 export default function HeaderBar({
     title = 'BoardingHub',
@@ -21,6 +22,30 @@ export default function HeaderBar({
 }) {
     const insets = useSafeAreaInsets();
     const hasAvatar = Boolean(userAvatar && typeof userAvatar === 'string' && userAvatar.trim().length > 0);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const fetchUnreadCount = async () => {
+            try {
+                const res = await api.notifications.getUnreadCount();
+                if (isMounted && res && typeof res.count === 'number') {
+                    setUnreadCount(res.count);
+                }
+            } catch (e) {
+                // Ignore silent header count fetch errors
+            }
+        };
+
+        fetchUnreadCount();
+        const interval = setInterval(fetchUnreadCount, 15000); // Polling unread count every 15s
+
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
+    }, []);
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -55,7 +80,13 @@ export default function HeaderBar({
                         activeOpacity={0.8}
                     >
                         <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
-                        <View style={styles.notifBadgeDot} />
+                        {unreadCount > 0 && (
+                            <View style={styles.notifBadgeContainer}>
+                                <Text style={styles.notifBadgeText}>
+                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                </Text>
+                            </View>
+                        )}
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -146,16 +177,24 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         position: 'relative',
     },
-    notifBadgeDot: {
+    notifBadgeContainer: {
         position: 'absolute',
-        top: 7,
-        right: 7,
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#FFD700',
+        top: 2,
+        right: 2,
+        minWidth: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: '#EF4444',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 4,
         borderWidth: 1.5,
         borderColor: '#133E32',
+    },
+    notifBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 9,
+        fontWeight: '900',
     },
     profileAvatarWrapper: {
         width: 36,
