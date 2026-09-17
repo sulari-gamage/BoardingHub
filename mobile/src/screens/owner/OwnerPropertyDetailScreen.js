@@ -411,6 +411,40 @@ export default function OwnerPropertyDetailScreen({
                     )}
                 </View>
 
+                {/* Annex Occupancy & Vacancies Summary (Shown for Annex / Whole House boardings before Amenities) */}
+                {isAnnex && (
+                    <View style={{ marginBottom: 20 }}>
+                        <Text style={styles.sectionTitle}>Occupancy & Vacancies</Text>
+                        <View style={styles.annexStatsCard}>
+                            <View style={styles.annexStatBox}>
+                                <Ionicons name="people" size={22} color="#1D4ED8" style={{ marginBottom: 4 }} />
+                                <Text style={styles.annexStatValOccupants}>{approvedOccupants.length}</Text>
+                                <Text style={styles.annexStatLabel}>Occupants</Text>
+                            </View>
+
+                            <View style={styles.annexStatDivider} />
+
+                            <View style={styles.annexStatBox}>
+                                <Ionicons name="key" size={22} color="#15803D" style={{ marginBottom: 4 }} />
+                                <Text style={styles.annexStatValVacancies}>
+                                    {Math.max(0, (currentProperty.raw?.totalCapacity || currentProperty.totalRooms || 1) - approvedOccupants.length)}
+                                </Text>
+                                <Text style={styles.annexStatLabel}>Vacancies</Text>
+                            </View>
+
+                            <View style={styles.annexStatDivider} />
+
+                            <View style={styles.annexStatBox}>
+                                <Ionicons name="home-outline" size={22} color="#B45309" style={{ marginBottom: 4 }} />
+                                <Text style={styles.annexStatValTotal}>
+                                    {currentProperty.raw?.totalCapacity || currentProperty.totalRooms || 1}
+                                </Text>
+                                <Text style={styles.annexStatLabel}>Total Capacity</Text>
+                            </View>
+                        </View>
+                    </View>
+                )}
+
                 {/* Amenities Section */}
                 {((currentProperty.amenities && currentProperty.amenities.length > 0) || (currentProperty.raw && currentProperty.raw.amenities && currentProperty.raw.amenities.length > 0)) && (
                     <>
@@ -429,8 +463,13 @@ export default function OwnerPropertyDetailScreen({
                 {/* Rooms Inventory Section if present */}
                 {currentProperty.rooms && currentProperty.rooms.length > 0 && (
                     <>
-                        <Text style={styles.sectionTitle}>Rooms Breakdown ({currentProperty.rooms.length})</Text>
-                        <View style={{ gap: 10, marginBottom: 18 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                            <Text style={styles.sectionTitle}>Rooms Breakdown ({currentProperty.rooms.length})</Text>
+                            <TouchableOpacity onPress={onOpenRooms}>
+                                <Text style={{ fontSize: 13, fontWeight: '800', color: '#133E32' }}>Manage Rooms &gt;</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={{ gap: 12, marginBottom: 20 }}>
                             {currentProperty.rooms.map((room, idx) => {
                                 const rName = room.roomName || room.roomNumber || room.name || `Room ${idx + 1}`;
                                 const rType = room.roomType || '';
@@ -440,30 +479,59 @@ export default function OwnerPropertyDetailScreen({
                                     room.washrooms ? `${room.washrooms} ${room.washroomType || ''} Bath` : null
                                 ].filter(Boolean).join(' • ');
 
+                                const totCap = room.totalCapacity || 1;
+                                const vacancies = room.remainingSpaces != null ? room.remainingSpaces : Math.max(0, totCap - (room.occupied || 0));
+                                const occupants = room.occupied != null ? room.occupied : Math.max(0, totCap - vacancies);
+                                const priceVal = room.monthlyPrice || room.monthlyRent || room.price || 0;
+                                const rentTypeLabel = room.rentType === 'PER_PERSON' ? '/ person / mo' : '/ room / mo';
+
                                 return (
-                                    <View key={room.id || idx} style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <TouchableOpacity
+                                        key={room.id || idx}
+                                        style={styles.ownerRoomCardContainer}
+                                        onPress={onOpenRooms}
+                                        activeOpacity={0.88}
+                                    >
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                                             <View style={{ flex: 1, paddingRight: 8 }}>
-                                                <Text style={{ fontSize: 15, fontWeight: '800', color: '#0F172A' }} numberOfLines={1}>{rName}</Text>
+                                                <Text style={{ fontSize: 16, fontWeight: '900', color: '#0F172A' }} numberOfLines={1}>{rName}</Text>
                                                 {subDetails ? (
                                                     <Text style={{ fontSize: 12, fontWeight: '600', color: '#475569', marginTop: 2 }}>{subDetails}</Text>
                                                 ) : null}
-                                                {room.amenities ? (
-                                                    <Text style={{ fontSize: 11, color: '#64748B', marginTop: 3 }}>
-                                                        Amenities: {typeof room.amenities === 'string' ? room.amenities : room.amenities.join(', ')}
-                                                    </Text>
-                                                ) : null}
                                             </View>
-                                            <View style={{ backgroundColor: '#E6F0EC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start' }}>
-                                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#133E32' }}>
-                                                    LKR {(room.monthlyPrice || 0).toLocaleString()} {room.rentType === 'PER_ROOM' ? '/ room / mo' : '/ person / mo'}
+                                            <View style={{ backgroundColor: '#E6F0EC', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#C3DCD4' }}>
+                                                <Text style={{ fontSize: 13, fontWeight: '900', color: '#133E32' }}>
+                                                    LKR {priceVal.toLocaleString()}
+                                                </Text>
+                                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#1B4D3E', textAlign: 'right' }}>
+                                                    {rentTypeLabel}
                                                 </Text>
                                             </View>
                                         </View>
-                                        <Text style={{ fontSize: 11, color: '#64748B', marginTop: 6 }}>
-                                            Remaining Spaces: <Text style={{ fontWeight: '700', color: '#133E32' }}>{room.remainingSpaces != null ? room.remainingSpaces : room.totalCapacity} / {room.totalCapacity}</Text>
-                                        </Text>
-                                    </View>
+
+                                        {/* Vacancies & Occupants Badges Row */}
+                                        <View style={styles.roomBadgeStatusRow}>
+                                            <View style={styles.roomOccupantsBadge}>
+                                                <Ionicons name="people" size={13} color="#1D4ED8" style={{ marginRight: 4 }} />
+                                                <Text style={styles.roomOccupantsBadgeText}>Occupants: {occupants}</Text>
+                                            </View>
+
+                                            <View style={styles.roomVacanciesBadge}>
+                                                <Ionicons name="key" size={13} color="#15803D" style={{ marginRight: 4 }} />
+                                                <Text style={styles.roomVacanciesBadgeText}>Vacancies: {vacancies}</Text>
+                                            </View>
+
+                                            <View style={styles.roomTotalBadge}>
+                                                <Text style={styles.roomTotalBadgeText}>Total: {totCap}</Text>
+                                            </View>
+                                        </View>
+
+                                        {/* Tap navigation footer */}
+                                        <View style={styles.roomTapFooter}>
+                                            <Text style={styles.roomTapFooterText}>Tap card to view room details & management</Text>
+                                            <Ionicons name="chevron-forward" size={14} color="#133E32" />
+                                        </View>
+                                    </TouchableOpacity>
                                 );
                             })}
                         </View>
@@ -830,5 +898,132 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.2,
         shadowRadius: 4,
         elevation: 3,
+    },
+
+    /* Annex Occupancy & Vacancies Card */
+    annexStatsCard: {
+        flexDirection: 'row',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        paddingVertical: 16,
+        paddingHorizontal: 12,
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    annexStatBox: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    annexStatDivider: {
+        width: 1,
+        height: 36,
+        backgroundColor: '#E2E8F0',
+    },
+    annexStatValOccupants: {
+        fontSize: 18,
+        fontWeight: '900',
+        color: '#1D4ED8',
+    },
+    annexStatValVacancies: {
+        fontSize: 18,
+        fontWeight: '900',
+        color: '#15803D',
+    },
+    annexStatValTotal: {
+        fontSize: 18,
+        fontWeight: '900',
+        color: '#B45309',
+    },
+    annexStatLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#64748B',
+        marginTop: 2,
+    },
+
+    /* Owner Room Breakdown Card Container */
+    ownerRoomCardContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    roomBadgeStatusRow: {
+        flexDirection: 'row',
+        gap: 8,
+        flexWrap: 'wrap',
+        marginTop: 4,
+        marginBottom: 10,
+    },
+    roomOccupantsBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#EFF6FF',
+        paddingHorizontal: 9,
+        paddingVertical: 4,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+    },
+    roomOccupantsBadgeText: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#1D4ED8',
+    },
+    roomVacanciesBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F0FDF4',
+        paddingHorizontal: 9,
+        paddingVertical: 4,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
+    },
+    roomVacanciesBadgeText: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#15803D',
+    },
+    roomTotalBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFC',
+        paddingHorizontal: 9,
+        paddingVertical: 4,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    roomTotalBadgeText: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#475569',
+    },
+    roomTapFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+    },
+    roomTapFooterText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#133E32',
     },
 });

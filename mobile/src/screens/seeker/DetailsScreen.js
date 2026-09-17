@@ -114,13 +114,15 @@ export default function DetailsScreen({
     const ownerAvatar = typeof ownerAvatarRaw === 'string' ? ownerAvatarRaw.trim() : (ownerAvatarRaw?.uri || null);
     const ownerInitial = ownerName ? ownerName.charAt(0).toUpperCase() : 'O';
 
-    const isAnnexType =
+    const hasRooms = Array.isArray(boarding.rooms) && boarding.rooms.length > 0;
+    const isAnnexType = !hasRooms && (
         boarding.propertyNature === 'WHOLE_HOUSE' ||
         boarding.propertyNature === 'ANNEX' ||
         boarding.propertyType === 'ANNEX' ||
         boarding.raw?.propertyNature === 'WHOLE_HOUSE' ||
         boarding.raw?.propertyNature === 'ANNEX' ||
-        (boarding.title && (boarding.title.toLowerCase().includes('annex') || boarding.title.toLowerCase().includes('house') || boarding.title.toLowerCase().includes('apartment')));
+        boarding.raw?.propertyType === 'ANNEX'
+    );
 
     const formatWhatsAppPhone = (phoneStr) => {
         if (!phoneStr) return '94771234567';
@@ -587,11 +589,7 @@ export default function DetailsScreen({
 
                     {/* Available Rooms Section (Room-Based Boardings Only) */}
                     {!isAnnexType && (() => {
-                        const availableRoomsList = (boarding.rooms || []).filter(r => {
-                            const tot = r.totalCapacity || 1;
-                            const rem = r.remainingSpaces != null ? r.remainingSpaces : (tot - (r.occupied || 0));
-                            return rem > 0 && !r.isFilled;
-                        });
+                        const availableRoomsList = (boarding.rooms || []);
 
                         return (
                             <>

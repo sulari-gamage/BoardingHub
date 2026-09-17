@@ -199,35 +199,124 @@ export default function App() {
     }
   }, [currentUser, userRole]);
 
-  const handleNotificationTap = (notifData) => {
+  const handleNotificationTap = async (notifData) => {
     if (!notifData) {
       navigateTo('NOTIFICATIONS');
       return;
     }
-    const { type, bookingId, propertyId, reviewId } = notifData;
-    console.log('[App] Routing notification tap with type:', type, 'data:', notifData);
+    const bookingId = notifData.bookingId || notifData.data?.bookingId;
+    const propertyId = notifData.propertyId || notifData.data?.propertyId;
+    const type = notifData.type || notifData.data?.type;
 
-    if (type === 'BOOKING_REQUEST') {
+    console.log('[App] Routing notification tap with type:', type, 'bookingId:', bookingId, 'propertyId:', propertyId);
+
+    if (bookingId) {
       if (userRole === 'OWNER') {
+        try {
+          const reqs = await api.bookings.getOwnerRequests();
+          const match = reqs.find((r) => String(r.id) === String(bookingId));
+          if (match) {
+            let realSeekerAvatar = match.seekerAvatarUrl || match.avatar;
+            if (realSeekerAvatar && typeof realSeekerAvatar === 'string' && realSeekerAvatar.startsWith('/')) {
+              const baseUrl = api.getBaseUrl ? api.getBaseUrl() : 'http://192.168.1.100:8080';
+              realSeekerAvatar = `${baseUrl}${realSeekerAvatar}`;
+            }
+            const roomDisplay = match.roomName
+              ? `${match.roomName} (${match.roomType || 'Room'})`
+              : (match.roomType ? `${match.roomType} Room` : (match.bookingType === 'ANNEX' ? 'Entire Annex' : 'Whole Property'));
+
+            const formattedReq = {
+              id: match.id.toString(),
+              tenantName: match.seekerName || 'Tenant Applicant',
+              tenantPhone: match.seekerPhone || '',
+              avatar: realSeekerAvatar || null,
+              propertyTitle: match.propertyTitle || 'Boarding Property',
+              roomType: roomDisplay,
+              occupantsCount: match.occupantsCount || 1,
+              remainingSpaces: match.remainingSpaces !== undefined && match.remainingSpaces !== null ? match.remainingSpaces : 1,
+              moveInDate: match.moveInDate ? new Date(match.moveInDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Flexible',
+              monthlyPrice: match.monthlyPrice || 0,
+              status: match.status,
+              dateRequested: match.createdAt ? new Date(match.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recently',
+              imageUrl: match.imageUrl || null,
+              notes: match.notes || null,
+            };
+            setSelectedOwnerRequest(formattedReq);
+            navigateTo('BOOKING_REQUEST_DETAIL');
+            return;
+          }
+        } catch (e) {
+          console.log('[App] Error resolving owner request for notification:', e);
+        }
         navigateTo('OWNER_REQUESTS');
+        return;
       } else {
+        try {
+          const myBookings = await api.bookings.getMyBookings();
+          const match = myBookings.find((b) => String(b.id) === String(bookingId));
+          if (match) {
+            const responseDateFormatted = (match.status !== 'PENDING' && match.updatedAt)
+              ? new Date(match.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+              : null;
+            const mappedBooking = {
+              id: match.id.toString(),
+              propertyId: match.propertyId,
+              title: match.propertyTitle || 'Boarding Request',
+              location: match.location || 'Moratuwa, Sri Lanka',
+              date: match.moveInDate ? new Date(match.moveInDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Pending Date',
+              moveInDateRaw: match.moveInDate,
+              createdAt: match.createdAt,
+              updatedAt: match.updatedAt,
+              responseDate: responseDateFormatted,
+              requestSentDate: match.createdAt ? new Date(match.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
+              roomType: match.roomName ? `${match.roomName} (${match.roomType || 'Room'})` : (match.roomType ? `${match.roomType} Room` : 'Whole Property / Annex'),
+              bookingType: match.bookingType || 'ROOM_BASED',
+              status: match.status === 'APPROVED' ? 'ACCEPTED' : match.status,
+              price: match.monthlyPrice || 0,
+              occupantsCount: match.occupantsCount || 1,
+              imageUrl: match.imageUrl || null,
+              description: match.notes || '',
+              notes: match.notes || '',
+              ownerName: match.ownerName || 'Property Owner',
+              ownerPhone: match.ownerPhone || '',
+              ownerAvatarUrl: match.ownerAvatarUrl || null,
+            };
+            setSelectedBooking(mappedBooking);
+            navigateTo('BOOKING_DETAILS');
+            return;
+          }
+        } catch (e) {
+          console.log('[App] Error resolving seeker booking for notification:', e);
+        }
         navigateTo('BOOKINGS');
+        return;
       }
-    } else if (['BOOKING_APPROVED', 'BOOKING_REJECTED', 'BOOKING_CANCELLED', 'MOVE_IN_REMINDER'].includes(type)) {
-      if (userRole === 'OWNER') {
-        navigateTo('OWNER_REQUESTS');
-      } else {
-        navigateTo('BOOKINGS');
-      }
-    } else if (type === 'NEW_REVIEW') {
-      if (userRole === 'OWNER') {
-        navigateTo('REVIEWS');
-      } else {
-        navigateTo('REVIEWS');
-      }
-    } else {
-      navigateTo('NOTIFICATIONS');
     }
+
+    if (propertyId) {
+      try {
+        const prop = await api.properties.getById(propertyId);
+        if (prop) {
+          if (userRole === 'OWNER') {
+            setSelectedOwnerProperty(prop);
+            navigateTo('OWNER_PROPERTY_DETAIL');
+          } else {
+            setSelectedBoarding(prop);
+            navigateTo('DETAILS');
+          }
+          return;
+        }
+      } catch (e) {
+        console.log('[App] Error resolving property for notification:', e);
+      }
+    }
+
+    if (type === 'NEW_REVIEW') {
+      navigateTo('REVIEWS');
+      return;
+    }
+
+    navigateTo('NOTIFICATIONS');
   };
 
   const handleToggleSaveBoarding = async (boarding) => {
@@ -445,7 +534,40 @@ export default function App() {
             onNavigateTab={handleNavigateTab}
             onOpenNotifications={handleOpenNotifications}
             onViewAllRequests={() => navigateTo('OWNER_REQUESTS')}
-            onReviewRequest={() => navigateTo('OWNER_REQUESTS')}
+            onReviewRequest={(req) => {
+              if (req) {
+                let realSeekerAvatar = req.seekerAvatarUrl || req.avatar;
+                if (realSeekerAvatar && typeof realSeekerAvatar === 'string' && realSeekerAvatar.startsWith('/')) {
+                  const baseUrl = api.getBaseUrl ? api.getBaseUrl() : 'http://192.168.1.100:8080';
+                  realSeekerAvatar = `${baseUrl}${realSeekerAvatar}`;
+                }
+                const roomDisplay = req.roomName
+                  ? `${req.roomName} (${req.roomType || 'Room'})`
+                  : (req.roomType ? `${req.roomType} Room` : (req.bookingType === 'ANNEX' ? 'Entire Annex' : 'Whole Property'));
+
+                const formattedReq = {
+                  id: (req.id || '').toString(),
+                  propertyId: req.propertyId || (req.property ? req.property.id : null),
+                  tenantName: req.seekerName || req.tenantName || 'Tenant Applicant',
+                  tenantPhone: req.seekerPhone || req.tenantPhone || '',
+                  avatar: realSeekerAvatar || null,
+                  propertyTitle: req.propertyTitle || 'Boarding Property',
+                  roomType: roomDisplay,
+                  occupantsCount: req.occupantsCount || 1,
+                  remainingSpaces: req.remainingSpaces !== undefined && req.remainingSpaces !== null ? req.remainingSpaces : 1,
+                  moveInDate: req.moveInDate ? new Date(req.moveInDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Flexible',
+                  monthlyPrice: req.monthlyPrice || 0,
+                  status: req.status,
+                  dateRequested: req.createdAt ? new Date(req.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recently',
+                  imageUrl: req.imageUrl || null,
+                  notes: req.notes || null,
+                };
+                setSelectedOwnerRequest(formattedReq);
+                navigateTo('BOOKING_REQUEST_DETAIL');
+              } else {
+                navigateTo('OWNER_REQUESTS');
+              }
+            }}
             onViewPropertyDetails={() => navigateTo('OWNER_PROPERTIES')}
           />
         ) : currentScreen === 'OWNER_PROPERTIES' ? (
@@ -503,11 +625,41 @@ export default function App() {
             onBack={goBack}
             onAccept={(id) => {
               handleApproveRequest(id || selectedOwnerRequest?.id);
-              goBack();
             }}
             onReject={(id) => {
               handleRejectRequest(id || selectedOwnerRequest?.id);
-              goBack();
+            }}
+            onViewProperty={async (reqObj) => {
+              const pId = reqObj?.propertyId || selectedOwnerRequest?.propertyId;
+              try {
+                if (pId) {
+                  const prop = await api.properties.getById(pId);
+                  if (prop) {
+                    setSelectedOwnerProperty(prop);
+                    navigateTo('OWNER_PROPERTY_DETAIL');
+                    return;
+                  }
+                }
+              } catch (e) {
+                console.log('[App] Error resolving property details:', e);
+              }
+              navigateTo('OWNER_PROPERTIES');
+            }}
+            onViewRoomManagement={async (reqObj) => {
+              const pId = reqObj?.propertyId || selectedOwnerRequest?.propertyId;
+              try {
+                if (pId) {
+                  const prop = await api.properties.getById(pId);
+                  if (prop) {
+                    setSelectedOwnerProperty(prop);
+                    navigateTo('ROOM_MANAGEMENT');
+                    return;
+                  }
+                }
+              } catch (e) {
+                console.log('[App] Error resolving room management:', e);
+              }
+              navigateTo('OWNER_PROPERTIES');
             }}
           />
         ) : currentScreen === 'OWNER_PROFILE' ? (

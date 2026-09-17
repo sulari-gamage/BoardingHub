@@ -209,16 +209,6 @@ export default function ProfileScreen({
             onPress: handleOpenEditProfile,
         },
         {
-            id: 'notifications',
-            icon: 'notifications-outline',
-            title: 'Notifications',
-            subtitle: 'Manage alerts',
-            onPress: () => {
-                if (onOpenNotifications) onOpenNotifications();
-                else if (onNavigateTab) onNavigateTab('NOTIFICATIONS');
-            },
-        },
-        {
             id: 'security',
             icon: 'shield-checkmark-outline',
             title: 'Privacy & Security',

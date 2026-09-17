@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -9,11 +9,13 @@ import {
     Image,
     Alert,
     Platform,
-    Linking
+    Linking,
+    ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../../services/api';
 
 const isMoveInDateReached = (dateStr) => {
     if (!dateStr) return false;
@@ -46,25 +48,40 @@ const isMoveInDateReached = (dateStr) => {
     }
 };
 
-export default function BookingRequestDetailScreen({ request, onBack, onAccept, onReject }) {
+export default function BookingRequestDetailScreen({
+    request,
+    onBack,
+    onAccept,
+    onReject,
+    onViewProperty,
+    onViewRoomManagement
+}) {
     const currentRequest = request || {
         id: 'req_1',
-        tenantName: 'Sulari Gamage',
-        tenantPhone: '+94 77 987 6543',
-        avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
+        tenantName: 'Applicant',
+        tenantPhone: '',
+        avatar: null,
         isVerified: true,
-        propertyTitle: 'Green Valley Boarding',
-        roomType: 'Shared Room (Room 101)',
-        occupantsCount: 2,
-        remainingSpaces: 2,
-        moveInDate: 'September 10, 2026',
-        occupants: '2 Persons',
-        message: 'I am highly interested in securing the shared room at Green Valley Boarding. I appreciate the property\'s commitment to sustainable living and eco-friendly practices.',
-        tags: ['New Applicant', 'Eco-conscious']
+        propertyTitle: 'Boarding Property',
+        roomType: 'Room / Property',
+        occupantsCount: 1,
+        remainingSpaces: 1,
+        moveInDate: 'Flexible',
+        notes: '',
+        status: 'PENDING'
     };
 
+    const [status, setStatus] = useState(currentRequest.status || 'PENDING');
+    const [actionLoading, setActionLoading] = useState(false);
+
+    useEffect(() => {
+        if (currentRequest && currentRequest.status) {
+            setStatus(currentRequest.status);
+        }
+    }, [currentRequest?.status, currentRequest?.id]);
+
     // Mark request as reviewed by owner in AsyncStorage as soon as details are viewed
-    React.useEffect(() => {
+    useEffect(() => {
         if (currentRequest && currentRequest.id) {
             AsyncStorage.setItem(`reviewed_booking_${currentRequest.id}`, 'true').catch(() => { });
         }
@@ -73,6 +90,11 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
     const remaining = currentRequest.remainingSpaces !== undefined ? currentRequest.remainingSpaces : 1;
     const isFilled = remaining <= 0;
     const requestedOccupants = currentRequest.occupantsCount || 1;
+    const isAnnex =
+        (currentRequest.bookingType === 'ANNEX') ||
+        (currentRequest.propertyType === 'ANNEX') ||
+        (currentRequest.roomType || '').toLowerCase().includes('annex') ||
+        (currentRequest.propertyTitle || '').toLowerCase().includes('annex');
 
     const handleWhatsAppApplicant = () => {
         const cleanPhone = (currentRequest.tenantPhone || '').replace(/[^0-9]/g, '');
@@ -87,6 +109,10 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
     };
 
     const handleAcceptClick = () => {
+        if (status !== 'PENDING') {
+            Alert.alert('Status Finalized', `This request is already ${status.toLowerCase()}.`);
+            return;
+        }
         if (isFilled) {
             Alert.alert('Already Filled ❌', 'There are no spaces available for this room or house. You cannot approve this request.');
             return;
@@ -103,9 +129,21 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
                 {
                     text: 'Approve Request',
                     style: 'default',
-                    onPress: () => {
-                        if (onAccept) onAccept(currentRequest.id);
-                        else Alert.alert('Request Accepted 🎉', `Booking request for ${currentRequest.tenantName} has been approved.`);
+                    onPress: async () => {
+                        try {
+                            setActionLoading(true);
+                            if (currentRequest.id) {
+                                await api.bookings.updateStatus(currentRequest.id, 'APPROVED');
+                            }
+                            setStatus('APPROVED');
+                            Alert.alert('Request Approved 🎉', `Approved booking request for ${currentRequest.tenantName}.`);
+                            if (onAccept) onAccept(currentRequest.id);
+                        } catch (error) {
+                            console.log('Error approving request:', error);
+                            Alert.alert('Approval Failed ❌', error?.message || 'Could not approve request.');
+                        } finally {
+                            setActionLoading(false);
+                        }
                     }
                 }
             ]
@@ -113,6 +151,10 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
     };
 
     const handleRejectClick = () => {
+        if (status !== 'PENDING') {
+            Alert.alert('Status Finalized', `This request is already ${status.toLowerCase()}.`);
+            return;
+        }
         Alert.alert(
             'Confirm Rejection 🔴',
             `Are you sure you want to decline the booking request from ${currentRequest.tenantName}?`,
@@ -121,9 +163,21 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
                 {
                     text: 'Decline Request',
                     style: 'destructive',
-                    onPress: () => {
-                        if (onReject) onReject(currentRequest.id);
-                        else Alert.alert('Request Declined', `Booking request for ${currentRequest.tenantName} was declined.`);
+                    onPress: async () => {
+                        try {
+                            setActionLoading(true);
+                            if (currentRequest.id) {
+                                await api.bookings.updateStatus(currentRequest.id, 'REJECTED');
+                            }
+                            setStatus('REJECTED');
+                            Alert.alert('Request Declined 🔴', `Booking request from ${currentRequest.tenantName} was declined.`);
+                            if (onReject) onReject(currentRequest.id);
+                        } catch (error) {
+                            console.log('Error declining request:', error);
+                            Alert.alert('Action Failed ❌', error?.message || 'Could not decline request.');
+                        } finally {
+                            setActionLoading(false);
+                        }
                     }
                 }
             ]
@@ -146,6 +200,7 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
     };
 
     const requestSentDateFormatted = formatRequestSentDate(currentRequest);
+    const seekerNotes = currentRequest.notes || currentRequest.message || currentRequest.description;
 
     return (
         <SafeAreaView style={styles.container}>
@@ -163,30 +218,42 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {/* 1. Applicant Profile Card */}
                 <View style={styles.profileCard}>
-                    <Image source={{ uri: currentRequest.avatar }} style={styles.avatar} />
+                    {currentRequest.avatar ? (
+                        <Image source={{ uri: currentRequest.avatar }} style={styles.avatar} />
+                    ) : (
+                        <View style={[styles.avatar, { backgroundColor: '#E6F0EC', justifyContent: 'center', alignItems: 'center' }]}>
+                            <Text style={{ fontSize: 32, fontWeight: '900', color: '#133E32' }}>
+                                {(currentRequest.tenantName || 'A').charAt(0).toUpperCase()}
+                            </Text>
+                        </View>
+                    )}
                     <Text style={styles.tenantName}>{currentRequest.tenantName}</Text>
-                    <Text style={{ fontSize: 13, color: '#64748B', marginBottom: 6 }}>{currentRequest.tenantPhone}</Text>
+                    {!!currentRequest.tenantPhone && (
+                        <Text style={{ fontSize: 13, color: '#64748B', marginBottom: 6 }}>{currentRequest.tenantPhone}</Text>
+                    )}
 
                     {/* Direct Contact Buttons for Applicant */}
-                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 8, marginBottom: 12, width: '100%' }}>
-                        <TouchableOpacity
-                            style={{ flex: 1, height: 40, borderRadius: 10, backgroundColor: '#25D366', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
-                            onPress={handleWhatsAppApplicant}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="logo-whatsapp" size={16} color="#FFF" style={{ marginRight: 6 }} />
-                            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 13 }}>WhatsApp</Text>
-                        </TouchableOpacity>
+                    {!!currentRequest.tenantPhone && (
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 8, marginBottom: 12, width: '100%' }}>
+                            <TouchableOpacity
+                                style={{ flex: 1, height: 40, borderRadius: 10, backgroundColor: '#25D366', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+                                onPress={handleWhatsAppApplicant}
+                                activeOpacity={0.8}
+                            >
+                                <Ionicons name="logo-whatsapp" size={16} color="#FFF" style={{ marginRight: 6 }} />
+                                <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 13 }}>WhatsApp</Text>
+                            </TouchableOpacity>
 
-                        <TouchableOpacity
-                            style={{ flex: 1, height: 40, borderRadius: 10, backgroundColor: '#E6F0EC', borderWidth: 1, borderColor: '#C3DCD4', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
-                            onPress={handleCallApplicant}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="call" size={16} color="#133E32" style={{ marginRight: 6 }} />
-                            <Text style={{ color: '#133E32', fontWeight: '800', fontSize: 13 }}>Call Applicant</Text>
-                        </TouchableOpacity>
-                    </View>
+                            <TouchableOpacity
+                                style={{ flex: 1, height: 40, borderRadius: 10, backgroundColor: '#E6F0EC', borderWidth: 1, borderColor: '#C3DCD4', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+                                onPress={handleCallApplicant}
+                                activeOpacity={0.8}
+                            >
+                                <Ionicons name="call" size={16} color="#133E32" style={{ marginRight: 6 }} />
+                                <Text style={{ color: '#133E32', fontWeight: '800', fontSize: 13 }}>Call Applicant</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
 
                     {/* Verified Profile Row */}
                     <View style={styles.verifiedRow}>
@@ -211,27 +278,49 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
                     </View>
                 </View>
 
-                {/* Property Detail Box */}
-                <View style={styles.detailCard}>
+                {/* Property Detail Box (Tap to View Property Details) */}
+                <TouchableOpacity
+                    style={styles.detailCard}
+                    onPress={() => onViewProperty && onViewProperty(currentRequest)}
+                    activeOpacity={0.7}
+                >
                     <View style={styles.detailIconBox}>
                         <Ionicons name="business-outline" size={18} color="#133E32" />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.detailLabel}>PROPERTY</Text>
+                        <Text style={styles.detailLabel}>PROPERTY (TAP TO VIEW)</Text>
                         <Text style={styles.detailValue}>{currentRequest.propertyTitle}</Text>
                     </View>
-                </View>
+                    <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+                </TouchableOpacity>
 
-                {/* Room Type Box */}
-                <View style={styles.detailCard}>
-                    <View style={styles.detailIconBox}>
-                        <Ionicons name="bed-outline" size={18} color="#133E32" />
+                {/* Room / Nature Type Box */}
+                {isAnnex ? (
+                    <View style={styles.detailCard}>
+                        <View style={styles.detailIconBox}>
+                            <Ionicons name="home-outline" size={18} color="#133E32" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.detailLabel}>BOARDING NATURE</Text>
+                            <Text style={styles.detailValue}>{currentRequest.roomType || 'Entire Annex'}</Text>
+                        </View>
                     </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.detailLabel}>ROOM TYPE / NATURE</Text>
-                        <Text style={styles.detailValue}>{currentRequest.roomType}</Text>
-                    </View>
-                </View>
+                ) : (
+                    <TouchableOpacity
+                        style={styles.detailCard}
+                        onPress={() => onViewRoomManagement && onViewRoomManagement(currentRequest)}
+                        activeOpacity={0.7}
+                    >
+                        <View style={styles.detailIconBox}>
+                            <Ionicons name="bed-outline" size={18} color="#133E32" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.detailLabel}>ROOM TYPE / NATURE (TAP TO VIEW)</Text>
+                            <Text style={styles.detailValue}>{currentRequest.roomType}</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+                    </TouchableOpacity>
+                )}
 
                 {/* Move-in Date Box */}
                 <View style={styles.detailCard}>
@@ -267,29 +356,61 @@ export default function BookingRequestDetailScreen({ request, onBack, onAccept, 
                 </View>
 
                 {/* 4. Message Section */}
-                <Text style={styles.sectionTitle}>Message from {currentRequest.tenantName.split(' ')[0]}</Text>
+                <Text style={styles.sectionTitle}>Message from {(currentRequest.tenantName || 'Applicant').split(' ')[0]}</Text>
 
                 <View style={styles.messageCard}>
                     <Text style={styles.quoteMark}>”</Text>
                     <Text style={styles.messageText}>
-                        "{currentRequest.message || 'I am highly interested in securing the shared room at Green Valley Boarding.'}"
+                        {seekerNotes ? `"${seekerNotes}"` : 'No additional message provided by applicant.'}
                     </Text>
                 </View>
             </ScrollView>
 
             {/* Bottom Action Bar */}
             <View style={styles.bottomBar}>
-                <TouchableOpacity style={styles.rejectBtn} onPress={handleRejectClick} activeOpacity={0.8}>
-                    <Text style={styles.rejectBtnText}>Reject</Text>
-                </TouchableOpacity>
+                {status === 'APPROVED' ? (
+                    <View style={[styles.statusBanner, { backgroundColor: '#DCFCE7', borderColor: '#BBF7D0' }]}>
+                        <Ionicons name="checkmark-circle" size={20} color="#166534" style={{ marginRight: 8 }} />
+                        <Text style={{ fontSize: 14, fontWeight: '800', color: '#166534' }}>Request Approved 🟢</Text>
+                    </View>
+                ) : status === 'REJECTED' ? (
+                    <View style={[styles.statusBanner, { backgroundColor: '#FEE2E2', borderColor: '#FECACA' }]}>
+                        <Ionicons name="close-circle" size={20} color="#991B1B" style={{ marginRight: 8 }} />
+                        <Text style={{ fontSize: 14, fontWeight: '800', color: '#991B1B' }}>Request Declined 🔴</Text>
+                    </View>
+                ) : status === 'REMOVED' ? (
+                    <View style={[styles.statusBanner, { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0' }]}>
+                        <Ionicons name="alert-circle" size={20} color="#64748B" style={{ marginRight: 8 }} />
+                        <Text style={{ fontSize: 14, fontWeight: '800', color: '#64748B' }}>Occupant Removed</Text>
+                    </View>
+                ) : (
+                    <>
+                        <TouchableOpacity
+                            style={[styles.rejectBtn, actionLoading && { opacity: 0.6 }]}
+                            onPress={handleRejectClick}
+                            disabled={actionLoading}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={styles.rejectBtnText}>Decline Request</Text>
+                        </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={[styles.acceptBtn, isFilled && { backgroundColor: '#94A3B8' }]}
-                    onPress={handleAcceptClick}
-                    activeOpacity={isFilled ? 1 : 0.85}
-                >
-                    <Text style={styles.acceptBtnText}>{isFilled ? 'Already Filled' : 'Accept Request'}</Text>
-                </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[
+                                styles.acceptBtn,
+                                (isFilled || actionLoading) && { backgroundColor: '#94A3B8' }
+                            ]}
+                            onPress={handleAcceptClick}
+                            disabled={isFilled || actionLoading}
+                            activeOpacity={isFilled ? 1 : 0.85}
+                        >
+                            {actionLoading ? (
+                                <ActivityIndicator color="#FFFFFF" size="small" />
+                            ) : (
+                                <Text style={styles.acceptBtnText}>{isFilled ? 'Already Filled' : 'Accept Request'}</Text>
+                            )}
+                        </TouchableOpacity>
+                    </>
+                )}
             </View>
         </SafeAreaView>
     );
@@ -519,6 +640,16 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '900',
         color: '#FFFFFF',
+    },
+    statusBanner: {
+        flex: 1,
+        height: 48,
+        borderRadius: 14,
+        borderWidth: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 16,
     },
 
     /* Timeline Stepper Styles */

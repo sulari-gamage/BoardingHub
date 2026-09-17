@@ -67,6 +67,7 @@ export default function OwnerRequestsScreen({
 
         return {
             id: r.id.toString(),
+            propertyId: r.propertyId || (r.property ? r.property.id : null),
             tenantName: r.seekerName || 'Tenant Applicant',
             tenantPhone: r.seekerPhone || '',
             avatar: realSeekerAvatar || null,

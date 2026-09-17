@@ -269,12 +269,6 @@ export default function OwnerProfileScreen({
                                 action: () => setContactModalVisible(true)
                             },
                             {
-                                title: 'Notification Preferences',
-                                subtitle: 'Control alerts for booking requests & messages',
-                                icon: 'notifications-outline',
-                                action: () => setNotificationModalVisible(true)
-                            },
-                            {
                                 title: 'Security Settings',
                                 subtitle: 'Change password & login authentication',
                                 icon: 'shield-outline',
@@ -509,70 +503,6 @@ export default function OwnerProfileScreen({
                             ) : (
                                 <Text style={styles.saveBtnText}>Update Password</Text>
                             )}
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* ── MODAL 4: NOTIFICATION PREFERENCES ─────────────────────── */}
-            <Modal visible={notificationModalVisible} animationType="slide" transparent={true}>
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContainer}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Notification Preferences</Text>
-                            <TouchableOpacity onPress={() => setNotificationModalVisible(false)}>
-                                <Ionicons name="close" size={24} color="#64748B" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.switchRow}>
-                            <View style={{ flex: 1, paddingRight: 10 }}>
-                                <Text style={styles.switchTitle}>Booking Requests</Text>
-                                <Text style={styles.switchSubtitle}>Alerts when seekers send new room requests</Text>
-                            </View>
-                            <Switch
-                                value={notifBookingRequests}
-                                onValueChange={setNotifBookingRequests}
-                                trackColor={{ false: '#CBD5E1', true: '#C3DCD4' }}
-                                thumbColor={notifBookingRequests ? '#133E32' : '#F1F5F9'}
-                            />
-                        </View>
-
-                        <View style={styles.switchRow}>
-                            <View style={{ flex: 1, paddingRight: 10 }}>
-                                <Text style={styles.switchTitle}>Property Inquiries</Text>
-                                <Text style={styles.switchSubtitle}>Direct WhatsApp messages & call alerts</Text>
-                            </View>
-                            <Switch
-                                value={notifPropertyInquiries}
-                                onValueChange={setNotifPropertyInquiries}
-                                trackColor={{ false: '#CBD5E1', true: '#C3DCD4' }}
-                                thumbColor={notifPropertyInquiries ? '#133E32' : '#F1F5F9'}
-                            />
-                        </View>
-
-                        <View style={styles.switchRow}>
-                            <View style={{ flex: 1, paddingRight: 10 }}>
-                                <Text style={styles.switchTitle}>Platform News & Tips</Text>
-                                <Text style={styles.switchSubtitle}>Updates on platform features & owner tools</Text>
-                            </View>
-                            <Switch
-                                value={notifMarketing}
-                                onValueChange={setNotifMarketing}
-                                trackColor={{ false: '#CBD5E1', true: '#C3DCD4' }}
-                                thumbColor={notifMarketing ? '#133E32' : '#F1F5F9'}
-                            />
-                        </View>
-
-                        <TouchableOpacity
-                            style={styles.saveBtn}
-                            onPress={() => {
-                                Alert.alert('Saved 🎉', 'Notification preferences updated!');
-                                setNotificationModalVisible(false);
-                            }}
-                            activeOpacity={0.85}
-                        >
-                            <Text style={styles.saveBtnText}>Save Preferences</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

@@ -32,8 +32,7 @@ public class UserService {
                 .mapToInt(p -> p.getTotalCapacity() != null ? p.getTotalCapacity() : 0)
                 .sum();
 
-        // Default rating of 4.9 if no properties or reviews yet
-        double averageRating = 4.9;
+        double averageRating = 5.0;
 
         return UserProfileResponse.builder()
                 .id(user.getId())

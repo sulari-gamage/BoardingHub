@@ -22,7 +22,12 @@ export default function NotificationsScreen({ onBack, onSelectNotification }) {
     const fetchNotifications = useCallback(async () => {
         try {
             const data = await api.notifications.getNotifications();
-            setNotifications(Array.isArray(data) ? data : []);
+            const normalized = (Array.isArray(data) ? data : []).map(n => ({
+                ...n,
+                isRead: n.isRead !== undefined ? Boolean(n.isRead) : Boolean(n.read),
+                read: n.isRead !== undefined ? Boolean(n.isRead) : Boolean(n.read),
+            }));
+            setNotifications(normalized);
         } catch (error) {
             console.log('[NotificationsScreen] Error fetching notifications:', error?.message);
         } finally {
@@ -43,16 +48,17 @@ export default function NotificationsScreen({ onBack, onSelectNotification }) {
     const markAllAsRead = async () => {
         try {
             await api.notifications.markAllAsRead();
-            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+            setNotifications(prev => prev.map(n => ({ ...n, isRead: true, read: true })));
         } catch (error) {
             console.log('[NotificationsScreen] Error marking all as read:', error?.message);
         }
     };
 
     const handleSelectNotification = async (item) => {
-        if (!item.isRead) {
+        const itemRead = Boolean(item.isRead || item.read);
+        if (!itemRead) {
             // Optimistically mark as read in state instantly
-            setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, isRead: true } : n));
+            setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, isRead: true, read: true } : n));
             try {
                 await api.notifications.markAsRead(item.id);
             } catch (error) {
@@ -103,11 +109,12 @@ export default function NotificationsScreen({ onBack, onSelectNotification }) {
         }
     };
 
-    const unreadCount = notifications.filter(n => !n.isRead).length;
+    const unreadCount = notifications.filter(n => !(n.isRead || n.read)).length;
 
     const filteredNotifications = notifications.filter(n => {
-        if (activeCategory === 'READ') return n.isRead === true;
-        if (activeCategory === 'UNREAD') return n.isRead === false;
+        const itemRead = Boolean(n.isRead || n.read);
+        if (activeCategory === 'READ') return itemRead === true;
+        if (activeCategory === 'UNREAD') return itemRead === false;
         return true;
     });
 
