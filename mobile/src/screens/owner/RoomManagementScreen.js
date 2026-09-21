@@ -428,7 +428,7 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                                 const phone = occ.seekerPhone || occ.seekerWhatsapp || '';
 
                                 return (
-                                    <View
+                                    <TouchableOpacity
                                         key={occ.id || idx}
                                         style={{
                                             backgroundColor: '#FFFFFF',
@@ -441,6 +441,8 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                                             alignItems: 'center',
                                             justifyContent: 'space-between',
                                         }}
+                                        onPress={() => setIsOccupantsModalOpen(true)}
+                                        activeOpacity={0.85}
                                     >
                                         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                                             {avatar ? (
@@ -480,7 +482,7 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                                                 <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFF' }}>WhatsApp</Text>
                                             </TouchableOpacity>
                                         ) : null}
-                                    </View>
+                                    </TouchableOpacity>
                                 );
                             })
                         ) : (
@@ -499,6 +501,14 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                     occupants={roomOccupants}
                     loading={loadingRoomOccupants}
                     title={`${room.roomName} Occupants`}
+                    onRemoveOccupant={(removedId) => {
+                        setRoomOccupants(prev => prev.filter(o => o.id !== removedId));
+                        if (onPropertyUpdated && property?.id) {
+                            api.properties.getById(property.id).then(updated => {
+                                if (updated) onPropertyUpdated(updated);
+                            }).catch(() => { });
+                        }
+                    }}
                 />
             </SafeAreaView>
         );

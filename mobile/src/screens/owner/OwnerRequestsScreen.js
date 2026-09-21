@@ -230,152 +230,184 @@ export default function OwnerRequestsScreen({
 
             {/* Requests Feed */}
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-                {filteredRequests.map((item) => {
-                    const remaining = item.remainingSpaces !== undefined ? item.remainingSpaces : 1;
-                    const isFilled = remaining <= 0;
+                {filteredRequests.length > 0 ? (
+                    filteredRequests.map((item) => {
+                        const remaining = item.remainingSpaces !== undefined ? item.remainingSpaces : 1;
+                        const isFilled = remaining <= 0;
 
-                    return (
-                        <TouchableOpacity
-                            key={item.id}
-                            style={styles.requestCard}
-                            onPress={() => onSelectRequest && onSelectRequest(item)}
-                            activeOpacity={0.88}
-                        >
-                            <View style={styles.cardHeader}>
-                                {item.avatar ? (
-                                    <Image source={{ uri: item.avatar }} style={styles.avatar} />
-                                ) : (
-                                    <View style={styles.avatarInitialCircle}>
-                                        <Text style={styles.avatarInitialText}>
-                                            {(item.tenantName || 'T').charAt(0).toUpperCase()}
-                                        </Text>
+                        return (
+                            <TouchableOpacity
+                                key={item.id}
+                                style={styles.requestCard}
+                                onPress={() => onSelectRequest && onSelectRequest(item)}
+                                activeOpacity={0.88}
+                            >
+                                <View style={styles.cardHeader}>
+                                    {item.avatar ? (
+                                        <Image source={{ uri: item.avatar }} style={styles.avatar} />
+                                    ) : (
+                                        <View style={styles.avatarInitialCircle}>
+                                            <Text style={styles.avatarInitialText}>
+                                                {(item.tenantName || 'T').charAt(0).toUpperCase()}
+                                            </Text>
+                                        </View>
+                                    )}
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.tenantName}>{item.tenantName}</Text>
+                                        <Text style={styles.dateRequested}>{item.dateRequested}</Text>
                                     </View>
-                                )}
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.tenantName}>{item.tenantName}</Text>
-                                    <Text style={styles.dateRequested}>{item.dateRequested}</Text>
-                                </View>
-                                <View
-                                    style={[
-                                        styles.statusBadge,
-                                        item.status === 'APPROVED'
-                                            ? styles.statusApproved
-                                            : item.status === 'REJECTED'
-                                                ? styles.statusRejected
-                                                : styles.statusPending
-                                    ]}
-                                >
-                                    <Text
+                                    <View
                                         style={[
-                                            styles.statusText,
+                                            styles.statusBadge,
                                             item.status === 'APPROVED'
-                                                ? styles.statusTextApproved
+                                                ? styles.statusApproved
                                                 : item.status === 'REJECTED'
-                                                    ? styles.statusTextRejected
-                                                    : styles.statusTextPending
+                                                    ? styles.statusRejected
+                                                    : styles.statusPending
                                         ]}
                                     >
-                                        {item.status}
-                                    </Text>
-                                </View>
-                            </View>
-
-                            <View style={styles.divider} />
-
-                            <View style={styles.detailsBox}>
-                                <Text style={styles.propertyTitle}>{item.propertyTitle}</Text>
-                                <View style={styles.infoRow}>
-                                    <Ionicons name="bed-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
-                                    <Text style={styles.infoText}>{item.roomType}</Text>
-                                    <Text style={styles.dotSeparator}>•</Text>
-                                    <Ionicons name="people-outline" size={14} color="#133E32" style={{ marginRight: 4 }} />
-                                    <Text style={[styles.infoText, { fontWeight: '800', color: '#133E32' }]}>
-                                        {item.occupantsCount || 1} Occupant(s)
-                                    </Text>
-                                </View>
-
-                                {/* Remaining Spaces Indicator Badge */}
-                                <View style={styles.spacesBadgeRow}>
-                                    <View style={[styles.spacesChip, isFilled ? styles.spacesChipRed : styles.spacesChipGreen]}>
-                                        <Ionicons
-                                            name={isFilled ? "alert-circle" : "checkmark-circle"}
-                                            size={13}
-                                            color={isFilled ? "#DC2626" : "#166534"}
-                                            style={{ marginRight: 4 }}
-                                        />
-                                        <Text style={[styles.spacesChipText, isFilled ? styles.spacesChipTextRed : styles.spacesChipTextGreen]}>
-                                            {isFilled ? 'Already Filled (0 Spaces)' : `${remaining} Space(s) Remaining`}
+                                        <Text
+                                            style={[
+                                                styles.statusText,
+                                                item.status === 'APPROVED'
+                                                    ? styles.statusTextApproved
+                                                    : item.status === 'REJECTED'
+                                                        ? styles.statusTextRejected
+                                                        : styles.statusTextPending
+                                            ]}
+                                        >
+                                            {item.status}
                                         </Text>
                                     </View>
                                 </View>
 
-                                <Text style={styles.priceVal}>Rs. {item.monthlyPrice.toLocaleString()} / month</Text>
-                            </View>
+                                <View style={styles.divider} />
 
-                            {item.notes ? (
-                                <View style={styles.notesBox}>
-                                    <Ionicons name="chatbubble-ellipses-outline" size={14} color="#64748B" style={{ marginRight: 6 }} />
-                                    <Text style={styles.notesText}>"{item.notes}"</Text>
-                                </View>
-                            ) : null}
-
-                            {/* Direct Contact Buttons for Applicant */}
-                            <View style={styles.applicantContactRow}>
-                                <TouchableOpacity
-                                    style={styles.applicantWhatsappBtn}
-                                    onPress={() => handleWhatsAppApplicant(item.tenantPhone)}
-                                    activeOpacity={0.8}
-                                >
-                                    <Ionicons name="logo-whatsapp" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
-                                    <Text style={styles.applicantWhatsappText}>WhatsApp</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={styles.applicantCallBtn}
-                                    onPress={() => handleCallApplicant(item.tenantPhone)}
-                                    activeOpacity={0.8}
-                                >
-                                    <Ionicons name="call-outline" size={15} color="#133E32" style={{ marginRight: 6 }} />
-                                    <Text style={styles.applicantCallText}>Call ({item.tenantPhone})</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* Action Buttons */}
-                            {item.status === 'PENDING' ? (
-                                <View style={styles.actionsRow}>
-                                    <TouchableOpacity
-                                        style={styles.declineBtn}
-                                        onPress={() => handleReject(item.id)}
-                                        activeOpacity={0.8}
-                                    >
-                                        <Text style={styles.declineText}>Decline</Text>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity
-                                        style={[styles.acceptBtn, isFilled && styles.acceptBtnDisabled]}
-                                        onPress={() => handleAccept(item)}
-                                        activeOpacity={isFilled ? 1 : 0.85}
-                                    >
-                                        <Text style={styles.acceptText}>
-                                            {isFilled ? 'Already Filled' : 'Approve Request'}
+                                <View style={styles.detailsBox}>
+                                    <Text style={styles.propertyTitle}>{item.propertyTitle}</Text>
+                                    <View style={styles.infoRow}>
+                                        <Ionicons name="bed-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
+                                        <Text style={styles.infoText}>{item.roomType}</Text>
+                                        <Text style={styles.dotSeparator}>•</Text>
+                                        <Ionicons name="people-outline" size={14} color="#133E32" style={{ marginRight: 4 }} />
+                                        <Text style={[styles.infoText, { fontWeight: '800', color: '#133E32' }]}>
+                                            {item.occupantsCount || 1} Occupant(s)
                                         </Text>
-                                    </TouchableOpacity>
+                                    </View>
+
+                                    {/* Remaining Spaces Indicator Badge */}
+                                    <View style={styles.spacesBadgeRow}>
+                                        <View style={[styles.spacesChip, isFilled ? styles.spacesChipRed : styles.spacesChipGreen]}>
+                                            <Ionicons
+                                                name={isFilled ? "alert-circle" : "checkmark-circle"}
+                                                size={13}
+                                                color={isFilled ? "#DC2626" : "#166534"}
+                                                style={{ marginRight: 4 }}
+                                            />
+                                            <Text style={[styles.spacesChipText, isFilled ? styles.spacesChipTextRed : styles.spacesChipTextGreen]}>
+                                                {isFilled ? 'Already Filled (0 Spaces)' : `${remaining} Space(s) Remaining`}
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    <Text style={styles.priceVal}>Rs. {item.monthlyPrice.toLocaleString()} / month</Text>
                                 </View>
-                            ) : item.status === 'APPROVED' ? (
-                                <View style={styles.actionsRow}>
+
+                                {item.notes ? (
+                                    <View style={styles.notesBox}>
+                                        <Ionicons name="chatbubble-ellipses-outline" size={14} color="#64748B" style={{ marginRight: 6 }} />
+                                        <Text style={styles.notesText}>"{item.notes}"</Text>
+                                    </View>
+                                ) : null}
+
+                                {/* Direct Contact Buttons for Applicant */}
+                                <View style={styles.applicantContactRow}>
                                     <TouchableOpacity
-                                        style={[styles.declineBtn, { backgroundColor: '#FEF2F2', borderColor: '#FECACA', flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }]}
-                                        onPress={() => handleRemoveOccupant(item.id, item.tenantName)}
+                                        style={styles.applicantWhatsappBtn}
+                                        onPress={() => handleWhatsAppApplicant(item.tenantPhone)}
                                         activeOpacity={0.8}
                                     >
-                                        <Ionicons name="trash-outline" size={15} color="#DC2626" style={{ marginRight: 6 }} />
-                                        <Text style={[styles.declineText, { color: '#DC2626', fontWeight: '800' }]}>Remove Occupant</Text>
+                                        <Ionicons name="logo-whatsapp" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+                                        <Text style={styles.applicantWhatsappText}>WhatsApp</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={styles.applicantCallBtn}
+                                        onPress={() => handleCallApplicant(item.tenantPhone)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Ionicons name="call-outline" size={15} color="#133E32" style={{ marginRight: 6 }} />
+                                        <Text style={styles.applicantCallText}>Call ({item.tenantPhone})</Text>
                                     </TouchableOpacity>
                                 </View>
-                            ) : null}
-                        </TouchableOpacity>
-                    );
-                })}
+
+                                {/* Action Buttons */}
+                                {item.status === 'PENDING' ? (
+                                    <View style={styles.actionsRow}>
+                                        <TouchableOpacity
+                                            style={styles.declineBtn}
+                                            onPress={() => handleReject(item.id)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={styles.declineText}>Decline</Text>
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={[styles.acceptBtn, isFilled && styles.acceptBtnDisabled]}
+                                            onPress={() => handleAccept(item)}
+                                            activeOpacity={isFilled ? 1 : 0.85}
+                                        >
+                                            <Text style={styles.acceptText}>
+                                                {isFilled ? 'Already Filled' : 'Approve Request'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : item.status === 'APPROVED' ? (
+                                    <View style={styles.actionsRow}>
+                                        <TouchableOpacity
+                                            style={[styles.declineBtn, { backgroundColor: '#FEF2F2', borderColor: '#FECACA', flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }]}
+                                            onPress={() => handleRemoveOccupant(item.id, item.tenantName)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Ionicons name="trash-outline" size={15} color="#DC2626" style={{ marginRight: 6 }} />
+                                            <Text style={[styles.declineText, { color: '#DC2626', fontWeight: '800' }]}>Remove Occupant</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : null}
+                            </TouchableOpacity>
+                        );
+                    })
+                ) : (
+                    <View style={styles.emptyStateContainer}>
+                        <View style={styles.emptyIconCircle}>
+                            <Ionicons
+                                name={
+                                    filterCategory === 'PENDING'
+                                        ? 'time-outline'
+                                        : filterCategory === 'APPROVED'
+                                            ? 'checkmark-done-circle-outline'
+                                            : filterCategory === 'REJECTED'
+                                                ? 'close-circle-outline'
+                                                : 'person-remove-outline'
+                                }
+                                size={36}
+                                color="#133E32"
+                            />
+                        </View>
+                        <Text style={styles.emptyTitle}>
+                            {filterCategory === 'PENDING' && 'No pending requests at the moment.'}
+                            {filterCategory === 'APPROVED' && 'No approved requests yet.'}
+                            {filterCategory === 'REJECTED' && 'No declined requests.'}
+                            {filterCategory === 'REMOVED' && 'No removed occupants.'}
+                        </Text>
+                        <Text style={styles.emptySubtitle}>
+                            {filterCategory === 'PENDING' && 'New booking applications submitted by seekers will appear here.'}
+                            {filterCategory === 'APPROVED' && 'Approved booking requests and active residents will be listed here.'}
+                            {filterCategory === 'REJECTED' && 'Booking applications that you decline will be recorded here.'}
+                            {filterCategory === 'REMOVED' && 'Occupants removed from your properties will be shown here.'}
+                        </Text>
+                    </View>
+                )}
             </ScrollView>
 
             {/* Bottom Nav Bar */}
@@ -731,5 +763,40 @@ const styles = StyleSheet.create({
     navLabelActive: {
         color: '#133E32',
         fontWeight: '900',
+    },
+
+    emptyStateContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 32,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderStyle: 'dashed',
+        marginTop: 20,
+        marginBottom: 20,
+    },
+    emptyIconCircle: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: '#E6F0EC',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    emptyTitle: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#0F172A',
+        textAlign: 'center',
+        marginBottom: 6,
+    },
+    emptySubtitle: {
+        fontSize: 13,
+        color: '#64748B',
+        textAlign: 'center',
+        lineHeight: 18,
     },
 });

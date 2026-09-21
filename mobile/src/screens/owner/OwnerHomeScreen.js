@@ -236,8 +236,12 @@ export default function OwnerHomeScreen({
                             );
                         })
                     ) : (
-                        <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-                            <Text style={{ fontSize: 13, color: '#64748B' }}>No booking requests received yet.</Text>
+                        <View style={{ paddingVertical: 24, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' }}>
+                            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#E6F0EC', justifyContent: 'center', alignItems: 'center', marginBottom: 10 }}>
+                                <Ionicons name="clipboard-outline" size={24} color="#133E32" />
+                            </View>
+                            <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A', marginBottom: 4 }}>No booking requests received yet.</Text>
+                            <Text style={{ fontSize: 12, color: '#64748B', textAlign: 'center' }}>New requests submitted by seekers will be displayed here.</Text>
                         </View>
                     )}
                 </View>

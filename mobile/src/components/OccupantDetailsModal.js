@@ -57,6 +57,14 @@ export default function OccupantDetailsModal({
         });
     };
 
+    const handleCallPress = (phone) => {
+        if (!phone) return;
+        const cleanPhone = phone.toString().replace(/[^0-9+]/g, '');
+        Linking.openURL(`tel:${cleanPhone}`).catch(() => {
+            Alert.alert('Error', 'Unable to open phone dialer.');
+        });
+    };
+
     return (
         <Modal
             visible={visible}
@@ -93,10 +101,12 @@ export default function OccupantDetailsModal({
 
                                 const phone = occ.seekerPhone || occ.seekerWhatsapp || occ.user?.phone || occ.phone || '';
                                 const roomTitle = occ.roomName || occ.roomNumber || occ.roomType || occ.propertyTitle || 'Boarding Room';
-                                const approvedDate = occ.approvedDate || occ.updatedAt || occ.createdAt;
-                                const dateFormatted = approvedDate
-                                    ? new Date(approvedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                                    : 'Active Member';
+                                const moveIn = occ.moveInDate || occ.approvedDate || occ.updatedAt || occ.createdAt;
+                                const dateFormatted = moveIn
+                                    ? new Date(moveIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                    : 'Active Resident';
+                                const notes = occ.notes || occ.bookingNotes || '';
+                                const count = occ.occupantsCount || 1;
 
                                 return (
                                     <View key={occ.id || idx} style={styles.occupantCard}>
@@ -114,21 +124,54 @@ export default function OccupantDetailsModal({
                                                 <View style={styles.badgeRow}>
                                                     <Ionicons name="bed-outline" size={12} color="#133E32" style={{ marginRight: 4 }} />
                                                     <Text style={styles.roomText}>{roomTitle}</Text>
+                                                    {count > 1 ? (
+                                                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#1D4ED8', marginLeft: 6 }}>
+                                                            ({count} occupants)
+                                                        </Text>
+                                                    ) : null}
                                                 </View>
-                                                <Text style={styles.dateText}>Occupant since: {dateFormatted}</Text>
+                                                <Text style={styles.dateText}>Move-in / Approved: {dateFormatted}</Text>
+                                                {phone ? <Text style={{ fontSize: 11, fontWeight: '600', color: '#475569', marginTop: 2 }}>📞 {phone}</Text> : null}
                                             </View>
                                         </View>
 
+                                        {notes ? (
+                                            <View style={{ backgroundColor: '#F1F5F9', padding: 8, borderRadius: 8, marginTop: 10 }}>
+                                                <Text style={{ fontSize: 11, fontStyle: 'italic', color: '#475569' }}>"{notes}"</Text>
+                                            </View>
+                                        ) : null}
+
                                         <View style={styles.actionsRow}>
                                             {phone ? (
-                                                <TouchableOpacity
-                                                    style={styles.whatsappBtn}
-                                                    onPress={() => handleWhatsAppPress(name, phone)}
-                                                    activeOpacity={0.85}
-                                                >
-                                                    <Ionicons name="logo-whatsapp" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-                                                    <Text style={styles.whatsappBtnText}>WhatsApp Chat</Text>
-                                                </TouchableOpacity>
+                                                <>
+                                                    <TouchableOpacity
+                                                        style={styles.whatsappBtn}
+                                                        onPress={() => handleWhatsAppPress(name, phone)}
+                                                        activeOpacity={0.85}
+                                                    >
+                                                        <Ionicons name="logo-whatsapp" size={15} color="#FFFFFF" style={{ marginRight: 4 }} />
+                                                        <Text style={styles.whatsappBtnText}>WhatsApp</Text>
+                                                    </TouchableOpacity>
+
+                                                    <TouchableOpacity
+                                                        style={{
+                                                            flexDirection: 'row',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            backgroundColor: '#E6F0EC',
+                                                            borderWidth: 1,
+                                                            borderColor: '#C3DCD4',
+                                                            paddingVertical: 9,
+                                                            paddingHorizontal: 12,
+                                                            borderRadius: 12,
+                                                        }}
+                                                        onPress={() => handleCallPress(phone)}
+                                                        activeOpacity={0.85}
+                                                    >
+                                                        <Ionicons name="call-outline" size={15} color="#133E32" style={{ marginRight: 4 }} />
+                                                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#133E32' }}>Call</Text>
+                                                    </TouchableOpacity>
+                                                </>
                                             ) : null}
 
                                             <TouchableOpacity

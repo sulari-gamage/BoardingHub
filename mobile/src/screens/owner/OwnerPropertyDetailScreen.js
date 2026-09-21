@@ -558,7 +558,7 @@ export default function OwnerPropertyDetailScreen({
                             const phone = occ.seekerPhone || occ.seekerWhatsapp || '';
 
                             return (
-                                <View
+                                <TouchableOpacity
                                     key={occ.id || idx}
                                     style={{
                                         backgroundColor: '#FFFFFF',
@@ -571,6 +571,8 @@ export default function OwnerPropertyDetailScreen({
                                         alignItems: 'center',
                                         justifyContent: 'space-between',
                                     }}
+                                    onPress={() => setIsOccupantModalVisible(true)}
+                                    activeOpacity={0.85}
                                 >
                                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                                         {avatar ? (
@@ -612,7 +614,7 @@ export default function OwnerPropertyDetailScreen({
                                             <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFF' }}>WhatsApp</Text>
                                         </TouchableOpacity>
                                     ) : null}
-                                </View>
+                                </TouchableOpacity>
                             );
                         })}
                     </View>
