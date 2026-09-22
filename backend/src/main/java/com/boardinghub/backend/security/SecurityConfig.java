@@ -43,7 +43,6 @@ public class SecurityConfig {
                 // swallowed as 403 by Spring Security 6 (well-known SS6 migration issue)
                 .requestMatchers("/error").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/properties", "/api/properties/*", "/api/properties/*/reviews").permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

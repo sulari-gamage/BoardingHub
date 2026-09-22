@@ -22,6 +22,7 @@ public class UserProfileResponse {
     private Integer propertiesCount;
     private Integer totalCapacity;
     private Double averageRating;
+    private Integer totalReviews;
     private Boolean isVerified;
     private LocalDateTime createdAt;
 }

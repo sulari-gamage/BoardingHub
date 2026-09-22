@@ -185,9 +185,12 @@ export default function OwnerProfileScreen({
     const displayWhatsapp = profile?.whatsappNumber || editWhatsapp || 'Not configured';
     const propertiesCount = profile?.propertiesCount !== undefined ? profile.propertiesCount : 0;
     const totalCapacity = profile?.totalCapacity !== undefined ? profile.totalCapacity : 0;
-    const averageRating = profile?.averageRating !== undefined ? profile.averageRating.toFixed(1) : '5.0';
+    const rawAvgRating = profile?.averageRating;
+    const totalReviews = profile?.totalReviews !== undefined ? profile.totalReviews : 0;
+    const hasReviews = totalReviews > 0 && rawAvgRating > 0;
+    const averageRatingDisplay = hasReviews ? rawAvgRating.toFixed(1) : 'N/A';
     const isVerified = profile?.isVerified ?? true;
-    const currentAvatar = avatarUrl || profile?.avatarUrl || null;
+    const currentAvatar = avatarUrl || profile?.avatarUrl || currentUser?.avatarUrl || null;
     const hasAvatar = Boolean(currentAvatar && typeof currentAvatar === 'string' && currentAvatar.trim().length > 0);
 
     return (
@@ -230,20 +233,45 @@ export default function OwnerProfileScreen({
                         <Text style={styles.userEmail}>{displayEmail}</Text>
                     </View>
 
-                    {/* 2. Metrics Card */}
+                    {/* 2. Enhanced 3-Column Metrics Card */}
                     <View style={styles.metricsCard}>
+                        {/* Properties Count */}
                         <View style={styles.metricColumn}>
-                            <Ionicons name="bed-outline" size={20} color="#133E32" style={{ marginBottom: 6 }} />
-                            <Text style={styles.metricLabel}>Total Capacity</Text>
-                            <Text style={styles.metricValue}>{totalCapacity} Spaces</Text>
+                            <View style={styles.metricIconBadge}>
+                                <Ionicons name="home" size={18} color="#133E32" />
+                            </View>
+                            <Text style={styles.metricLabel}>Properties</Text>
+                            <Text style={styles.metricValue}>{propertiesCount}</Text>
+                            <Text style={styles.metricSubtext}>Listed</Text>
                         </View>
 
                         <View style={styles.metricDivider} />
 
+                        {/* Total Capacity */}
                         <View style={styles.metricColumn}>
-                            <Ionicons name="star-outline" size={20} color="#133E32" style={{ marginBottom: 6 }} />
+                            <View style={styles.metricIconBadge}>
+                                <Ionicons name="bed" size={18} color="#133E32" />
+                            </View>
+                            <Text style={styles.metricLabel}>Capacity</Text>
+                            <Text style={styles.metricValue}>{totalCapacity}</Text>
+                            <Text style={styles.metricSubtext}>Total Spaces</Text>
+                        </View>
+
+                        <View style={styles.metricDivider} />
+
+                        {/* Average Rating */}
+                        <View style={styles.metricColumn}>
+                            <View style={[styles.metricIconBadge, hasReviews ? styles.ratingBadgeActive : styles.ratingBadgeInactive]}>
+                                <Ionicons name="star" size={18} color={hasReviews ? "#D97706" : "#94A3B8"} />
+                            </View>
                             <Text style={styles.metricLabel}>Avg Rating</Text>
-                            <Text style={styles.metricValue}>{averageRating} / 5</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Text style={styles.metricValue}>{averageRatingDisplay}</Text>
+                                {hasReviews && <Text style={styles.starSymbol}> ★</Text>}
+                            </View>
+                            <Text style={styles.metricSubtext}>
+                                {hasReviews ? `${totalReviews} ${totalReviews === 1 ? 'review' : 'reviews'}` : 'No reviews yet'}
+                            </Text>
                         </View>
                     </View>
 
@@ -700,36 +728,65 @@ const styles = StyleSheet.create({
     metricsCard: {
         flexDirection: 'row',
         backgroundColor: '#FFFFFF',
-        borderRadius: 18,
-        padding: 20,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderRadius: 20,
+        paddingVertical: 18,
+        paddingHorizontal: 12,
+        borderWidth: 1.5,
+        borderColor: '#B5D8CD',
         marginBottom: 16,
         shadowColor: '#0F172A',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.02,
-        shadowRadius: 4,
-        elevation: 1,
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        elevation: 2,
     },
     metricColumn: {
         flex: 1,
-        alignItems: 'flex-start',
-        paddingHorizontal: 8,
+        alignItems: 'center',
+        paddingHorizontal: 4,
+    },
+    metricIconBadge: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        backgroundColor: '#E6F0EC',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    ratingBadgeActive: {
+        backgroundColor: '#FEF3C7',
+    },
+    ratingBadgeInactive: {
+        backgroundColor: '#F1F5F9',
     },
     metricLabel: {
-        fontSize: 12,
-        fontWeight: '600',
+        fontSize: 11,
+        fontWeight: '700',
         color: '#64748B',
-        marginBottom: 4,
+        marginBottom: 2,
+        textTransform: 'uppercase',
+        letterSpacing: 0.3,
     },
     metricValue: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: '900',
-        color: '#133E32',
+        color: '#0F172A',
+    },
+    starSymbol: {
+        fontSize: 14,
+        color: '#D97706',
+        fontWeight: '900',
+    },
+    metricSubtext: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#94A3B8',
+        marginTop: 2,
     },
     metricDivider: {
         width: 1,
-        backgroundColor: '#F1F5F9',
+        backgroundColor: '#E2E8F0',
         marginVertical: 4,
     },
 

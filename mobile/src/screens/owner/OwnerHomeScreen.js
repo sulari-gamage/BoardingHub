@@ -52,10 +52,10 @@ export default function OwnerHomeScreen({
 
     const getGreeting = () => {
         const hour = new Date().getHours();
-        if (hour >= 5 && hour < 12) return `Good morning, ${ownerName}! ☀️`;
-        if (hour >= 12 && hour < 17) return `Good afternoon, ${ownerName}! ☀️`;
-        if (hour >= 17 && hour < 22) return `Good evening, ${ownerName}! 🌙`;
-        return `Good night, ${ownerName}! 🌙`;
+        if (hour >= 5 && hour < 12) return `Good morning, ${ownerName}! `;
+        if (hour >= 12 && hour < 17) return `Good afternoon, ${ownerName}! `;
+        if (hour >= 17 && hour < 22) return `Good evening, ${ownerName}! `;
+        return `Good night, ${ownerName}! `;
     };
 
     const totalProperties = properties.length;
@@ -71,16 +71,26 @@ export default function OwnerHomeScreen({
         return acc + Math.max(0, totalCap - occupied);
     }, 0);
 
-    const totalOccupants = properties.reduce((acc, p) => {
+    // Accurately calculate live approved occupants from booking requests AND property room occupancy data
+    const approvedBookingsOccupants = requests
+        .filter(r => r.status === 'APPROVED')
+        .reduce((sum, r) => sum + (r.occupantsCount || 1), 0);
+
+    const propertyOccupants = properties.reduce((acc, p) => {
         if (p.rooms && p.rooms.length > 0) {
             return acc + p.rooms.reduce((rAcc, r) => {
-                const total = r.totalSpaces || r.capacity || 0;
-                const remaining = r.remainingSpaces !== undefined && r.remainingSpaces !== null ? r.remainingSpaces : 0;
-                return rAcc + Math.max(0, total - remaining);
+                const cap = r.totalCapacity || r.totalSpaces || r.capacity || 0;
+                const rem = r.remainingSpaces !== undefined && r.remainingSpaces !== null ? r.remainingSpaces : cap;
+                const occ = r.occupied !== undefined && r.occupied !== null ? r.occupied : Math.max(0, cap - rem);
+                return rAcc + occ;
             }, 0);
         }
-        return acc + Math.max(0, p.totalOccupied || 0);
+        const cap = p.totalCapacity || p.capacity || 0;
+        const occ = p.totalOccupied !== undefined && p.totalOccupied !== null ? p.totalOccupied : Math.max(0, cap - (p.availableSpaces !== undefined ? p.availableSpaces : cap));
+        return acc + Math.max(0, occ);
     }, 0);
+
+    const totalOccupants = Math.max(approvedBookingsOccupants, propertyOccupants);
 
     const recentRequests = requests.slice(0, 3);
 
@@ -118,7 +128,7 @@ export default function OwnerHomeScreen({
                         <Text style={styles.statValue}>{totalProperties}</Text>
                     </View>
 
-                    {/* Stat Card 2: Requests */}
+                    {/* Stat Card 2: Pending Requests */}
                     <View style={styles.statCard}>
                         <View style={styles.iconCircleLight}>
                             <Ionicons name="clipboard-outline" size={22} color="#133E32" />
@@ -127,7 +137,7 @@ export default function OwnerHomeScreen({
                         <Text style={styles.statValue}>{pendingRequestsCount}</Text>
                     </View>
 
-                    {/* Stat Card 3: Available */}
+                    {/* Stat Card 3: Available Spaces */}
                     <View style={styles.statCard}>
                         <View style={styles.iconCircleLight}>
                             <Ionicons name="checkmark-circle-outline" size={22} color="#133E32" />
@@ -136,7 +146,7 @@ export default function OwnerHomeScreen({
                         <Text style={styles.statValue}>{availableSpaces}</Text>
                     </View>
 
-                    {/* Stat Card 4: Occupants (Matching standard card UI) */}
+                    {/* Stat Card 4: Occupants */}
                     <View style={styles.statCard}>
                         <View style={styles.iconCircleLight}>
                             <Ionicons name="people-outline" size={22} color="#133E32" />
@@ -324,13 +334,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderRadius: 20,
         padding: 16,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderWidth: 1.5,
+        borderColor: '#B5D8CD',
         position: 'relative',
         overflow: 'hidden',
-        shadowColor: '#0F172A',
+        shadowColor: '#133E32',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
+        shadowOpacity: 0.06,
         shadowRadius: 6,
         elevation: 2,
     },

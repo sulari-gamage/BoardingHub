@@ -90,7 +90,6 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
             if (onLoginSuccess) {
                 let userRoleTab = 'Seekers';
                 if (response.role === 'OWNER') userRoleTab = 'Owners';
-                if (response.role === 'ADMIN') userRoleTab = 'Admins';
                 onLoginSuccess(userRoleTab, response);
             }
         } catch (error) {

@@ -131,7 +131,7 @@ public class PropertyService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userEmail));
 
-        if (!property.getOwner().getId().equals(user.getId()) && user.getRole() != Role.ADMIN) {
+        if (!property.getOwner().getId().equals(user.getId())) {
             throw new IllegalArgumentException("You are not authorized to update this property");
         }
 
@@ -272,7 +272,7 @@ public class PropertyService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userEmail));
 
-        if (!property.getOwner().getId().equals(user.getId()) && user.getRole() != Role.ADMIN) {
+        if (!property.getOwner().getId().equals(user.getId())) {
             throw new IllegalArgumentException("You are not authorized to delete this property");
         }
 

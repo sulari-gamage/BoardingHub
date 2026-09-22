@@ -35,25 +35,16 @@ import RoomManagementScreen from './src/screens/owner/RoomManagementScreen';
 import AddRoomScreen from './src/screens/owner/AddRoomScreen';
 import BookingRequestDetailScreen from './src/screens/owner/BookingRequestDetailScreen';
 
-// Admin Screens
-import AdminDashboardScreen from './src/screens/admin/AdminDashboardScreen';
-import AdminPendingPropertiesScreen from './src/screens/admin/AdminPendingPropertiesScreen';
-import AdminPropertyReviewScreen from './src/screens/admin/AdminPropertyReviewScreen';
-import AdminUserManagementScreen from './src/screens/admin/AdminUserManagementScreen';
-import AdminUserDetailScreen from './src/screens/admin/AdminUserDetailScreen';
-import AdminBookingMonitoringScreen from './src/screens/admin/AdminBookingMonitoringScreen';
-import AdminAnalyticsScreen from './src/screens/admin/AdminAnalyticsScreen';
-import AdminMoreScreen from './src/screens/admin/AdminMoreScreen';
+
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('LOGIN');
   const [navigationHistory, setNavigationHistory] = useState(['LOGIN']);
-  const [userRole, setUserRole] = useState('SEEKER'); // 'SEEKER' | 'OWNER' | 'ADMIN'
+  const [userRole, setUserRole] = useState('SEEKER'); // 'SEEKER' | 'OWNER'
   const [currentUser, setCurrentUser] = useState(null); // populated from API on login/register
   const [selectedBoarding, setSelectedBoarding] = useState(null);
   const [selectedOwnerProperty, setSelectedOwnerProperty] = useState(null);
   const [selectedOwnerRequest, setSelectedOwnerRequest] = useState(null);
-  const [selectedAdminUser, setSelectedAdminUser] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [userBookings, setUserBookings] = useState([]);
   const [ownerRequests, setOwnerRequests] = useState([]);
@@ -75,7 +66,6 @@ export default function App() {
   };
 
   const getRoleHome = () => {
-    if (userRole === 'ADMIN') return 'ADMIN_DASHBOARD';
     if (userRole === 'OWNER') return 'OWNER_HOME';
     return 'HOME';
   };
@@ -86,8 +76,7 @@ export default function App() {
     // Main navigation bar screens for each role
     const seekerMainTabs = ['SEARCH', 'FAVORITES', 'BOOKINGS', 'PROFILE'];
     const ownerMainTabs = ['OWNER_PROPERTIES', 'OWNER_REQUESTS', 'OWNER_PROFILE'];
-    const adminMainTabs = ['ADMIN_PENDING_PROPERTIES', 'ADMIN_USER_MANAGEMENT', 'ADMIN_MORE', 'ADMIN_BOOKING_MONITORING', 'ADMIN_ANALYTICS'];
-    const isMainTab = [...seekerMainTabs, ...ownerMainTabs, ...adminMainTabs].includes(currentScreen);
+    const isMainTab = [...seekerMainTabs, ...ownerMainTabs].includes(currentScreen);
 
     if (isMainTab) {
       setCurrentScreen(roleHome);
@@ -436,17 +425,6 @@ export default function App() {
   };
 
   const handleNavigateTab = (tab) => {
-    if (userRole === 'ADMIN') {
-      if (tab === 'Dashboard' || tab === 'ADMIN_DASHBOARD') resetStackTo('ADMIN_DASHBOARD');
-      else if (tab === 'Listings' || tab === 'ADMIN_PENDING_PROPERTIES') navigateTo('ADMIN_PENDING_PROPERTIES');
-      else if (tab === 'Users' || tab === 'ADMIN_USER_MANAGEMENT') navigateTo('ADMIN_USER_MANAGEMENT');
-      else if (tab === 'More' || tab === 'ADMIN_MORE') navigateTo('ADMIN_MORE');
-      else if (tab === 'Bookings' || tab === 'ADMIN_BOOKING_MONITORING') navigateTo('ADMIN_BOOKING_MONITORING');
-      else if (tab === 'Analytics' || tab === 'ADMIN_ANALYTICS') navigateTo('ADMIN_ANALYTICS');
-      else if (tab === 'ADMIN_PROPERTY_REVIEW') navigateTo('ADMIN_PROPERTY_REVIEW');
-      return;
-    }
-
     if (userRole === 'OWNER') {
       if (tab === 'Dashboard' || tab === 'OWNER_HOME' || tab === 'HOME') resetStackTo('OWNER_HOME');
       else if (tab === 'Properties' || tab === 'OWNER_PROPERTIES') navigateTo('OWNER_PROPERTIES');
@@ -498,10 +476,7 @@ export default function App() {
             onNavigateToLogin={() => resetStackTo('LOGIN')}
             onRegisterSuccess={(role, userData) => {
               setCurrentUser(userData);
-              if (role === 'Admins' || role === 'Admin') {
-                setUserRole('ADMIN');
-                resetStackTo('ADMIN_DASHBOARD');
-              } else if (role === 'Owner' || role === 'Owners') {
+              if (role === 'Owner' || role === 'Owners') {
                 setUserRole('OWNER');
                 resetStackTo('OWNER_HOME');
               } else {
@@ -514,10 +489,7 @@ export default function App() {
           <LoginScreen
             onLoginSuccess={(role, userData) => {
               setCurrentUser(userData);
-              if (role === 'Admins' || role === 'Admin') {
-                setUserRole('ADMIN');
-                resetStackTo('ADMIN_DASHBOARD');
-              } else if (role === 'Owners' || role === 'Owner') {
+              if (role === 'Owners' || role === 'Owner') {
                 setUserRole('OWNER');
                 resetStackTo('OWNER_HOME');
               } else {
@@ -677,58 +649,6 @@ export default function App() {
             propertyToEdit={selectedOwnerProperty}
             onBack={goBack}
             onSaveProperty={goBack}
-          />
-        ) : currentScreen === 'ADMIN_DASHBOARD' ? (
-          <AdminDashboardScreen
-            activeTab="Dashboard"
-            onNavigateTab={handleNavigateTab}
-            onOpenPendingReview={() => navigateTo('ADMIN_PENDING_PROPERTIES')}
-          />
-        ) : currentScreen === 'ADMIN_PENDING_PROPERTIES' ? (
-          <AdminPendingPropertiesScreen
-            activeTab="Listings"
-            onNavigateTab={handleNavigateTab}
-            onOpenNotifications={handleOpenNotifications}
-            onSelectProperty={() => navigateTo('ADMIN_PROPERTY_REVIEW')}
-          />
-        ) : currentScreen === 'ADMIN_PROPERTY_REVIEW' ? (
-          <AdminPropertyReviewScreen
-            onBack={goBack}
-            onApprove={goBack}
-            onReject={goBack}
-          />
-        ) : currentScreen === 'ADMIN_USER_MANAGEMENT' ? (
-          <AdminUserManagementScreen
-            activeTab="Users"
-            onNavigateTab={handleNavigateTab}
-            onSelectUser={(user) => {
-              setSelectedAdminUser(user);
-              navigateTo('ADMIN_USER_DETAIL');
-            }}
-          />
-        ) : currentScreen === 'ADMIN_USER_DETAIL' ? (
-          <AdminUserDetailScreen
-            user={selectedAdminUser}
-            onBack={goBack}
-          />
-        ) : currentScreen === 'ADMIN_BOOKING_MONITORING' ? (
-          <AdminBookingMonitoringScreen
-            activeTab="More"
-            onNavigateTab={handleNavigateTab}
-          />
-        ) : currentScreen === 'ADMIN_ANALYTICS' ? (
-          <AdminAnalyticsScreen
-            activeTab="More"
-            onNavigateTab={handleNavigateTab}
-            onOpenNotifications={handleOpenNotifications}
-          />
-        ) : currentScreen === 'ADMIN_MORE' ? (
-          <AdminMoreScreen
-            activeTab="More"
-            onNavigateTab={handleNavigateTab}
-            onNavigateScreen={(scr) => navigateTo(scr)}
-            onOpenNotifications={handleOpenNotifications}
-            onLogout={handleLogout}
           />
         ) : currentScreen === 'SEARCH' ? (
           <SearchScreen

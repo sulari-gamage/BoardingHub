@@ -335,20 +335,7 @@ export const api = {
         },
     },
 
-    // Admin Services
-    admin: {
-        getPendingProperties: async () => {
-            return await request('/admin/properties/pending', { method: 'GET' });
-        },
 
-        approveProperty: async (id) => {
-            return await request(`/admin/properties/${id}/approve`, { method: 'PATCH' });
-        },
-
-        rejectProperty: async (id) => {
-            return await request(`/admin/properties/${id}/reject`, { method: 'PATCH' });
-        },
-    },
 
     // User / Profile Services
     user: {

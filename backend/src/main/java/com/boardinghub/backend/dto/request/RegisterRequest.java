@@ -27,6 +27,6 @@ public class RegisterRequest {
 
     private String whatsappNumber;
 
-    @NotNull(message = "Role is required (SEEKER, OWNER, or ADMIN)")
+    @NotNull(message = "Role is required (SEEKER or OWNER)")
     private Role role;
 }

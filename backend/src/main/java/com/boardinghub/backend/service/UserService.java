@@ -5,7 +5,9 @@ import com.boardinghub.backend.dto.request.UpdateProfileRequest;
 import com.boardinghub.backend.dto.response.UserProfileResponse;
 import com.boardinghub.backend.entity.BoardingProperty;
 import com.boardinghub.backend.entity.User;
+import com.boardinghub.backend.entity.Review;
 import com.boardinghub.backend.repository.BoardingPropertyRepository;
+import com.boardinghub.backend.repository.ReviewRepository;
 import com.boardinghub.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,6 +22,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final BoardingPropertyRepository propertyRepository;
+    private final ReviewRepository reviewRepository;
     private final PasswordEncoder passwordEncoder;
 
     public UserProfileResponse getUserProfile(String email) {
@@ -32,7 +35,14 @@ public class UserService {
                 .mapToInt(p -> p.getTotalCapacity() != null ? p.getTotalCapacity() : 0)
                 .sum();
 
-        double averageRating = 5.0;
+        List<Review> ownerReviews = reviewRepository.findByPropertyOwnerIdOrderByCreatedAtDesc(user.getId());
+        double averageRating = 0.0;
+        int totalReviews = 0;
+        if (ownerReviews != null && !ownerReviews.isEmpty()) {
+            totalReviews = ownerReviews.size();
+            double sum = ownerReviews.stream().mapToInt(Review::getRating).sum();
+            averageRating = Math.round((sum / totalReviews) * 10.0) / 10.0;
+        }
 
         return UserProfileResponse.builder()
                 .id(user.getId())
@@ -44,6 +54,7 @@ public class UserService {
                 .propertiesCount(propertiesCount)
                 .totalCapacity(totalCapacity)
                 .averageRating(averageRating)
+                .totalReviews(totalReviews)
                 .isVerified(propertiesCount > 0)
                 .createdAt(user.getCreatedAt())
                 .build();
