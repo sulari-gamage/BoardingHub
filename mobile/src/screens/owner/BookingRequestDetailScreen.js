@@ -93,8 +93,10 @@ export default function BookingRequestDetailScreen({
     const isAnnex =
         (currentRequest.bookingType === 'ANNEX') ||
         (currentRequest.propertyType === 'ANNEX') ||
+        (currentRequest.propertyNature === 'ANNEX') ||
         (currentRequest.roomType || '').toLowerCase().includes('annex') ||
-        (currentRequest.propertyTitle || '').toLowerCase().includes('annex');
+        (currentRequest.propertyTitle || '').toLowerCase().includes('annex') ||
+        (currentRequest.bookingType && currentRequest.bookingType !== 'ROOM_BASED');
 
     const handleWhatsAppApplicant = () => {
         const cleanPhone = (currentRequest.tenantPhone || '').replace(/[^0-9]/g, '');

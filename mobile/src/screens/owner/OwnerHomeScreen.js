@@ -183,7 +183,11 @@ export default function OwnerHomeScreen({
 
                             return (
                                 <React.Fragment key={req.id || idx}>
-                                    <View style={styles.requestItemRow}>
+                                    <TouchableOpacity
+                                        style={styles.requestCardContainer}
+                                        onPress={() => onReviewRequest && onReviewRequest(req)}
+                                        activeOpacity={0.7}
+                                    >
                                         {seekerAvatar ? (
                                             <Image source={{ uri: seekerAvatar }} style={styles.avatarCircle} />
                                         ) : (
@@ -193,15 +197,14 @@ export default function OwnerHomeScreen({
                                         )}
 
                                         <View style={styles.requestMainInfo}>
-                                            <Text style={styles.tenantName}>{name}</Text>
+                                            <Text style={styles.tenantName} numberOfLines={1}>{name}</Text>
                                             <View style={styles.roomTypeRow}>
                                                 <Ionicons name="business-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
-                                                <Text style={styles.roomTypeText}>{req.propertyTitle || 'Property'}</Text>
+                                                <Text style={styles.roomTypeText} numberOfLines={1}>{req.propertyTitle || 'Property'}</Text>
                                             </View>
                                         </View>
-                                    </View>
 
-                                    <View style={styles.requestActionsRow}>
+                                        {/* Status badge in top right corner */}
                                         <View
                                             style={
                                                 req.status === 'APPROVED'
@@ -232,15 +235,7 @@ export default function OwnerHomeScreen({
                                                 {req.status}
                                             </Text>
                                         </View>
-
-                                        <TouchableOpacity
-                                            style={styles.reviewReqBtn}
-                                            onPress={() => onReviewRequest && onReviewRequest(req)}
-                                            activeOpacity={0.85}
-                                        >
-                                            <Text style={styles.reviewReqBtnText}>Review Request</Text>
-                                        </TouchableOpacity>
-                                    </View>
+                                    </TouchableOpacity>
                                     {idx < recentRequests.length - 1 && <View style={styles.itemSeparator} />}
                                 </React.Fragment>
                             );
@@ -437,6 +432,11 @@ const styles = StyleSheet.create({
     },
 
     /* Request Item */
+    requestCardContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
     requestItemRow: {
         flexDirection: 'row',
         alignItems: 'center',

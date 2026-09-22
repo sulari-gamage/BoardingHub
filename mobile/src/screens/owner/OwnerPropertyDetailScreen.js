@@ -9,7 +9,8 @@ import {
     Image,
     Platform,
     Linking,
-    ActivityIndicator
+    ActivityIndicator,
+    Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,6 +44,40 @@ export default function OwnerPropertyDetailScreen({
     const [approvedOccupants, setApprovedOccupants] = useState([]);
     const [loadingOccupants, setLoadingOccupants] = useState(false);
     const [isOccupantModalVisible, setIsOccupantModalVisible] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const handleDeleteProperty = () => {
+        Alert.alert(
+            'Delete Property 🗑️',
+            `Are you sure you want to permanently delete "${currentProperty.title}"? All associated rooms, photos, and records will be removed. This action cannot be undone.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete Property',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            setIsDeleting(true);
+                            await api.properties.delete(currentProperty.id);
+                            Alert.alert('Property Deleted', 'The property has been permanently removed.', [
+                                {
+                                    text: 'OK',
+                                    onPress: () => {
+                                        if (onPropertyUpdated) onPropertyUpdated();
+                                        onBack();
+                                    }
+                                }
+                            ]);
+                        } catch (err) {
+                            Alert.alert('Error', err.message || 'Failed to delete property');
+                        } finally {
+                            setIsDeleting(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     useEffect(() => {
         if (currentProperty?.id) {
@@ -314,6 +349,23 @@ export default function OwnerPropertyDetailScreen({
                                     <Text style={styles.actionCardTitle}>Occupants</Text>
                                 </TouchableOpacity>
                             )}
+
+                            {/* Delete Property Card */}
+                            <TouchableOpacity
+                                style={[styles.actionCard, { borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' }]}
+                                onPress={handleDeleteProperty}
+                                activeOpacity={0.85}
+                                disabled={isDeleting}
+                            >
+                                <View style={[styles.iconCircle, { backgroundColor: '#FEE2E2' }]}>
+                                    {isDeleting ? (
+                                        <ActivityIndicator size="small" color="#DC2626" />
+                                    ) : (
+                                        <Ionicons name="trash-outline" size={24} color="#DC2626" />
+                                    )}
+                                </View>
+                                <Text style={[styles.actionCardTitle, { color: '#991B1B' }]}>Delete</Text>
+                            </TouchableOpacity>
                         </View>
                     </>
                 )}

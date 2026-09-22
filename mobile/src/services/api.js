@@ -256,6 +256,10 @@ export const api = {
             return await request(`/properties/${id}`, { method: 'DELETE' });
         },
 
+        deleteRoom: async (propertyId, roomId) => {
+            return await request(`/properties/${propertyId}/rooms/${roomId}`, { method: 'DELETE' });
+        },
+
         geocode: async (address, city = '') => {
             const queryParams = new URLSearchParams({ address });
             if (city) queryParams.append('city', city);

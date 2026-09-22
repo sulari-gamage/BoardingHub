@@ -15,4 +15,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     @org.springframework.data.jpa.repository.Query("SELECT r FROM Review r WHERE r.property IS NOT NULL AND r.property.owner.id = :ownerId ORDER BY r.createdAt DESC")
     List<Review> findByPropertyOwnerIdOrderByCreatedAtDesc(@org.springframework.data.repository.query.Param("ownerId") Long ownerId);
+
+    void deleteByPropertyId(Long propertyId);
 }

@@ -93,4 +93,15 @@ public class PropertyController {
         List<PropertyResponse> properties = propertyService.getOwnerProperties(userDetails.getUsername());
         return ResponseEntity.ok(properties);
     }
+
+    @DeleteMapping("/{propertyId}/rooms/{roomId}")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
+    public ResponseEntity<PropertyResponse> deleteRoom(
+            @PathVariable Long propertyId,
+            @PathVariable Long roomId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        PropertyResponse updated = propertyService.deleteRoom(propertyId, roomId, userDetails.getUsername());
+        return ResponseEntity.ok(updated);
+    }
 }

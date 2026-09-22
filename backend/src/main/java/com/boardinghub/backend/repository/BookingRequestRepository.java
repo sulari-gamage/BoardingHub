@@ -22,4 +22,8 @@ public interface BookingRequestRepository extends JpaRepository<BookingRequest, 
     List<BookingRequest> findByPropertyIdAndStatus(Long propertyId, BookingStatus status);
 
     List<BookingRequest> findByRoomIdAndStatus(Long roomId, BookingStatus status);
+
+    void deleteByPropertyId(Long propertyId);
+
+    void deleteByRoomId(Long roomId);
 }

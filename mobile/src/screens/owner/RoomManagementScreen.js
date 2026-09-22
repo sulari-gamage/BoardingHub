@@ -262,6 +262,44 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
         }
     };
 
+    const handleDeleteRoom = (roomToDelete) => {
+        const rName = roomToDelete.roomName || roomToDelete.number || 'this room';
+        const targetRoomId = roomToDelete.rawId || roomToDelete.id;
+
+        Alert.alert(
+            'Delete Room 🗑️',
+            `Are you sure you want to permanently delete "${rName}"? All associated booking requests for this unit will be removed. This action cannot be undone.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete Room',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            setIsSaving(true);
+                            const updatedProperty = await api.properties.deleteRoom(property.id, targetRoomId);
+                            Alert.alert('Room Deleted 🎉', `"${rName}" has been successfully deleted.`, [
+                                {
+                                    text: 'OK',
+                                    onPress: () => {
+                                        setSelectedManageRoom(null);
+                                        if (onPropertyUpdated && updatedProperty) {
+                                            onPropertyUpdated(updatedProperty);
+                                        }
+                                    }
+                                }
+                            ]);
+                        } catch (err) {
+                            Alert.alert('Error', err.message || 'Failed to delete room');
+                        } finally {
+                            setIsSaving(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     if (editingRoom) {
         return (
             <View style={{ flex: 1 }}>
@@ -325,7 +363,7 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                         </View>
                     </View>
 
-                    {/* Quick Action Grid (4 Cards) */}
+                    {/* Quick Action Grid */}
                     <Text style={[styles.sectionTitle, { marginTop: 18 }]}>Quick Actions</Text>
                     <View style={styles.quickGrid}>
                         {/* 1. Edit Card */}
@@ -358,6 +396,18 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                                 <Ionicons name="people-outline" size={24} color="#133E32" />
                             </View>
                             <Text style={styles.actionCardTitle}>Occupants</Text>
+                        </TouchableOpacity>
+
+                        {/* 5. Delete Room Card */}
+                        <TouchableOpacity
+                            style={[styles.actionCard, { borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' }]}
+                            onPress={() => handleDeleteRoom(room)}
+                            activeOpacity={0.85}
+                        >
+                            <View style={[styles.iconCircle, { backgroundColor: '#FEE2E2' }]}>
+                                <Ionicons name="trash-outline" size={24} color="#DC2626" />
+                            </View>
+                            <Text style={[styles.actionCardTitle, { color: '#991B1B' }]}>Delete Room</Text>
                         </TouchableOpacity>
                     </View>
 

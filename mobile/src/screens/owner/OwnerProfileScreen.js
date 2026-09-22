@@ -233,7 +233,7 @@ export default function OwnerProfileScreen({
                         <Text style={styles.userEmail}>{displayEmail}</Text>
                     </View>
 
-                    {/* 2. Enhanced 3-Column Metrics Card */}
+                    {/* 2. Enhanced 2-Column Metrics Card */}
                     <View style={styles.metricsCard}>
                         {/* Properties Count */}
                         <View style={styles.metricColumn}>
@@ -255,23 +255,6 @@ export default function OwnerProfileScreen({
                             <Text style={styles.metricLabel}>Capacity</Text>
                             <Text style={styles.metricValue}>{totalCapacity}</Text>
                             <Text style={styles.metricSubtext}>Total Spaces</Text>
-                        </View>
-
-                        <View style={styles.metricDivider} />
-
-                        {/* Average Rating */}
-                        <View style={styles.metricColumn}>
-                            <View style={[styles.metricIconBadge, hasReviews ? styles.ratingBadgeActive : styles.ratingBadgeInactive]}>
-                                <Ionicons name="star" size={18} color={hasReviews ? "#D97706" : "#94A3B8"} />
-                            </View>
-                            <Text style={styles.metricLabel}>Avg Rating</Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <Text style={styles.metricValue}>{averageRatingDisplay}</Text>
-                                {hasReviews && <Text style={styles.starSymbol}> ★</Text>}
-                            </View>
-                            <Text style={styles.metricSubtext}>
-                                {hasReviews ? `${totalReviews} ${totalReviews === 1 ? 'review' : 'reviews'}` : 'No reviews yet'}
-                            </Text>
                         </View>
                     </View>
 
@@ -727,6 +710,8 @@ const styles = StyleSheet.create({
     /* Metrics Card */
     metricsCard: {
         flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
         backgroundColor: '#FFFFFF',
         borderRadius: 20,
         paddingVertical: 18,

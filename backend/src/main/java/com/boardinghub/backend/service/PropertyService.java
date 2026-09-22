@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.boardinghub.backend.repository.ReviewRepository;
+import com.boardinghub.backend.repository.BookingRequestRepository;
+import com.boardinghub.backend.repository.SavedPropertyRepository;
 import com.boardinghub.backend.dto.response.GeocodeResponse;
 import com.boardinghub.backend.service.GeocodingService;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +34,8 @@ public class PropertyService {
     private final BoardingPropertyRepository propertyRepository;
     private final UserRepository userRepository;
     private final ReviewRepository reviewRepository;
+    private final BookingRequestRepository bookingRequestRepository;
+    private final SavedPropertyRepository savedPropertyRepository;
     private final GeocodingService geocodingService;
 
     @Transactional
@@ -272,11 +276,50 @@ public class PropertyService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userEmail));
 
-        if (!property.getOwner().getId().equals(user.getId())) {
+        if (!property.getOwner().getId().equals(user.getId()) && user.getRole() != Role.ADMIN) {
             throw new IllegalArgumentException("You are not authorized to delete this property");
         }
 
+        savedPropertyRepository.deleteByPropertyId(id);
+        bookingRequestRepository.deleteByPropertyId(id);
+        reviewRepository.deleteByPropertyId(id);
         propertyRepository.delete(property);
+    }
+
+    @Transactional
+    public PropertyResponse deleteRoom(Long propertyId, Long roomId, String userEmail) {
+        BoardingProperty property = propertyRepository.findById(propertyId)
+                .orElseThrow(() -> new IllegalArgumentException("Property not found with ID: " + propertyId));
+
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userEmail));
+
+        if (!property.getOwner().getId().equals(user.getId()) && user.getRole() != Role.ADMIN) {
+            throw new IllegalArgumentException("You are not authorized to modify rooms for this property");
+        }
+
+        Room roomToDelete = property.getRooms().stream()
+                .filter(r -> r.getId().equals(roomId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Room not found with ID: " + roomId));
+
+        bookingRequestRepository.deleteByRoomId(roomId);
+        property.getRooms().remove(roomToDelete);
+
+        // Recalculate total capacity and occupied
+        int totalCap = property.getRooms().stream()
+                .mapToInt(r -> r.getTotalCapacity() != null ? r.getTotalCapacity() : 1)
+                .sum();
+        int occupiedCount = property.getRooms().stream()
+                .mapToInt(r -> r.getOccupied() != null ? r.getOccupied() : Math.max(0, (r.getTotalCapacity() != null ? r.getTotalCapacity() : 1) - (r.getRemainingSpaces() != null ? r.getRemainingSpaces() : 0)))
+                .sum();
+
+        property.setTotalCapacity(totalCap);
+        property.setTotalOccupied(occupiedCount);
+        property.setRoomsCount(property.getRooms().size());
+
+        BoardingProperty saved = propertyRepository.saveAndFlush(property);
+        return mapToPropertyResponse(saved);
     }
 
     public List<PropertyResponse> searchApprovedProperties(String city, Double maxRent, GenderPreference gender) {

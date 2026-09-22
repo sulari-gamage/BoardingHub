@@ -19,10 +19,12 @@ import api from '../../services/api';
 
 export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onReviewAdded, mode = 'PROPERTY' }) {
     const isMyReviewsMode = mode === 'MY_REVIEWS' || !boarding?.id;
-    const title = isMyReviewsMode ? 'My Feedback & Reviews' : (boarding.title || 'Boarding Property');
+    const isOwner = currentUser?.role === 'OWNER';
+    const title = isMyReviewsMode ? (isOwner ? 'Reviews & Feedback' : 'My Feedback & Reviews') : (boarding.title || 'Boarding Property');
 
     const [reviews, setReviews] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [activeCategory, setActiveCategory] = useState('ALL'); // 'ALL', 'PROPERTY', 'APP'
 
     const [isWriteModalVisible, setIsWriteModalVisible] = useState(false);
     const [userRating, setUserRating] = useState(5);
@@ -92,9 +94,19 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
         }
     };
 
-    const computedRating = reviews.length > 0
-        ? (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1)
-        : (boarding.rating ? Number(boarding.rating).toFixed(1) : 'N/A');
+    const propertyReviewsCount = reviews.filter(r => r.type === 'PROPERTY' || r.propertyId != null).length;
+    const appReviewsCount = reviews.filter(r => r.type === 'APP' || (!r.propertyId && (!r.propertyTitle || r.propertyTitle.includes('App') || r.propertyTitle.includes('Platform')))).length;
+
+    const filteredReviews = reviews.filter(rev => {
+        const isProp = rev.type === 'PROPERTY' || rev.propertyId != null;
+        if (activeCategory === 'PROPERTY') return isProp;
+        if (activeCategory === 'APP') return !isProp;
+        return true;
+    });
+
+    const computedRating = filteredReviews.length > 0
+        ? (filteredReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / filteredReviews.length).toFixed(1)
+        : (reviews.length > 0 ? (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1) : 'N/A');
 
     return (
         <SafeAreaView style={styles.container}>
@@ -105,7 +117,7 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                 <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
                     <Ionicons name="arrow-back" size={20} color="#0F172A" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{isMyReviewsMode ? 'My Feedback & Reviews' : 'Reviews & Ratings'}</Text>
+                <Text style={styles.headerTitle}>{isMyReviewsMode ? (isOwner ? 'Reviews & Feedback' : 'My Reviews') : 'Reviews & Ratings'}</Text>
                 <TouchableOpacity style={styles.writeBtn} onPress={() => setIsWriteModalVisible(true)} activeOpacity={0.85}>
                     <Ionicons name="pencil" size={16} color="#1B4D3E" />
                 </TouchableOpacity>
@@ -133,34 +145,95 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                             })}
                         </View>
                         <Text style={[styles.totalCount, { fontSize: 13, color: '#64748B' }]}>
-                            {isMyReviewsMode ? `${reviews.length} Reviews Submitted by You` : `${reviews.length} Verified Seeker Reviews`}
+                            {isOwner
+                                ? `${propertyReviewsCount} Property Reviews • ${appReviewsCount} App Feedback`
+                                : (isMyReviewsMode ? `${reviews.length} Total Feedback & Reviews` : `${reviews.length} Verified Seeker Reviews`)}
                         </Text>
                     </View>
                 </View>
 
+                {/* Filter Categories Chips */}
+                {isMyReviewsMode && (
+                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                        <TouchableOpacity
+                            style={{
+                                paddingHorizontal: 14,
+                                paddingVertical: 8,
+                                borderRadius: 20,
+                                backgroundColor: activeCategory === 'ALL' ? '#133E32' : '#F1F5F9',
+                                borderWidth: 1,
+                                borderColor: activeCategory === 'ALL' ? '#133E32' : '#E2E8F0',
+                            }}
+                            onPress={() => setActiveCategory('ALL')}
+                        >
+                            <Text style={{ fontSize: 12, fontWeight: '800', color: activeCategory === 'ALL' ? '#FFFFFF' : '#64748B' }}>
+                                All ({reviews.length})
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={{
+                                paddingHorizontal: 14,
+                                paddingVertical: 8,
+                                borderRadius: 20,
+                                backgroundColor: activeCategory === 'PROPERTY' ? '#133E32' : '#F1F5F9',
+                                borderWidth: 1,
+                                borderColor: activeCategory === 'PROPERTY' ? '#133E32' : '#E2E8F0',
+                            }}
+                            onPress={() => setActiveCategory('PROPERTY')}
+                        >
+                            <Text style={{ fontSize: 12, fontWeight: '800', color: activeCategory === 'PROPERTY' ? '#FFFFFF' : '#64748B' }}>
+                                Property Reviews ({propertyReviewsCount})
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={{
+                                paddingHorizontal: 14,
+                                paddingVertical: 8,
+                                borderRadius: 20,
+                                backgroundColor: activeCategory === 'APP' ? '#133E32' : '#F1F5F9',
+                                borderWidth: 1,
+                                borderColor: activeCategory === 'APP' ? '#133E32' : '#E2E8F0',
+                            }}
+                            onPress={() => setActiveCategory('APP')}
+                        >
+                            <Text style={{ fontSize: 12, fontWeight: '800', color: activeCategory === 'APP' ? '#FFFFFF' : '#64748B' }}>
+                                App Feedback ({appReviewsCount})
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
                 {/* Subheading */}
                 <View style={styles.subHeaderRow}>
-                    <Text style={styles.subHeading}>{isMyReviewsMode ? `My Submissions (${reviews.length})` : `User Reviews (${reviews.length})`}</Text>
+                    <Text style={styles.subHeading}>
+                        {activeCategory === 'PROPERTY' ? `Property Reviews (${filteredReviews.length})` : activeCategory === 'APP' ? `App Feedback (${filteredReviews.length})` : `All Reviews (${filteredReviews.length})`}
+                    </Text>
                     <TouchableOpacity onPress={() => setIsWriteModalVisible(true)}>
-                        <Text style={styles.writeTextLink}>{isMyReviewsMode ? '+ Rate App' : '+ Write Review'}</Text>
+                        <Text style={styles.writeTextLink}>+ Rate App</Text>
                     </TouchableOpacity>
                 </View>
 
                 {/* Reviews List */}
                 {loading ? (
                     <ActivityIndicator size="large" color="#1B4D3E" style={{ marginVertical: 30 }} />
-                ) : reviews.length > 0 ? (
-                    reviews.map((rev) => {
+                ) : filteredReviews.length > 0 ? (
+                    filteredReviews.map((rev) => {
                         const dateStr = rev.createdAt
                             ? new Date(rev.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                             : 'Recently';
-                        const author = rev.userName || rev.seekerName || 'Anonymous Seeker';
-                        const avatar = (rev.userAvatar && typeof rev.userAvatar === 'string' && rev.userAvatar.trim().length > 0)
+                        const isPropertyReview = rev.type === 'PROPERTY' || rev.propertyId != null;
+                        const author = rev.userName || rev.seekerName || 'User';
+                        const isCurrentUserAuthor = currentUser?.id && (rev.userId === currentUser.id);
+
+                        let avatar = (rev.userAvatar && typeof rev.userAvatar === 'string' && rev.userAvatar.trim().length > 0)
                             ? rev.userAvatar
                             : (rev.seekerAvatar && typeof rev.seekerAvatar === 'string' && rev.seekerAvatar.trim().length > 0)
                                 ? rev.seekerAvatar
                                 : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80';
-                        const propTitle = rev.propertyTitle || null;
+
+                        const propTitle = rev.propertyTitle && !rev.propertyTitle.includes('Platform') ? rev.propertyTitle : null;
 
                         return (
                             <View key={rev.id || Math.random().toString()} style={styles.reviewCard}>
@@ -168,14 +241,29 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                                     <Image source={{ uri: avatar }} style={styles.authorAvatar} />
 
                                     <View style={{ flex: 1 }}>
-                                        <Text style={styles.authorName}>{author}</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                            <Text style={styles.authorName}>{author}</Text>
+                                            {isCurrentUserAuthor ? (
+                                                <View style={{ backgroundColor: '#E6F0EC', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                                                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#133E32' }}>You</Text>
+                                                </View>
+                                            ) : (
+                                                <View style={{ backgroundColor: '#F1F5F9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                                                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#64748B' }}>Seeker</Text>
+                                                </View>
+                                            )}
+                                        </View>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
                                             <Text style={styles.reviewDate}>{dateStr}</Text>
-                                            {propTitle ? (
-                                                <Text style={[styles.reviewDate, { color: '#1B4D3E', fontWeight: '700' }]} numberOfLines={1}>
-                                                    • {propTitle}
+                                            {isPropertyReview ? (
+                                                <Text style={[styles.reviewDate, { color: '#133E32', fontWeight: '700' }]} numberOfLines={1}>
+                                                    • {propTitle || 'Property Review'}
                                                 </Text>
-                                            ) : null}
+                                            ) : (
+                                                <Text style={[styles.reviewDate, { color: '#2563EB', fontWeight: '700' }]} numberOfLines={1}>
+                                                    • App Feedback
+                                                </Text>
+                                            )}
                                         </View>
                                     </View>
 
@@ -199,9 +287,9 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                 ) : (
                     <View style={{ padding: 24, alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', marginVertical: 10 }}>
                         <Ionicons name="chatbox-ellipses-outline" size={36} color="#CBD5E1" style={{ marginBottom: 8 }} />
-                        <Text style={{ fontSize: 15, fontWeight: '800', color: '#1B4D3E', marginBottom: 4 }}>No Reviews Yet</Text>
+                        <Text style={{ fontSize: 15, fontWeight: '800', color: '#1B4D3E', marginBottom: 4 }}>No Reviews Found</Text>
                         <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center' }}>
-                            {isMyReviewsMode ? "You haven't submitted any boarding reviews yet." : "Be the first seeker to write a review for this boarding place!"}
+                            {activeCategory === 'PROPERTY' ? "No property reviews received yet." : activeCategory === 'APP' ? "No app feedback submitted yet." : "No reviews found."}
                         </Text>
                     </View>
                 )}
@@ -469,6 +557,7 @@ const styles = StyleSheet.create({
         color: '#475569',
         lineHeight: 20,
         marginBottom: 12,
+        textAlign: 'justify',
     },
     reviewFooter: {
         flexDirection: 'row',
