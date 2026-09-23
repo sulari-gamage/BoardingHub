@@ -324,6 +324,10 @@ export const api = {
         getMyReviews: async () => {
             return await request('/reviews/my', { method: 'GET' });
         },
+
+        getAppReviews: async () => {
+            return await request('/reviews/app', { method: 'GET' });
+        },
     },
 
     // Favorite / Saved Services

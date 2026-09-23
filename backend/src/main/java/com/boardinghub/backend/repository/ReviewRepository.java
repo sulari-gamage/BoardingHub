@@ -13,6 +13,11 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     List<Review> findByUserIdOrderByCreatedAtDesc(Long userId);
 
+    List<Review> findByTypeOrderByCreatedAtDesc(String type);
+
+    @org.springframework.data.jpa.repository.Query("SELECT r FROM Review r WHERE r.type = 'APP' OR r.property IS NULL ORDER BY r.createdAt DESC")
+    List<Review> findAppReviews();
+
     @org.springframework.data.jpa.repository.Query("SELECT r FROM Review r WHERE r.property IS NOT NULL AND r.property.owner.id = :ownerId ORDER BY r.createdAt DESC")
     List<Review> findByPropertyOwnerIdOrderByCreatedAtDesc(@org.springframework.data.repository.query.Param("ownerId") Long ownerId);
 

@@ -80,6 +80,11 @@ public class ReviewService {
                 .stream().map(this::mapToReviewResponse).collect(Collectors.toList());
     }
 
+    public List<ReviewResponse> getAppReviews() {
+        return reviewRepository.findAppReviews()
+                .stream().map(this::mapToReviewResponse).collect(Collectors.toList());
+    }
+
     public List<ReviewResponse> getMyReviews(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));

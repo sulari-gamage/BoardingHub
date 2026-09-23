@@ -23,8 +23,9 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
     const title = isMyReviewsMode ? (isOwner ? 'Reviews & Feedback' : 'My Feedback & Reviews') : (boarding.title || 'Boarding Property');
 
     const [reviews, setReviews] = useState([]);
+    const [appReviews, setAppReviews] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [activeCategory, setActiveCategory] = useState('ALL'); // 'ALL', 'PROPERTY', 'APP'
+    const [activeCategory, setActiveCategory] = useState(isMyReviewsMode ? 'MY' : 'PROPERTY');
 
     const [isWriteModalVisible, setIsWriteModalVisible] = useState(false);
     const [userRating, setUserRating] = useState(5);
@@ -32,22 +33,30 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
+        setActiveCategory(isMyReviewsMode ? 'MY' : 'PROPERTY');
         loadReviews();
     }, [boarding?.id, mode]);
 
     const loadReviews = async () => {
         try {
             setLoading(true);
-            let data = null;
             if (isMyReviewsMode) {
-                data = await api.reviews.getMyReviews();
+                const [myRes, appRes] = await Promise.all([
+                    api.reviews.getMyReviews().catch(() => []),
+                    api.reviews.getAppReviews().catch(() => []),
+                ]);
+                const myData = Array.isArray(myRes) ? myRes : [];
+                const appData = Array.isArray(appRes) ? appRes : [];
+                setReviews(myData);
+                setAppReviews(appData);
             } else if (boarding?.id) {
-                data = await api.reviews.getByPropertyId(boarding.id);
-            }
-            if (data && Array.isArray(data)) {
-                setReviews(data);
-            } else {
-                setReviews([]);
+                const data = await api.reviews.getByPropertyId(boarding.id);
+                if (data && Array.isArray(data)) {
+                    const propertyOnly = data.filter(r => r && (r.type === 'PROPERTY' || (r.propertyId && String(r.propertyId) === String(boarding.id))));
+                    setReviews(propertyOnly);
+                } else {
+                    setReviews([]);
+                }
             }
         } catch (error) {
             console.log('Error loading reviews:', error);
@@ -70,10 +79,13 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                 comment: userComment.trim(),
             });
 
-            const updatedReviews = [newReview, ...reviews];
-            setReviews(updatedReviews);
+            if (!propertyIdToSend) {
+                setAppReviews(prev => [newReview, ...prev]);
+            }
+            setReviews(prev => [newReview, ...prev]);
 
             if (boarding?.id && onReviewAdded) {
+                const updatedReviews = [newReview, ...reviews];
                 const newAvg = (updatedReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / updatedReviews.length).toFixed(1);
                 const updatedBoarding = {
                     ...boarding,
@@ -94,15 +106,13 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
         }
     };
 
-    const propertyReviewsCount = reviews.filter(r => r.type === 'PROPERTY' || r.propertyId != null).length;
-    const appReviewsCount = reviews.filter(r => r.type === 'APP' || (!r.propertyId && (!r.propertyTitle || r.propertyTitle.includes('App') || r.propertyTitle.includes('Platform')))).length;
+    const myReviewsList = reviews.filter(r => !currentUser?.id || (r.userId != null && String(r.userId) === String(currentUser.id)));
+    const myReviewsCount = myReviewsList.length;
+    const allAppReviewsCount = appReviews.length;
 
-    const filteredReviews = reviews.filter(rev => {
-        const isProp = rev.type === 'PROPERTY' || rev.propertyId != null;
-        if (activeCategory === 'PROPERTY') return isProp;
-        if (activeCategory === 'APP') return !isProp;
-        return true;
-    });
+    const filteredReviews = isMyReviewsMode
+        ? (activeCategory === 'APP' ? appReviews : myReviewsList)
+        : reviews;
 
     const computedRating = filteredReviews.length > 0
         ? (filteredReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / filteredReviews.length).toFixed(1)
@@ -145,52 +155,36 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                             })}
                         </View>
                         <Text style={[styles.totalCount, { fontSize: 13, color: '#64748B' }]}>
-                            {isOwner
-                                ? `${propertyReviewsCount} Property Reviews • ${appReviewsCount} App Feedback`
-                                : (isMyReviewsMode ? `${reviews.length} Total Feedback & Reviews` : `${reviews.length} Verified Seeker Reviews`)}
+                            {isMyReviewsMode
+                                ? `${filteredReviews.length} Reviews`
+                                : `${reviews.length} Verified Seeker Reviews`}
                         </Text>
                     </View>
                 </View>
 
                 {/* Filter Categories Chips */}
                 {isMyReviewsMode && (
-                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                    <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
                         <TouchableOpacity
                             style={{
-                                paddingHorizontal: 14,
-                                paddingVertical: 8,
+                                paddingHorizontal: 16,
+                                paddingVertical: 10,
                                 borderRadius: 20,
-                                backgroundColor: activeCategory === 'ALL' ? '#133E32' : '#F1F5F9',
+                                backgroundColor: activeCategory === 'MY' ? '#133E32' : '#F1F5F9',
                                 borderWidth: 1,
-                                borderColor: activeCategory === 'ALL' ? '#133E32' : '#E2E8F0',
+                                borderColor: activeCategory === 'MY' ? '#133E32' : '#E2E8F0',
                             }}
-                            onPress={() => setActiveCategory('ALL')}
+                            onPress={() => setActiveCategory('MY')}
                         >
-                            <Text style={{ fontSize: 12, fontWeight: '800', color: activeCategory === 'ALL' ? '#FFFFFF' : '#64748B' }}>
-                                All ({reviews.length})
+                            <Text style={{ fontSize: 13, fontWeight: '800', color: activeCategory === 'MY' ? '#FFFFFF' : '#64748B' }}>
+                                My Reviews ({myReviewsCount})
                             </Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
                             style={{
-                                paddingHorizontal: 14,
-                                paddingVertical: 8,
-                                borderRadius: 20,
-                                backgroundColor: activeCategory === 'PROPERTY' ? '#133E32' : '#F1F5F9',
-                                borderWidth: 1,
-                                borderColor: activeCategory === 'PROPERTY' ? '#133E32' : '#E2E8F0',
-                            }}
-                            onPress={() => setActiveCategory('PROPERTY')}
-                        >
-                            <Text style={{ fontSize: 12, fontWeight: '800', color: activeCategory === 'PROPERTY' ? '#FFFFFF' : '#64748B' }}>
-                                Property Reviews ({propertyReviewsCount})
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={{
-                                paddingHorizontal: 14,
-                                paddingVertical: 8,
+                                paddingHorizontal: 16,
+                                paddingVertical: 10,
                                 borderRadius: 20,
                                 backgroundColor: activeCategory === 'APP' ? '#133E32' : '#F1F5F9',
                                 borderWidth: 1,
@@ -198,8 +192,8 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                             }}
                             onPress={() => setActiveCategory('APP')}
                         >
-                            <Text style={{ fontSize: 12, fontWeight: '800', color: activeCategory === 'APP' ? '#FFFFFF' : '#64748B' }}>
-                                App Feedback ({appReviewsCount})
+                            <Text style={{ fontSize: 13, fontWeight: '800', color: activeCategory === 'APP' ? '#FFFFFF' : '#64748B' }}>
+                                All App Reviews ({allAppReviewsCount})
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -208,7 +202,9 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                 {/* Subheading */}
                 <View style={styles.subHeaderRow}>
                     <Text style={styles.subHeading}>
-                        {activeCategory === 'PROPERTY' ? `Property Reviews (${filteredReviews.length})` : activeCategory === 'APP' ? `App Feedback (${filteredReviews.length})` : `All Reviews (${filteredReviews.length})`}
+                        {isMyReviewsMode
+                            ? (activeCategory === 'APP' ? `All App Reviews (${filteredReviews.length})` : `My Reviews (${filteredReviews.length})`)
+                            : `Property Reviews (${filteredReviews.length})`}
                     </Text>
                     <TouchableOpacity onPress={() => setIsWriteModalVisible(true)}>
                         <Text style={styles.writeTextLink}>+ Rate App</Text>
@@ -225,7 +221,7 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                             : 'Recently';
                         const isPropertyReview = rev.type === 'PROPERTY' || rev.propertyId != null;
                         const author = rev.userName || rev.seekerName || 'User';
-                        const isCurrentUserAuthor = currentUser?.id && (rev.userId === currentUser.id);
+                        const isCurrentUserAuthor = currentUser?.id != null && rev.userId != null && String(rev.userId) === String(currentUser.id);
 
                         let avatar = (rev.userAvatar && typeof rev.userAvatar === 'string' && rev.userAvatar.trim().length > 0)
                             ? rev.userAvatar
@@ -249,7 +245,9 @@ export default function ReviewsScreen({ boarding = {}, onBack, currentUser, onRe
                                                 </View>
                                             ) : (
                                                 <View style={{ backgroundColor: '#F1F5F9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                                                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#64748B' }}>Seeker</Text>
+                                                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#64748B' }}>
+                                                        {rev.userRole || (isPropertyReview ? 'Seeker' : 'App User')}
+                                                    </Text>
                                                 </View>
                                             )}
                                         </View>

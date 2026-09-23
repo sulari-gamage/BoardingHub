@@ -51,7 +51,8 @@ export default function DetailsScreen({
             api.reviews.getByPropertyId(boarding.id)
                 .then(res => {
                     if (res && Array.isArray(res)) {
-                        setPropertyReviews(res);
+                        const filtered = res.filter(r => r && (r.type === 'PROPERTY' || (r.propertyId && String(r.propertyId) === String(boarding.id))));
+                        setPropertyReviews(filtered);
                     }
                 })
                 .catch(err => console.log('[DetailsScreen] Reviews load error:', err))
@@ -432,7 +433,7 @@ export default function DetailsScreen({
                         >
                             <Ionicons name="star" size={13} color="#D97706" style={{ marginRight: 3 }} />
                             <Text style={styles.headerRatingScore}>{rating}</Text>
-                            <Text style={styles.headerReviewsCount}>(124)</Text>
+                            <Text style={styles.headerReviewsCount}>({propertyReviews.length})</Text>
                         </TouchableOpacity>
                     </View>
 

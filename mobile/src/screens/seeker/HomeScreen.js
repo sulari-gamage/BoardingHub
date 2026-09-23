@@ -271,8 +271,12 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
             roomsCount: p.roomsCount || (p.rooms ? p.rooms.length : 0),
             rooms: p.rooms || [],
             propertyNature: p.propertyNature || 'ROOM_BASED',
-            totalSpaces: p.totalCapacity || (p.rooms ? p.rooms.reduce((acc, r) => acc + (r.totalCapacity || 1), 0) : 1),
-            remainingSpaces: p.remainingSpaces != null ? p.remainingSpaces : (p.rooms ? p.rooms.reduce((acc, r) => acc + (r.remainingSpaces != null ? r.remainingSpaces : Math.max(0, (r.totalCapacity || 1) - (r.occupied || 0))), 0) : 1),
+            totalSpaces: p.totalCapacity || (p.rooms && p.rooms.length > 0 ? p.rooms.reduce((acc, r) => acc + (r.totalCapacity || 1), 0) : 1),
+            remainingSpaces: p.remainingSpaces != null
+                ? p.remainingSpaces
+                : (p.rooms && p.rooms.length > 0
+                    ? p.rooms.reduce((acc, r) => acc + (r.remainingSpaces != null ? r.remainingSpaces : Math.max(0, (r.totalCapacity || 1) - (r.occupied || 0))), 0)
+                    : Math.max(0, (p.totalCapacity || p.totalSpaces || p.bedsCount || 1) - (p.totalOccupied || 0))),
             rawGender: p.genderPreference,
             genderPreference: p.genderPreference === 'MALE_ONLY' ? 'Boys Only' : p.genderPreference === 'FEMALE_ONLY' ? 'Girls Only' : 'Any Gender / Mixed',
             image: (p.imageUrls && p.imageUrls.length > 0)
@@ -288,7 +292,8 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
         };
     }).filter((item) => {
         // Seeker Availability Filter: Hide fully booked / filled-out properties
-        const isAnnex = item.propertyNature === 'WHOLE_HOUSE';
+        const natureStr = (item.propertyNature || '').toUpperCase();
+        const isAnnex = natureStr === 'WHOLE_HOUSE' || natureStr.includes('ANNEX') || natureStr.includes('WHOLE');
         if (isAnnex) {
             const totCap = item.totalCapacity || item.totalSpaces || 1;
             const totOcc = item.totalOccupied != null ? item.totalOccupied : 0;
@@ -312,10 +317,10 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
         }
 
         // Property Type filter
-        if (selectedFilter === 'ROOM_BASED' && item.propertyNature !== 'ROOM_BASED') {
+        if (selectedFilter === 'ROOM_BASED' && isAnnex) {
             return false;
         }
-        if (selectedFilter === 'ANNEX' && item.propertyNature !== 'WHOLE_HOUSE') {
+        if (selectedFilter === 'ANNEX' && !isAnnex) {
             return false;
         }
 
@@ -387,10 +392,10 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
 
     const getGreeting = () => {
         const hour = new Date().getHours();
-        if (hour >= 5 && hour < 12) return `Good morning, ${userName}! ☀️`;
-        if (hour >= 12 && hour < 17) return `Good afternoon, ${userName}! ☀️`;
-        if (hour >= 17 && hour < 22) return `Good evening, ${userName}! 🌙`;
-        return `Good night, ${userName}! 🌙`;
+        if (hour >= 5 && hour < 12) return `Good morning, ${userName}! `;
+        if (hour >= 12 && hour < 17) return `Good afternoon, ${userName}! `;
+        if (hour >= 17 && hour < 22) return `Good evening, ${userName}! `;
+        return `Good night, ${userName}! `;
     };
 
     return (
@@ -481,7 +486,7 @@ export default function HomeScreen({ onSelectBoarding, onNavigateTab, onOpenNoti
 
                 {/* "Popular Boardings" Vertical Section */}
                 <View style={styles.sectionHeaderRow}>
-                    <Text style={styles.sectionTitle}>Registered Boardings</Text>
+                    <Text style={styles.sectionTitle}>Available Boardings</Text>
                 </View>
 
                 {/* Filter Chips */}

@@ -8,6 +8,8 @@ export default function BoardingCard({ item, onPress, isSaved, onToggleSave, isO
     const availableRooms = item.rooms ? item.rooms.filter(r => (r.remainingSpaces != null ? r.remainingSpaces : (r.totalCapacity - r.occupied)) > 0).length : totalRooms;
     const totalSpaces = item.totalSpaces != null ? item.totalSpaces : (item.rooms ? item.rooms.reduce((sum, r) => sum + (r.remainingSpaces != null ? r.remainingSpaces : Math.max(0, (r.totalCapacity || 1) - (r.occupied || 0))), 0) : (item.remainingSpaces || 1));
 
+    const annexCapacity = item.totalCapacity || item.capacity || item.totalSpaces || (item.rooms && item.rooms.length > 0 ? item.rooms.reduce((sum, r) => sum + (r.totalCapacity || r.capacity || 1), 0) : (item.bedsCount || 1));
+
     const isFilled = item.isFilled != null ? item.isFilled : (
         isAnnex
             ? ((item.remainingSpaces != null ? item.remainingSpaces : ((item.totalCapacity || item.totalSpaces || 1) - (item.totalOccupied || 0))) <= 0)
@@ -95,7 +97,7 @@ export default function BoardingCard({ item, onPress, isSaved, onToggleSave, isO
                         <View style={styles.annexBadge}>
                             <Ionicons name="home-outline" size={13} color="#1B4D3E" style={{ marginRight: 4 }} />
                             <Text style={styles.annexBadgeText}>
-                                Whole House • {totalRooms} {totalRooms === 1 ? 'Room' : 'Rooms'}
+                                Whole House • Capacity: {annexCapacity} {annexCapacity === 1 ? 'Person' : 'Persons'}
                             </Text>
                         </View>
                     ) : (

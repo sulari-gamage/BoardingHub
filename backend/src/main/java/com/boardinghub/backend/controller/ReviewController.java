@@ -37,6 +37,12 @@ public class ReviewController {
         return ResponseEntity.ok(reviews);
     }
 
+    @GetMapping("/api/reviews/app")
+    public ResponseEntity<List<ReviewResponse>> getAppReviews() {
+        List<ReviewResponse> reviews = reviewService.getAppReviews();
+        return ResponseEntity.ok(reviews);
+    }
+
     @GetMapping("/api/reviews/my")
     @PreAuthorize("hasAnyRole('SEEKER', 'OWNER')")
     public ResponseEntity<List<ReviewResponse>> getMyReviews(@AuthenticationPrincipal UserDetails userDetails) {

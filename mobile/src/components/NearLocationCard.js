@@ -8,6 +8,8 @@ export default function NearLocationCard({ item, onPress, isSaved, onToggleSave 
     const availableRooms = item.rooms ? item.rooms.filter(r => (r.remainingSpaces != null ? r.remainingSpaces : (r.totalCapacity - r.occupied)) > 0).length : totalRooms;
     const totalSpaces = item.totalSpaces != null ? item.totalSpaces : (item.rooms ? item.rooms.reduce((sum, r) => sum + (r.remainingSpaces != null ? r.remainingSpaces : Math.max(0, (r.totalCapacity || 1) - (r.occupied || 0))), 0) : (item.remainingSpaces || 1));
 
+    const annexCapacity = item.totalCapacity || item.capacity || item.totalSpaces || (item.rooms && item.rooms.length > 0 ? item.rooms.reduce((sum, r) => sum + (r.totalCapacity || r.capacity || 1), 0) : (item.bedsCount || 1));
+
     const getGenderInfo = () => {
         const raw = item.genderPreference || item.genderType || item.gender || item.genderPref || item.genderPre;
         if (!raw) {
@@ -81,7 +83,7 @@ export default function NearLocationCard({ item, onPress, isSaved, onToggleSave 
                     {isAnnex ? (
                         <View style={styles.capacityPill}>
                             <Ionicons name="home-outline" size={12} color="#133E32" style={{ marginRight: 4 }} />
-                            <Text style={styles.infoText}>Whole House • {totalRooms} {totalRooms === 1 ? 'Room' : 'Rooms'}</Text>
+                            <Text style={styles.infoText}>Whole House • Capacity: {annexCapacity}</Text>
                         </View>
                     ) : (
                         <View style={styles.capacityPill}>

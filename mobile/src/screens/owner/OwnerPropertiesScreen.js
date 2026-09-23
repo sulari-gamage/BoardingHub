@@ -178,14 +178,19 @@ export default function OwnerPropertiesScreen({
                                 <View style={styles.cardContent}>
                                     <View style={styles.titleRow}>
                                         <Text style={styles.propertyTitle} numberOfLines={1}>{item.title}</Text>
-                                        {(item.roomsCount > 0 || (item.rooms && item.rooms.length > 0)) && (
+                                        {(item.raw?.propertyNature === 'WHOLE_HOUSE' || (item.type && item.type.includes('Annex'))) ? (
+                                            <View style={styles.roomBadgeRight}>
+                                                <Ionicons name="home-outline" size={12} color="#D97706" style={{ marginRight: 4 }} />
+                                                <Text style={styles.roomBadgeRightText}>Whole House</Text>
+                                            </View>
+                                        ) : (item.roomsCount > 0 || (item.rooms && item.rooms.length > 0)) ? (
                                             <View style={styles.roomBadgeRight}>
                                                 <Ionicons name="bed-outline" size={12} color="#D97706" style={{ marginRight: 4 }} />
                                                 <Text style={styles.roomBadgeRightText}>
                                                     {(item.roomsCount || item.rooms.length)} {(item.roomsCount || item.rooms.length) === 1 ? 'Room' : 'Rooms'}
                                                 </Text>
                                             </View>
-                                        )}
+                                        ) : null}
                                     </View>
 
                                     <View style={styles.infoRow}>
