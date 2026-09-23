@@ -561,11 +561,11 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         borderRadius: 8,
     },
-    statusPending: { backgroundColor: '#FEF3C7' },
+    statusPending: { backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#A7F3D0' },
     statusApproved: { backgroundColor: '#DCFCE7' },
     statusRejected: { backgroundColor: '#FEE2E2' },
     statusText: { fontSize: 11, fontWeight: '900' },
-    statusTextPending: { color: '#B45309' },
+    statusTextPending: { color: '#047857' },
     statusTextApproved: { color: '#15803D' },
     statusTextRejected: { color: '#991B1B' },
 

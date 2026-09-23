@@ -547,6 +547,7 @@ export default function App() {
             activeTab="Properties"
             currentUser={currentUser}
             onNavigateTab={handleNavigateTab}
+            onOpenNotifications={handleOpenNotifications}
             onAddNewProperty={() => {
               setSelectedOwnerProperty(null);
               navigateTo('ADD_PROPERTY');
@@ -586,6 +587,7 @@ export default function App() {
             onApproveRequest={handleApproveRequest}
             onRejectRequest={handleRejectRequest}
             onNavigateTab={handleNavigateTab}
+            onOpenNotifications={handleOpenNotifications}
             onSelectRequest={(req) => {
               setSelectedOwnerRequest(req);
               navigateTo('BOOKING_REQUEST_DETAIL');
@@ -640,6 +642,7 @@ export default function App() {
             currentUser={currentUser}
             onUserUpdated={handleUserUpdated}
             onNavigateTab={handleNavigateTab}
+            onOpenNotifications={handleOpenNotifications}
             onSwitchToSeeker={handleSwitchToSeeker}
             onLogout={handleLogout}
           />
@@ -657,6 +660,7 @@ export default function App() {
             savedBoardings={savedBoardings}
             onToggleSaveBoarding={handleToggleSaveBoarding}
             onSelectBoarding={handleSelectBoarding}
+            onOpenNotifications={handleOpenNotifications}
             onNavigateTab={(tab) => {
               setSearchInitialQuery('');
               handleNavigateTab(tab);
@@ -668,6 +672,7 @@ export default function App() {
             savedBoardings={savedBoardings}
             onToggleSaveBoarding={handleToggleSaveBoarding}
             onSelectBoarding={handleSelectBoarding}
+            onOpenNotifications={handleOpenNotifications}
             onNavigateTab={handleNavigateTab}
           />
         ) : currentScreen === 'BOOKINGS' ? (
@@ -676,6 +681,7 @@ export default function App() {
             bookings={userBookings}
             onSelectBoarding={handleSelectBoarding}
             onViewBookingDetails={handleViewBookingDetails}
+            onOpenNotifications={handleOpenNotifications}
             onNavigateTab={handleNavigateTab}
           />
         ) : currentScreen === 'PROFILE' ? (

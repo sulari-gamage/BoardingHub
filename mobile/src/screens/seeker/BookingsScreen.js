@@ -170,12 +170,13 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
                                                     : 'archive-outline'
                                         }
                                         size={12}
-                                        color={item.status === 'ACCEPTED' ? '#FFD700' : '#FFFFFF'}
+                                        color={item.status === 'PENDING' ? '#047857' : (item.status === 'ACCEPTED' ? '#FFD700' : '#FFFFFF')}
                                         style={{ marginRight: 4 }}
                                     />
                                     <Text
                                         style={[
                                             styles.statusBadgeText,
+                                            item.status === 'PENDING' && { color: '#047857' },
                                             item.status === 'ACCEPTED' && { color: '#FFD700' }
                                         ]}
                                     >
@@ -352,7 +353,9 @@ const styles = StyleSheet.create({
         borderRadius: 14,
     },
     pendingBadge: {
-        backgroundColor: '#78350F',
+        backgroundColor: '#ECFDF5',
+        borderWidth: 1,
+        borderColor: '#A7F3D0',
     },
     acceptedBadge: {
         backgroundColor: '#133E32',

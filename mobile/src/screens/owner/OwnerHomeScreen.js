@@ -485,7 +485,9 @@ const styles = StyleSheet.create({
     pendingBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FEF3C7',
+        backgroundColor: '#ECFDF5',
+        borderWidth: 1,
+        borderColor: '#A7F3D0',
         paddingHorizontal: 10,
         paddingVertical: 5,
         borderRadius: 12,
@@ -494,13 +496,13 @@ const styles = StyleSheet.create({
         width: 6,
         height: 6,
         borderRadius: 3,
-        backgroundColor: '#D97706',
+        backgroundColor: '#10B981',
         marginRight: 6,
     },
     pendingBadgeText: {
         fontSize: 12,
         fontWeight: '800',
-        color: '#B45309',
+        color: '#047857',
     },
     approvedBadge: {
         flexDirection: 'row',
