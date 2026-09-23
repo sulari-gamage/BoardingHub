@@ -350,22 +350,6 @@ export default function OwnerPropertyDetailScreen({
                                 </TouchableOpacity>
                             )}
 
-                            {/* Delete Property Card */}
-                            <TouchableOpacity
-                                style={[styles.actionCard, { borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' }]}
-                                onPress={handleDeleteProperty}
-                                activeOpacity={0.85}
-                                disabled={isDeleting}
-                            >
-                                <View style={[styles.iconCircle, { backgroundColor: '#FEE2E2' }]}>
-                                    {isDeleting ? (
-                                        <ActivityIndicator size="small" color="#DC2626" />
-                                    ) : (
-                                        <Ionicons name="trash-outline" size={24} color="#DC2626" />
-                                    )}
-                                </View>
-                                <Text style={[styles.actionCardTitle, { color: '#991B1B' }]}>Delete</Text>
-                            </TouchableOpacity>
                         </View>
                     </>
                 )}
@@ -742,9 +726,42 @@ export default function OwnerPropertyDetailScreen({
                         >
                             <Ionicons name="chatbox-ellipses-outline" size={26} color="#94A3B8" style={{ marginBottom: 4 }} />
                             <Text style={{ fontSize: 13, fontWeight: '700', color: '#133E32', marginBottom: 2 }}>No seeker reviews yet</Text>
-                            <Text style={{ fontSize: 12, color: '#64748B' }}>When seekers review this property, their feedback will appear here.</Text>
                         </View>
                     )}
+                </View>
+
+                {/* Delete Property Action at the end of Property Details */}
+                <View style={{ marginTop: 10, marginBottom: 20 }}>
+                    <TouchableOpacity
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: '#FEF2F2',
+                            borderWidth: 1.5,
+                            borderColor: '#FCA5A5',
+                            borderRadius: 14,
+                            paddingVertical: 14,
+                            paddingHorizontal: 20,
+                            shadowColor: '#DC2626',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.08,
+                            shadowRadius: 4,
+                            elevation: 2,
+                        }}
+                        onPress={handleDeleteProperty}
+                        activeOpacity={0.85}
+                        disabled={isDeleting}
+                    >
+                        {isDeleting ? (
+                            <ActivityIndicator size="small" color="#DC2626" style={{ marginRight: 8 }} />
+                        ) : (
+                            <Ionicons name="trash-outline" size={20} color="#DC2626" style={{ marginRight: 8 }} />
+                        )}
+                        <Text style={{ fontSize: 15, fontWeight: '800', color: '#DC2626' }}>
+                            {isDeleting ? 'Deleting Property...' : 'Delete Property'}
+                        </Text>
+                    </TouchableOpacity>
                 </View>
             </ScrollView>
 

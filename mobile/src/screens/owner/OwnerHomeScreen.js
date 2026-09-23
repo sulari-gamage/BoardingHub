@@ -92,7 +92,7 @@ export default function OwnerHomeScreen({
 
     const totalOccupants = Math.max(approvedBookingsOccupants, propertyOccupants);
 
-    const recentRequests = requests.slice(0, 3);
+    const recentRequests = requests.slice(0, 7);
 
     return (
         <View style={styles.container}>
@@ -207,32 +207,38 @@ export default function OwnerHomeScreen({
                                         {/* Status badge in top right corner */}
                                         <View
                                             style={
-                                                req.status === 'APPROVED'
+                                                req.status === 'APPROVED' || req.status === 'ACCEPTED'
                                                     ? styles.approvedBadge
                                                     : req.status === 'REJECTED'
                                                         ? styles.rejectedBadge
-                                                        : styles.pendingBadge
+                                                        : req.status === 'REMOVED'
+                                                            ? styles.removedBadge
+                                                            : styles.pendingBadge
                                             }
                                         >
                                             <View
                                                 style={
-                                                    req.status === 'APPROVED'
+                                                    req.status === 'APPROVED' || req.status === 'ACCEPTED'
                                                         ? styles.greenDot
                                                         : req.status === 'REJECTED'
                                                             ? styles.redDot
-                                                            : styles.yellowDot
+                                                            : req.status === 'REMOVED'
+                                                                ? styles.greyDot
+                                                                : styles.yellowDot
                                                 }
                                             />
                                             <Text
                                                 style={
-                                                    req.status === 'APPROVED'
+                                                    req.status === 'APPROVED' || req.status === 'ACCEPTED'
                                                         ? styles.approvedBadgeText
                                                         : req.status === 'REJECTED'
                                                             ? styles.rejectedBadgeText
-                                                            : styles.pendingBadgeText
+                                                            : req.status === 'REMOVED'
+                                                                ? styles.removedBadgeText
+                                                                : styles.pendingBadgeText
                                                 }
                                             >
-                                                {req.status}
+                                                {req.status === 'APPROVED' ? 'ACCEPTED' : req.status}
                                             </Text>
                                         </View>
                                     </TouchableOpacity>
@@ -485,9 +491,9 @@ const styles = StyleSheet.create({
     pendingBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#ECFDF5',
+        backgroundColor: '#FEF3C7',
         borderWidth: 1,
-        borderColor: '#A7F3D0',
+        borderColor: '#FDE68A',
         paddingHorizontal: 10,
         paddingVertical: 5,
         borderRadius: 12,
@@ -496,18 +502,20 @@ const styles = StyleSheet.create({
         width: 6,
         height: 6,
         borderRadius: 3,
-        backgroundColor: '#10B981',
+        backgroundColor: '#F59E0B',
         marginRight: 6,
     },
     pendingBadgeText: {
         fontSize: 12,
         fontWeight: '800',
-        color: '#047857',
+        color: '#B45309',
     },
     approvedBadge: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#DCFCE7',
+        borderWidth: 1,
+        borderColor: '#A7F3D0',
         paddingHorizontal: 10,
         paddingVertical: 5,
         borderRadius: 12,
@@ -524,10 +532,34 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         color: '#15803D',
     },
+    removedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F1F5F9',
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 12,
+    },
+    greyDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#64748B',
+        marginRight: 6,
+    },
+    removedBadgeText: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#475569',
+    },
     rejectedBadge: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FEE2E2',
+        borderWidth: 1,
+        borderColor: '#FECACA',
         paddingHorizontal: 10,
         paddingVertical: 5,
         borderRadius: 12,

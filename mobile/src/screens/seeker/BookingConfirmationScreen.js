@@ -295,7 +295,9 @@ const styles = StyleSheet.create({
         color: '#D97706',
     },
     statusBadge: {
-        backgroundColor: '#FEF3C7',
+        backgroundColor: '#ECFDF5',
+        borderWidth: 1,
+        borderColor: '#A7F3D0',
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 6,
@@ -304,7 +306,7 @@ const styles = StyleSheet.create({
     statusText: {
         fontSize: 10,
         fontWeight: '900',
-        color: '#B45309',
+        color: '#047857',
     },
 
     /* Host Card */

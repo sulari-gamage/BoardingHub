@@ -315,10 +315,10 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
                                 <Ionicons
                                     name={status === 'PENDING' ? 'time' : status === 'ACCEPTED' || status === 'APPROVED' ? 'checkmark-circle' : 'archive'}
                                     size={12}
-                                    color="#FFFFFF"
+                                    color={status === 'PENDING' ? '#047857' : '#FFFFFF'}
                                     style={{ marginRight: 4 }}
                                 />
-                                <Text style={styles.statusBadgeText}>{status}</Text>
+                                <Text style={[styles.statusBadgeText, status === 'PENDING' && { color: '#047857' }]}>{status}</Text>
                             </View>
 
                             <Text style={styles.priceVal}>Rs. {price} <Text style={styles.pricePeriod}>/ mo</Text></Text>
@@ -593,7 +593,9 @@ const styles = StyleSheet.create({
         borderRadius: 12,
     },
     pendingBadge: {
-        backgroundColor: '#78350F',
+        backgroundColor: '#ECFDF5',
+        borderWidth: 1,
+        borderColor: '#A7F3D0',
     },
     acceptedBadge: {
         backgroundColor: '#1B4D3E',
