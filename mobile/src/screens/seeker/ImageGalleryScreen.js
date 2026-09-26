@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../../services/api';
-import { uploadImage } from '../../services/uploadService';
+import { uploadImage, uploadImages } from '../../services/uploadService';
 
 const { width } = Dimensions.get('window');
 
@@ -63,12 +63,16 @@ export default function ImageGalleryScreen({
                 mediaTypes: ['images'],
                 allowsEditing: false,
                 quality: 0.8,
+                base64: true,
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
-                const newUri = result.assets[0].uri;
-                if (newUri && !images.includes(newUri)) {
-                    setImages(prev => [...prev, newUri]);
+                const asset = result.assets[0];
+                const imageUri = asset.base64
+                    ? `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`
+                    : asset.uri;
+                if (imageUri && !images.includes(imageUri)) {
+                    setImages(prev => [...prev, imageUri]);
                     setActiveIndex(images.length);
                     setHasUnsavedChanges(true);
                 }
@@ -131,17 +135,21 @@ export default function ImageGalleryScreen({
 
         setIsSaving(true);
         try {
-            const uploadedUrls = [];
-            for (const uri of images) {
-                if (uri.startsWith('http://') || uri.startsWith('https://')) {
-                    uploadedUrls.push(uri);
-                } else {
-                    const remoteUrl = await uploadImage(uri);
-                    if (remoteUrl && (remoteUrl.startsWith('http://') || remoteUrl.startsWith('https://'))) {
-                        uploadedUrls.push(remoteUrl);
-                    }
-                }
+            const existingRemoteUrls = images.filter(u => u && typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://')));
+            const localUris = images.filter(u => u && typeof u === 'string' && !u.startsWith('http://') && !u.startsWith('https://'));
+
+            let uploadedLocal = [];
+            if (localUris.length > 0) {
+                uploadedLocal = await uploadImages(localUris);
             }
+
+            const validNewUrls = uploadedLocal.filter(u => u && typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://')));
+            if (localUris.length > 0 && validNewUrls.length < localUris.length) {
+                Alert.alert('Upload Error', 'Could not upload one or more photos. Please check your internet connection and try again.');
+                setIsSaving(false);
+                return;
+            }
+            const uploadedUrls = [...existingRemoteUrls, ...validNewUrls];
 
             const existingProp = boarding.raw || boarding;
 

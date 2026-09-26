@@ -39,7 +39,7 @@ public class PropertyController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
     public ResponseEntity<PropertyResponse> createProperty(
             @Valid @RequestBody PropertyRequest request,
             @AuthenticationPrincipal UserDetails userDetails
@@ -86,7 +86,7 @@ public class PropertyController {
     }
 
     @GetMapping("/my-properties")
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
     public ResponseEntity<List<PropertyResponse>> getMyProperties(
             @AuthenticationPrincipal UserDetails userDetails
     ) {

@@ -22,6 +22,7 @@ public class RoomResponse {
     private String amenities;
     private String rentType;
     private String imageUrl;
+    private java.util.List<String> imageUrls;
     private Boolean isElectricityIncluded;
     private Boolean isWaterIncluded;
     private Boolean isFilled;

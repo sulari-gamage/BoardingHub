@@ -508,12 +508,22 @@ export default function OwnerPropertyDetailScreen({
                         <View style={{ gap: 12, marginBottom: 20 }}>
                             {currentProperty.rooms.map((room, idx) => {
                                 const rName = room.roomName || room.roomNumber || room.name || `Room ${idx + 1}`;
-                                const rType = room.roomType || '';
-                                const subDetails = [
-                                    rType ? `${rType} Type` : null,
-                                    room.beds ? `${room.beds} Bed(s)` : null,
-                                    room.washrooms ? `${room.washrooms} ${room.washroomType || ''} Bath` : null
-                                ].filter(Boolean).join(' • ');
+
+                                // Clean room type (e.g., "Shared Type | 4 Bed(s)..." -> "Shared Room")
+                                let rawType = (room.roomType || room.type || '').split('|')[0].trim().replace(/\s+Type$/i, '');
+                                let cleanType = rawType;
+                                if (!cleanType || cleanType.toLowerCase() === 'unit' || cleanType.toLowerCase() === 'boarding unit') {
+                                    cleanType = 'Room';
+                                } else if (!cleanType.toLowerCase().includes('room')) {
+                                    cleanType = `${cleanType} Room`;
+                                }
+
+                                const bedsCount = room.beds || 1;
+                                const washroomsCount = room.washrooms || 1;
+                                const washroomTypeStr = room.washroomType || (room.hasAttachedBathroom ? 'Attached' : 'Common');
+
+                                // Concise, professional specs: "Shared Room • 4 Beds • 1 Attached Bath"
+                                const subDetails = `${cleanType} • ${bedsCount} ${bedsCount === 1 ? 'Bed' : 'Beds'} • ${washroomsCount} ${washroomTypeStr} Bath`;
 
                                 const totCap = room.totalCapacity || 1;
                                 const vacancies = room.remainingSpaces != null ? room.remainingSpaces : Math.max(0, totCap - (room.occupied || 0));

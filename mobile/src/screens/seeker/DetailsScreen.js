@@ -615,28 +615,28 @@ export default function DetailsScreen({
                                             }
 
                                             const roomPriceFormatted = perRoomPrice.toLocaleString();
-                                            const roomImgUri = roomItem.imageUrl || roomItem.image || (imagesList && imagesList.length > 0 ? imagesList[index % imagesList.length] : 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=600');
+                                            const roomPhotosList = (roomItem.imageUrls && roomItem.imageUrls.length > 0)
+                                                ? roomItem.imageUrls
+                                                : (roomItem.photos && roomItem.photos.length > 0)
+                                                    ? roomItem.photos
+                                                    : (roomItem.imageUrl || roomItem.image)
+                                                        ? [roomItem.imageUrl || roomItem.image]
+                                                        : [];
+                                            const roomImgUri = roomPhotosList.length > 0
+                                                ? (typeof roomPhotosList[0] === 'string' ? roomPhotosList[0] : (roomPhotosList[0]?.imageUrl || roomPhotosList[0]?.uri || roomPhotosList[0]?.url))
+                                                : 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=600';
 
                                             // Formatted Title: Room Name (Room Type)
                                             const baseRoomName = roomItem.roomName || roomItem.roomNumber || roomItem.name || `Room ${index + 1}`;
 
-                                            // Build special feature pills list
+                                            // Build special feature pills list - keep ONLY beds, baths, and room type
                                             const featurePills = [];
-                                            const bathCount = roomItem.washrooms || (roomItem.washroomType || roomItem.hasAttachedBathroom ? 1 : null);
-                                            if (bathCount != null) {
-                                                featurePills.push({ icon: 'water-outline', label: `${bathCount} ${bathCount === 1 ? 'Bath' : 'Baths'}` });
-                                            }
-                                            if (roomItem.isAirConditioned != null) {
-                                                featurePills.push({ icon: 'snow-outline', label: roomItem.isAirConditioned ? 'AC' : 'Non-AC' });
-                                            }
-                                            if (roomItem.isFurnished != null) {
-                                                featurePills.push({ icon: 'cube-outline', label: roomItem.isFurnished ? 'Furnished' : 'Unfurnished' });
-                                            }
                                             if (roomItem.beds) {
                                                 featurePills.push({ icon: 'bed-outline', label: `${roomItem.beds} Bed(s)` });
                                             }
-                                            if (roomItem.totalCapacity) {
-                                                featurePills.push({ icon: 'people-outline', label: `Cap: ${roomItem.totalCapacity}` });
+                                            const bathCount = roomItem.washrooms || (roomItem.washroomType || roomItem.hasAttachedBathroom ? 1 : null);
+                                            if (bathCount != null) {
+                                                featurePills.push({ icon: 'water-outline', label: `${bathCount} ${bathCount === 1 ? 'Bath' : 'Baths'}` });
                                             }
 
                                             return (
@@ -1091,13 +1091,13 @@ export default function DetailsScreen({
                         >
                             {/* 1. Swipeable Room Image Carousel */}
                             {(() => {
-                                const rawPhotos = (selectedRoomModalData?.photos && selectedRoomModalData.photos.length > 0)
-                                    ? selectedRoomModalData.photos
-                                    : (selectedRoomModalData?.imageUrls && selectedRoomModalData.imageUrls.length > 0)
-                                        ? selectedRoomModalData.imageUrls
+                                const rawPhotos = (selectedRoomModalData?.imageUrls && selectedRoomModalData.imageUrls.length > 0)
+                                    ? selectedRoomModalData.imageUrls
+                                    : (selectedRoomModalData?.photos && selectedRoomModalData.photos.length > 0)
+                                        ? selectedRoomModalData.photos
                                         : (selectedRoomModalData?.imageUrl || selectedRoomModalData?.image)
                                             ? [selectedRoomModalData.imageUrl || selectedRoomModalData.image]
-                                            : (imagesList && imagesList.length > 0 ? imagesList : ['https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=600']);
+                                            : ['https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=600'];
 
                                 const modalRoomPhotos = rawPhotos.map(p => typeof p === 'string' ? p : (p?.uri || p?.imageUrl || p?.url)).filter(Boolean);
                                 const hasMultiplePhotos = modalRoomPhotos.length > 1;

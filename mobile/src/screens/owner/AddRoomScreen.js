@@ -52,6 +52,8 @@ export default function AddRoomScreen({ onBack, onSaveRoom, initialRoomData = nu
         setAmenities((prev) => ({ ...prev, [key]: !prev[key] }));
     };
 
+    const scrollViewRef = React.useRef(null);
+
     React.useEffect(() => {
         if (initialRoomData) {
             setRoomNumber(initialRoomData.roomName || initialRoomData.number || '');
@@ -83,6 +85,13 @@ export default function AddRoomScreen({ onBack, onSaveRoom, initialRoomData = nu
                     setAmenities(initialRoomData.amenities);
                 }
             }
+
+            if (initialRoomData.autoPickPhoto || initialRoomData.focusSection === 'photos') {
+                setTimeout(() => {
+                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                    handlePickRoomPhoto();
+                }, 400);
+            }
         }
     }, [initialRoomData]);
 
@@ -94,10 +103,13 @@ export default function AddRoomScreen({ onBack, onSaveRoom, initialRoomData = nu
                 mediaTypes: ['images'],
                 allowsEditing: false,
                 quality: 0.8,
+                base64: true,
             });
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 const asset = result.assets[0];
-                setPhotos(prev => [...prev, { id: `photo_${Date.now()}`, uri: asset.uri }]);
+                const mimeType = asset.mimeType || 'image/jpeg';
+                const formattedUri = asset.base64 ? `data:${mimeType};base64,${asset.base64}` : asset.uri;
+                setPhotos(prev => [...prev, { id: `photo_${Date.now()}`, uri: formattedUri }]);
             }
         } catch (err) { }
     };
@@ -167,7 +179,7 @@ export default function AddRoomScreen({ onBack, onSaveRoom, initialRoomData = nu
                 <View style={{ width: 36 }} />
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+            <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {/* Title Section */}
                 <View style={styles.titleSection}>
                     <Text style={styles.mainTitle}>{isEditing ? 'Edit Room Details' : 'Add New Room'}</Text>

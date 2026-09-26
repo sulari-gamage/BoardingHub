@@ -17,7 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
-import { uploadImage } from '../../services/uploadService';
+import { uploadImage, uploadImages } from '../../services/uploadService';
 import OccupantDetailsModal from '../../components/OccupantDetailsModal';
 import AddRoomScreen from './AddRoomScreen';
 
@@ -142,16 +142,16 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
         setIsSaving(true);
         try {
             const photosList = formRoom.photos || [];
-            const uploadedRoomPhotos = [];
-            for (const p of photosList) {
-                const photoUri = typeof p === 'string' ? p : (p?.uri || p?.imageUrl || p?.url);
-                if (photoUri) {
-                    const url = await uploadImage(photoUri);
-                    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
-                        uploadedRoomPhotos.push(url);
-                    }
-                }
+            const allUris = photosList.map(p => typeof p === 'string' ? p : (p?.uri || p?.imageUrl || p?.url)).filter(Boolean);
+            const existingRemote = allUris.filter(u => u.startsWith('http://') || u.startsWith('https://'));
+            const localUris = allUris.filter(u => !u.startsWith('http://') && !u.startsWith('https://'));
+
+            let uploadedLocal = [];
+            if (localUris.length > 0) {
+                uploadedLocal = await uploadImages(localUris);
             }
+            const validNew = uploadedLocal.filter(u => u && (u.startsWith('http://') || u.startsWith('https://')));
+            const uploadedRoomPhotos = [...existingRemote, ...validNew];
 
             const isNewRoom = !!editingRoom?.isNew || (!editingRoom?.rawId && !editingRoom?.id);
 
@@ -371,11 +371,11 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                             <View style={styles.iconCircle}>
                                 <Ionicons name="pencil-outline" size={24} color="#133E32" />
                             </View>
-                            <Text style={styles.actionCardTitle}>Edit</Text>
+                            <Text style={styles.actionCardTitle}>Edit Details</Text>
                         </TouchableOpacity>
 
                         {/* 2. Add Image Card */}
-                        <TouchableOpacity style={styles.actionCard} onPress={() => setEditingRoom(room)} activeOpacity={0.85}>
+                        <TouchableOpacity style={styles.actionCard} onPress={() => setEditingRoom({ ...room, autoPickPhoto: true, focusSection: 'photos' })} activeOpacity={0.85}>
                             <View style={styles.iconCircle}>
                                 <Ionicons name="add-circle-outline" size={26} color="#133E32" />
                             </View>
@@ -396,18 +396,6 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                                 <Ionicons name="people-outline" size={24} color="#133E32" />
                             </View>
                             <Text style={styles.actionCardTitle}>Occupants</Text>
-                        </TouchableOpacity>
-
-                        {/* 5. Delete Room Card */}
-                        <TouchableOpacity
-                            style={[styles.actionCard, { borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' }]}
-                            onPress={() => handleDeleteRoom(room)}
-                            activeOpacity={0.85}
-                        >
-                            <View style={[styles.iconCircle, { backgroundColor: '#FEE2E2' }]}>
-                                <Ionicons name="trash-outline" size={24} color="#DC2626" />
-                            </View>
-                            <Text style={[styles.actionCardTitle, { color: '#991B1B' }]}>Delete Room</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -542,6 +530,27 @@ export default function RoomManagementScreen({ onBack, onAddRoom, property, prop
                             </View>
                         )}
                     </View>
+
+                    {/* Delete Room Action Button at Bottom of Page */}
+                    <TouchableOpacity
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: '#FEF2F2',
+                            borderWidth: 1.5,
+                            borderColor: '#FCA5A5',
+                            borderRadius: 14,
+                            paddingVertical: 14,
+                            marginTop: 10,
+                            marginBottom: 30
+                        }}
+                        onPress={() => handleDeleteRoom(room)}
+                        activeOpacity={0.85}
+                    >
+                        <Ionicons name="trash-outline" size={20} color="#DC2626" style={{ marginRight: 8 }} />
+                        <Text style={{ fontSize: 15, fontWeight: '800', color: '#DC2626' }}>Delete Room</Text>
+                    </TouchableOpacity>
                 </ScrollView>
 
                 {/* Occupants Detail Modal */}

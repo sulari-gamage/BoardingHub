@@ -19,7 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import MapView, { Marker, UrlTile } from 'react-native-maps';
 import * as Location from 'expo-location';
 import api from '../../services/api';
-import { uploadImage } from '../../services/uploadService';
+import { uploadImage, uploadImages } from '../../services/uploadService';
 import AddRoomScreen from './AddRoomScreen';
 import MapComponent from '../../components/MapComponent';
 
@@ -468,16 +468,19 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                 mediaTypes: ['images'],
                 allowsEditing: false,
                 quality: 0.8,
+                base64: true,
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 const asset = result.assets[0];
                 const fileName = asset.fileName || asset.uri.split('/').pop() || `photo_${Date.now()}.jpg`;
+                const mimeType = asset.mimeType || 'image/jpeg';
+                const formattedUri = asset.base64 ? `data:${mimeType};base64,${asset.base64}` : asset.uri;
                 onFileSelected({
                     name: fileName,
                     size: asset.fileSize || 0,
-                    type: asset.mimeType || 'image/jpeg',
-                    uri: asset.uri,
+                    type: mimeType,
+                    uri: formattedUri,
                 });
             }
         } catch (err) {
@@ -584,11 +587,19 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
 
                 // 3. Prepare Image URLs list via Cloudinary (cover + additional + all room photos)
                 const uploadedCover = await uploadImage(coverImage);
-                const rawImagesList = [uploadedCover];
+                if (!uploadedCover && coverImage) {
+                    Alert.alert('Upload Error', 'Could not upload property cover photo to server. Please check your internet connection and try again.');
+                    setIsSubmitting(false);
+                    submitLock.current = false;
+                    return;
+                }
 
-                for (const p of additionalPhotos) {
-                    if (p.uri) {
-                        const url = await uploadImage(p.uri);
+                const rawImagesList = uploadedCover ? [uploadedCover] : [];
+
+                if (additionalPhotos && additionalPhotos.length > 0) {
+                    const addPhotoUris = additionalPhotos.map(p => typeof p === 'string' ? p : (p?.uri || p?.imageUrl || p?.url || null)).filter(Boolean);
+                    const uploadedAdd = await uploadImages(addPhotoUris);
+                    for (const url of uploadedAdd) {
                         if (url && !rawImagesList.includes(url)) rawImagesList.push(url);
                     }
                 }
@@ -606,15 +617,9 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                 if (propertyNature === 'ROOM_BASED' && rooms.length > 0) {
                     for (const r of rooms) {
                         const photosList = r.photos || [];
-                        const uploadedRoomPhotos = [];
-                        for (const p of photosList) {
-                            if (p.uri) {
-                                const url = await uploadImage(p.uri);
-                                if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
-                                    uploadedRoomPhotos.push(url);
-                                }
-                            }
-                        }
+                        const roomPhotoUris = photosList.map(p => typeof p === 'string' ? p : (p?.uri || p?.imageUrl || p?.url || null)).filter(Boolean);
+                        const uploadedRoomPhotos = await uploadImages(roomPhotoUris);
+                        const validRoomPhotos = uploadedRoomPhotos.filter(url => url && typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://')));
 
                         payloadRooms.push({
                             roomType: r.compiledType || r.name,
@@ -625,7 +630,7 @@ export default function AddPropertyScreen({ onBack, onSaveProperty, propertyToEd
                             genderPreference: r.genderPreference || mappedGender,
                             isElectricityIncluded: r.isElectricityIncluded !== undefined ? r.isElectricityIncluded : true,
                             isWaterIncluded: r.isWaterIncluded !== undefined ? r.isWaterIncluded : true,
-                            imageUrls: uploadedRoomPhotos
+                            imageUrls: validRoomPhotos
                         });
                     }
                 }

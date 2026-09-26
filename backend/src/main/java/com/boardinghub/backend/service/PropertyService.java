@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.boardinghub.backend.repository.PropertyImageRepository;
 import com.boardinghub.backend.repository.ReviewRepository;
 import com.boardinghub.backend.repository.BookingRequestRepository;
 import com.boardinghub.backend.repository.SavedPropertyRepository;
@@ -32,6 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 public class PropertyService {
 
     private final BoardingPropertyRepository propertyRepository;
+    private final PropertyImageRepository propertyImageRepository;
     private final UserRepository userRepository;
     private final ReviewRepository reviewRepository;
     private final BookingRequestRepository bookingRequestRepository;
@@ -172,13 +174,19 @@ public class PropertyService {
         applyAmenities(property, request);
 
         if (request.getImageUrls() != null) {
+            propertyImageRepository.deleteByPropertyId(property.getId());
             property.getImages().clear();
+            List<PropertyImage> newImages = new ArrayList<>();
             for (int i = 0; i < request.getImageUrls().size(); i++) {
-                property.getImages().add(PropertyImage.builder()
+                newImages.add(PropertyImage.builder()
                         .property(property)
                         .imageUrl(request.getImageUrls().get(i))
                         .isPrimary(i == 0)
                         .build());
+            }
+            if (!newImages.isEmpty()) {
+                propertyImageRepository.saveAll(newImages);
+                property.getImages().addAll(newImages);
             }
         }
 
@@ -322,6 +330,7 @@ public class PropertyService {
         return mapToPropertyResponse(saved);
     }
 
+    @Transactional(readOnly = true)
     public List<PropertyResponse> searchApprovedProperties(String city, Double maxRent, GenderPreference gender) {
         List<BoardingProperty> properties = propertyRepository.searchProperties(
                 PropertyStatus.APPROVED,
@@ -332,12 +341,14 @@ public class PropertyService {
         return properties.stream().map(this::mapToPropertyResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public PropertyResponse getPropertyById(Long id) {
         BoardingProperty property = propertyRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Property not found with ID: " + id));
         return mapToPropertyResponse(property);
     }
 
+    @Transactional(readOnly = true)
     public List<PropertyResponse> getOwnerProperties(String ownerEmail) {
         User owner = userRepository.findByEmail(ownerEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Owner user not found"));
@@ -345,6 +356,7 @@ public class PropertyService {
                 .stream().map(this::mapToPropertyResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<PropertyResponse> getPendingProperties() {
         return propertyRepository.findByStatus(PropertyStatus.PENDING)
                 .stream().map(this::mapToPropertyResponse).collect(Collectors.toList());
@@ -400,6 +412,10 @@ public class PropertyService {
                     int occCount = r.getOccupied() != null ? r.getOccupied() : Math.max(0, totCap - remSpace);
                     boolean isRoomFilled = (remSpace <= 0);
 
+                    List<String> roomImgList = (r.getImageUrl() != null && !r.getImageUrl().isBlank())
+                            ? List.of(r.getImageUrl())
+                            : List.of();
+
                     return RoomResponse.builder()
                             .id(r.getId())
                             .roomName(r.getRoomName())
@@ -415,6 +431,7 @@ public class PropertyService {
                             .amenities(r.getAmenities())
                             .rentType(r.getRentType() != null ? r.getRentType() : "PER_PERSON")
                             .imageUrl(r.getImageUrl())
+                            .imageUrls(roomImgList)
                             .isElectricityIncluded(r.getIsElectricityIncluded())
                             .isWaterIncluded(r.getIsWaterIncluded())
                             .build();

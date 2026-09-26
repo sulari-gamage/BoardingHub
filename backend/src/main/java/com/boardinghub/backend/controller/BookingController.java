@@ -24,7 +24,7 @@ public class BookingController {
     private final BookingService bookingService;
 
     @PostMapping
-    @PreAuthorize("hasRole('SEEKER')")
+    @PreAuthorize("hasAnyRole('SEEKER', 'OWNER', 'ADMIN')")
     public ResponseEntity<BookingResponse> createBookingRequest(
             @Valid @RequestBody BookingRequestCreateDTO request,
             @AuthenticationPrincipal UserDetails userDetails
@@ -34,7 +34,7 @@ public class BookingController {
     }
 
     @GetMapping("/my-bookings")
-    @PreAuthorize("hasRole('SEEKER')")
+    @PreAuthorize("hasAnyRole('SEEKER', 'OWNER', 'ADMIN')")
     public ResponseEntity<List<BookingResponse>> getMyBookings(
             @AuthenticationPrincipal UserDetails userDetails
     ) {
@@ -43,7 +43,7 @@ public class BookingController {
     }
 
     @GetMapping("/owner-requests")
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
     public ResponseEntity<List<BookingResponse>> getOwnerRequests(
             @AuthenticationPrincipal UserDetails userDetails
     ) {
