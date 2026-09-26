@@ -10,6 +10,7 @@
       "supportsTablet": true
     },
     "android": {
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -24,7 +25,8 @@
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
-      ]
+      ],
+      "package": "com.sularigamage.mobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -33,6 +35,11 @@
       "expo-font",
       "expo-status-bar",
       "expo-notifications"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ee6d2313-bfeb-4d84-b387-d211da32a60f"
+      }
+    }
   }
 }

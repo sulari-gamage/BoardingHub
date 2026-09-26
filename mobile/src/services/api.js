@@ -27,13 +27,15 @@ const getBaseUrl = () => {
         console.log('[API] Could not auto-detect Expo host IP:', e?.message);
     }
 
-    // Fallback: Android emulator → 10.0.2.2 maps to host machine localhost
+    // Fallback for physical devices / standalone builds: Use your computer's local Wi-Fi IP address
+    const LOCAL_WIFI_IP = '10.163.171.205';
+
     if (Platform.OS === 'android') {
-        console.log('[API] Falling back to Android emulator loopback (10.0.2.2)');
-        return 'http://10.0.2.2:8080/api';
+        console.log(`[API] Using local server IP (${LOCAL_WIFI_IP})`);
+        return `http://${LOCAL_WIFI_IP}:8080/api`;
     }
     // iOS simulator / web
-    return 'http://localhost:8080/api';
+    return `http://${LOCAL_WIFI_IP}:8080/api`;
 };
 
 const BASE_URL = getBaseUrl();
