@@ -9,6 +9,7 @@ import {
     StatusBar,
     Alert,
     Image,
+    ImageBackground,
     Platform,
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -194,337 +195,364 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
-            <KeyboardAvoidingView
-                style={styles.keyboardAvoidingView}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-            >
-                <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-                    <View style={styles.innerView}>
-                        <ScrollView
-                            contentContainerStyle={styles.scrollContent}
-                            showsVerticalScrollIndicator={false}
-                            keyboardShouldPersistTaps="handled"
-                        >
-                            {/* Main Card Container */}
-                            <View style={styles.card}>
-                                {/* Official Logo */}
-                                <View style={styles.logoContainer}>
-                                    <Image
-                                        source={require('../../../assets/logo.png')}
-                                        style={styles.logoImage}
-                                        resizeMode="contain"
-                                    />
-                                </View>
+        <ImageBackground
+            source={require('../../../assets/login_bg.jpg')}
+            style={styles.bgContainer}
+            resizeMode="cover"
+        >
+            <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+            <View style={styles.bgOverlay}>
+                <SafeAreaView style={styles.safeArea}>
+                    <KeyboardAvoidingView
+                        style={styles.keyboardAvoidingView}
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+                    >
+                        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+                            <View style={styles.innerView}>
+                                <ScrollView
+                                    contentContainerStyle={styles.scrollContent}
+                                    showsVerticalScrollIndicator={false}
+                                    keyboardShouldPersistTaps="handled"
+                                >
+                                    {/* Main Card Container */}
+                                    <View style={styles.card}>
+                                        {/* Official Logo */}
+                                        <View style={styles.logoContainer}>
+                                            <Image
+                                                source={require('../../../assets/logo.png')}
+                                                style={styles.logoImage}
+                                                resizeMode="contain"
+                                            />
+                                        </View>
 
-                                {/* Heading & Subtitle */}
-                                <Text style={styles.cardTitle}>BoardingHub</Text>
-                                <Text style={styles.cardSubtitle}>
-                                    Find your stay or manage your properties seamlessly.
-                                </Text>
+                                        {/* Heading & Subtitle */}
+                                        <Text style={styles.cardTitle}>BoardingHub</Text>
+                                        <Text style={styles.cardSubtitle}>
+                                            Find your stay or manage your properties seamlessly.
+                                        </Text>
 
-                                {/* Email / Username Input */}
-                                <View style={styles.formGroup}>
-                                    <Text style={styles.label}>Email or Username</Text>
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="name@company.com"
-                                        placeholderTextColor="#94A3B8"
-                                        value={email}
-                                        onChangeText={setEmail}
-                                        keyboardType="email-address"
-                                        autoCapitalize="none"
-                                    />
-                                </View>
+                                        {/* Email / Username Input */}
+                                        <View style={styles.formGroup}>
+                                            <Text style={styles.label}>Email or Username</Text>
+                                            <TextInput
+                                                style={styles.input}
+                                                placeholder="name@company.com"
+                                                placeholderTextColor="#94A3B8"
+                                                value={email}
+                                                onChangeText={setEmail}
+                                                keyboardType="email-address"
+                                                autoCapitalize="none"
+                                            />
+                                        </View>
 
-                                {/* Password Input */}
-                                <View style={styles.formGroup}>
-                                    <View style={styles.labelRow}>
-                                        <Text style={styles.label}>Password</Text>
-                                        <TouchableOpacity onPress={openForgotPasswordModal}>
-                                            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                    <View style={styles.passwordWrapper}>
-                                        <TextInput
-                                            style={styles.passwordInput}
-                                            placeholder="••••••••"
-                                            placeholderTextColor="#94A3B8"
-                                            value={password}
-                                            onChangeText={setPassword}
-                                            secureTextEntry={!showPassword}
-                                        />
+                                        {/* Password Input */}
+                                        <View style={styles.formGroup}>
+                                            <View style={styles.labelRow}>
+                                                <Text style={styles.label}>Password</Text>
+                                                <TouchableOpacity onPress={openForgotPasswordModal}>
+                                                    <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                            <View style={styles.passwordWrapper}>
+                                                <TextInput
+                                                    style={styles.passwordInput}
+                                                    placeholder="••••••••"
+                                                    placeholderTextColor="#94A3B8"
+                                                    value={password}
+                                                    onChangeText={setPassword}
+                                                    secureTextEntry={!showPassword}
+                                                />
+                                                <TouchableOpacity
+                                                    onPress={() => setShowPassword(!showPassword)}
+                                                    style={styles.eyeBtn}
+                                                >
+                                                    <Ionicons
+                                                        name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                                                        size={20}
+                                                        color="#64748B"
+                                                    />
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+
+                                        {/* Remember Me Checkbox */}
                                         <TouchableOpacity
-                                            onPress={() => setShowPassword(!showPassword)}
-                                            style={styles.eyeBtn}
+                                            style={styles.rememberContainer}
+                                            onPress={() => setRememberMe(!rememberMe)}
+                                            activeOpacity={0.7}
                                         >
+                                            <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                                                {rememberMe && <Text style={styles.checkmark}>✓</Text>}
+                                            </View>
+                                            <Text style={styles.rememberText}>Remember me</Text>
+                                        </TouchableOpacity>
+
+                                        {/* Primary Sign In Button */}
+                                        <TouchableOpacity
+                                            style={[styles.signInBtn, loading && { opacity: 0.7 }]}
+                                            onPress={handleSignIn}
+                                            disabled={loading}
+                                            activeOpacity={0.85}
+                                        >
+                                            {loading ? (
+                                                <ActivityIndicator color="#FFD700" size="small" />
+                                            ) : (
+                                                <Text style={styles.signInBtnText}>Sign In</Text>
+                                            )}
+                                        </TouchableOpacity>
+
+                                        {/* Sign Up Navigation Link */}
+                                        <View style={styles.signUpRow}>
+                                            <Text style={styles.noAccountText}>Don't have an account? </Text>
+                                            <TouchableOpacity onPress={onNavigateToRegister}>
+                                                <Text style={styles.signUpText}>Sign Up</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+
+                                    {/* Footer */}
+                                    <View style={styles.footerContainer}>
+                                        <Text style={styles.copyrightText}>
+                                            © 2024 BoardingHub. All rights reserved.
+                                        </Text>
+                                    </View>
+                                </ScrollView>
+                            </View>
+                        </TouchableWithoutFeedback>
+                    </KeyboardAvoidingView>
+
+                    {/* Forgot Password Wizard Modal */}
+                    <Modal
+                        visible={forgotModalVisible}
+                        transparent={true}
+                        animationType="fade"
+                        onRequestClose={resetModalState}
+                    >
+                        <TouchableOpacity
+                            style={styles.modalOverlay}
+                            activeOpacity={1}
+                            onPress={resetModalState}
+                        >
+                            <TouchableWithoutFeedback>
+                                <View style={styles.modalCard}>
+                                    {/* Step Indicator Header */}
+                                    <View style={styles.modalHeaderRow}>
+                                        <View style={styles.modalIconBg}>
                                             <Ionicons
-                                                name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                                                size={20}
-                                                color="#64748B"
+                                                name={modalStep === 1 ? 'key-outline' : modalStep === 2 ? 'mail-unread-outline' : 'shield-checkmark-outline'}
+                                                size={24}
+                                                color="#1B4D3E"
                                             />
+                                        </View>
+                                        <View style={styles.stepBadge}>
+                                            <Text style={styles.stepBadgeText}>Step {modalStep} of 3</Text>
+                                        </View>
+                                        <TouchableOpacity
+                                            onPress={resetModalState}
+                                            style={styles.closeBtn}
+                                        >
+                                            <Ionicons name="close" size={22} color="#64748B" />
                                         </TouchableOpacity>
                                     </View>
-                                </View>
 
-                                {/* Remember Me Checkbox */}
-                                <TouchableOpacity
-                                    style={styles.rememberContainer}
-                                    onPress={() => setRememberMe(!rememberMe)}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                                        {rememberMe && <Text style={styles.checkmark}>✓</Text>}
-                                    </View>
-                                    <Text style={styles.rememberText}>Remember me</Text>
-                                </TouchableOpacity>
+                                    {/* STEP 1: Enter Email & Send OTP */}
+                                    {modalStep === 1 && (
+                                        <>
+                                            <Text style={styles.modalTitle}>Forgot Password?</Text>
+                                            <Text style={styles.modalSubtitle}>
+                                                Enter your registered email address below and we'll send a 6-digit OTP verification code to your inbox.
+                                            </Text>
 
-                                {/* Primary Sign In Button */}
-                                <TouchableOpacity
-                                    style={[styles.signInBtn, loading && { opacity: 0.7 }]}
-                                    onPress={handleSignIn}
-                                    disabled={loading}
-                                    activeOpacity={0.85}
-                                >
-                                    {loading ? (
-                                        <ActivityIndicator color="#FFD700" size="small" />
-                                    ) : (
-                                        <Text style={styles.signInBtnText}>Sign In</Text>
+                                            <View style={styles.formGroup}>
+                                                <Text style={styles.label}>Email Address</Text>
+                                                <TextInput
+                                                    style={styles.input}
+                                                    placeholder="name@company.com"
+                                                    placeholderTextColor="#94A3B8"
+                                                    value={forgotEmail}
+                                                    onChangeText={setForgotEmail}
+                                                    keyboardType="email-address"
+                                                    autoCapitalize="none"
+                                                />
+                                            </View>
+
+                                            <TouchableOpacity
+                                                style={[styles.signInBtn, forgotLoading && { opacity: 0.7 }, { marginTop: 10 }]}
+                                                onPress={handleSendOtp}
+                                                disabled={forgotLoading}
+                                                activeOpacity={0.85}
+                                            >
+                                                {forgotLoading ? (
+                                                    <ActivityIndicator color="#FFD700" size="small" />
+                                                ) : (
+                                                    <Text style={styles.signInBtnText}>Send OTP Code</Text>
+                                                )}
+                                            </TouchableOpacity>
+                                        </>
                                     )}
-                                </TouchableOpacity>
 
-                                {/* Sign Up Navigation Link */}
-                                <View style={styles.signUpRow}>
-                                    <Text style={styles.noAccountText}>Don't have an account? </Text>
-                                    <TouchableOpacity onPress={onNavigateToRegister}>
-                                        <Text style={styles.signUpText}>Sign Up</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
+                                    {/* STEP 2: Verify 6-Digit OTP */}
+                                    {modalStep === 2 && (
+                                        <>
+                                            <Text style={styles.modalTitle}>Enter OTP Code</Text>
+                                            <Text style={styles.modalSubtitle}>
+                                                We sent a 6-digit verification code to <Text style={{ fontWeight: '700', color: '#0F172A' }}>{forgotEmail}</Text>.
+                                            </Text>
 
-                            {/* Footer */}
-                            <View style={styles.footerContainer}>
-                                <Text style={styles.copyrightText}>
-                                    © 2024 BoardingHub. All rights reserved.
-                                </Text>
-                            </View>
-                        </ScrollView>
-                    </View>
-                </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
-
-            {/* Forgot Password Wizard Modal */}
-            <Modal
-                visible={forgotModalVisible}
-                transparent={true}
-                animationType="fade"
-                onRequestClose={resetModalState}
-            >
-                <TouchableOpacity
-                    style={styles.modalOverlay}
-                    activeOpacity={1}
-                    onPress={resetModalState}
-                >
-                    <TouchableWithoutFeedback>
-                        <View style={styles.modalCard}>
-                            {/* Step Indicator Header */}
-                            <View style={styles.modalHeaderRow}>
-                                <View style={styles.modalIconBg}>
-                                    <Ionicons
-                                        name={modalStep === 1 ? 'key-outline' : modalStep === 2 ? 'mail-unread-outline' : 'shield-checkmark-outline'}
-                                        size={24}
-                                        color="#1B4D3E"
-                                    />
-                                </View>
-                                <View style={styles.stepBadge}>
-                                    <Text style={styles.stepBadgeText}>Step {modalStep} of 3</Text>
-                                </View>
-                                <TouchableOpacity
-                                    onPress={resetModalState}
-                                    style={styles.closeBtn}
-                                >
-                                    <Ionicons name="close" size={22} color="#64748B" />
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* STEP 1: Enter Email & Send OTP */}
-                            {modalStep === 1 && (
-                                <>
-                                    <Text style={styles.modalTitle}>Forgot Password?</Text>
-                                    <Text style={styles.modalSubtitle}>
-                                        Enter your registered email address below and we'll send a 6-digit OTP verification code to your inbox.
-                                    </Text>
-
-                                    <View style={styles.formGroup}>
-                                        <Text style={styles.label}>Email Address</Text>
-                                        <TextInput
-                                            style={styles.input}
-                                            placeholder="name@company.com"
-                                            placeholderTextColor="#94A3B8"
-                                            value={forgotEmail}
-                                            onChangeText={setForgotEmail}
-                                            keyboardType="email-address"
-                                            autoCapitalize="none"
-                                        />
-                                    </View>
-
-                                    <TouchableOpacity
-                                        style={[styles.signInBtn, forgotLoading && { opacity: 0.7 }, { marginTop: 10 }]}
-                                        onPress={handleSendOtp}
-                                        disabled={forgotLoading}
-                                        activeOpacity={0.85}
-                                    >
-                                        {forgotLoading ? (
-                                            <ActivityIndicator color="#FFD700" size="small" />
-                                        ) : (
-                                            <Text style={styles.signInBtnText}>Send OTP Code</Text>
-                                        )}
-                                    </TouchableOpacity>
-                                </>
-                            )}
-
-                            {/* STEP 2: Verify 6-Digit OTP */}
-                            {modalStep === 2 && (
-                                <>
-                                    <Text style={styles.modalTitle}>Enter OTP Code</Text>
-                                    <Text style={styles.modalSubtitle}>
-                                        We sent a 6-digit verification code to <Text style={{ fontWeight: '700', color: '#0F172A' }}>{forgotEmail}</Text>.
-                                    </Text>
-
-                                    <View style={styles.formGroup}>
-                                        <Text style={styles.label}>6-Digit OTP Code</Text>
-                                        <TextInput
-                                            style={[styles.input, { letterSpacing: 6, fontSize: 20, textAlign: 'center', fontWeight: '800' }]}
-                                            placeholder="000000"
-                                            placeholderTextColor="#CBD5E1"
-                                            value={otpCode}
-                                            onChangeText={setOtpCode}
-                                            keyboardType="number-pad"
-                                            maxLength={6}
-                                        />
-                                    </View>
-
-                                    <TouchableOpacity
-                                        style={[styles.signInBtn, forgotLoading && { opacity: 0.7 }, { marginTop: 10 }]}
-                                        onPress={handleVerifyOtp}
-                                        disabled={forgotLoading}
-                                        activeOpacity={0.85}
-                                    >
-                                        {forgotLoading ? (
-                                            <ActivityIndicator color="#FFD700" size="small" />
-                                        ) : (
-                                            <Text style={styles.signInBtnText}>Verify OTP</Text>
-                                        )}
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity
-                                        style={styles.cancelModalBtn}
-                                        onPress={() => setModalStep(1)}
-                                    >
-                                        <Text style={styles.cancelModalText}>← Back to Email</Text>
-                                    </TouchableOpacity>
-                                </>
-                            )}
-
-                            {/* STEP 3: Enter New Password & Confirm Password */}
-                            {modalStep === 3 && (
-                                <>
-                                    <Text style={styles.modalTitle}>Set New Password</Text>
-                                    <Text style={styles.modalSubtitle}>
-                                        Your OTP has been verified. Create a new strong password for your account.
-                                    </Text>
-
-                                    <View style={styles.formGroup}>
-                                        <Text style={styles.label}>New Password</Text>
-                                        <View style={styles.passwordWrapper}>
-                                            <TextInput
-                                                style={styles.passwordInput}
-                                                placeholder="••••••••"
-                                                placeholderTextColor="#94A3B8"
-                                                value={newPassword}
-                                                onChangeText={setNewPassword}
-                                                secureTextEntry={!showNewPass}
-                                            />
-                                            <TouchableOpacity
-                                                onPress={() => setShowNewPass(!showNewPass)}
-                                                style={styles.eyeBtn}
-                                            >
-                                                <Ionicons
-                                                    name={showNewPass ? 'eye-outline' : 'eye-off-outline'}
-                                                    size={20}
-                                                    color="#64748B"
+                                            <View style={styles.formGroup}>
+                                                <Text style={styles.label}>6-Digit OTP Code</Text>
+                                                <TextInput
+                                                    style={[styles.input, { letterSpacing: 6, fontSize: 20, textAlign: 'center', fontWeight: '800' }]}
+                                                    placeholder="000000"
+                                                    placeholderTextColor="#CBD5E1"
+                                                    value={otpCode}
+                                                    onChangeText={setOtpCode}
+                                                    keyboardType="number-pad"
+                                                    maxLength={6}
                                                 />
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
+                                            </View>
 
-                                    <View style={styles.formGroup}>
-                                        <Text style={styles.label}>Confirm New Password</Text>
-                                        <View style={styles.passwordWrapper}>
-                                            <TextInput
-                                                style={styles.passwordInput}
-                                                placeholder="••••••••"
-                                                placeholderTextColor="#94A3B8"
-                                                value={confirmPassword}
-                                                onChangeText={setConfirmPassword}
-                                                secureTextEntry={!showConfirmPass}
-                                            />
                                             <TouchableOpacity
-                                                onPress={() => setShowConfirmPass(!showConfirmPass)}
-                                                style={styles.eyeBtn}
+                                                style={[styles.signInBtn, forgotLoading && { opacity: 0.7 }, { marginTop: 10 }]}
+                                                onPress={handleVerifyOtp}
+                                                disabled={forgotLoading}
+                                                activeOpacity={0.85}
                                             >
-                                                <Ionicons
-                                                    name={showConfirmPass ? 'eye-outline' : 'eye-off-outline'}
-                                                    size={20}
-                                                    color="#64748B"
-                                                />
+                                                {forgotLoading ? (
+                                                    <ActivityIndicator color="#FFD700" size="small" />
+                                                ) : (
+                                                    <Text style={styles.signInBtnText}>Verify OTP</Text>
+                                                )}
                                             </TouchableOpacity>
-                                        </View>
-                                    </View>
 
-                                    <TouchableOpacity
-                                        style={[styles.signInBtn, forgotLoading && { opacity: 0.7 }, { marginTop: 10 }]}
-                                        onPress={handleResetPassword}
-                                        disabled={forgotLoading}
-                                        activeOpacity={0.85}
-                                    >
-                                        {forgotLoading ? (
-                                            <ActivityIndicator color="#FFD700" size="small" />
-                                        ) : (
-                                            <Text style={styles.signInBtnText}>Reset Password</Text>
-                                        )}
-                                    </TouchableOpacity>
-                                </>
-                            )}
+                                            <TouchableOpacity
+                                                style={styles.cancelModalBtn}
+                                                onPress={() => setModalStep(1)}
+                                            >
+                                                <Text style={styles.cancelModalText}>← Back to Email</Text>
+                                            </TouchableOpacity>
+                                        </>
+                                    )}
 
-                            {modalStep === 1 && (
-                                <TouchableOpacity
-                                    style={styles.cancelModalBtn}
-                                    onPress={resetModalState}
-                                >
-                                    <Text style={styles.cancelModalText}>Cancel</Text>
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    </TouchableWithoutFeedback>
-                </TouchableOpacity>
-            </Modal>
-        </SafeAreaView>
+                                    {/* STEP 3: Enter New Password & Confirm Password */}
+                                    {modalStep === 3 && (
+                                        <>
+                                            <Text style={styles.modalTitle}>Set New Password</Text>
+                                            <Text style={styles.modalSubtitle}>
+                                                Your OTP has been verified. Create a new strong password for your account.
+                                            </Text>
+
+                                            <View style={styles.formGroup}>
+                                                <Text style={styles.label}>New Password</Text>
+                                                <View style={styles.passwordWrapper}>
+                                                    <TextInput
+                                                        style={styles.passwordInput}
+                                                        placeholder="••••••••"
+                                                        placeholderTextColor="#94A3B8"
+                                                        value={newPassword}
+                                                        onChangeText={setNewPassword}
+                                                        secureTextEntry={!showNewPass}
+                                                    />
+                                                    <TouchableOpacity
+                                                        onPress={() => setShowNewPass(!showNewPass)}
+                                                        style={styles.eyeBtn}
+                                                    >
+                                                        <Ionicons
+                                                            name={showNewPass ? 'eye-outline' : 'eye-off-outline'}
+                                                            size={20}
+                                                            color="#64748B"
+                                                        />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            </View>
+
+                                            <View style={styles.formGroup}>
+                                                <Text style={styles.label}>Confirm New Password</Text>
+                                                <View style={styles.passwordWrapper}>
+                                                    <TextInput
+                                                        style={styles.passwordInput}
+                                                        placeholder="••••••••"
+                                                        placeholderTextColor="#94A3B8"
+                                                        value={confirmPassword}
+                                                        onChangeText={setConfirmPassword}
+                                                        secureTextEntry={!showConfirmPass}
+                                                    />
+                                                    <TouchableOpacity
+                                                        onPress={() => setShowConfirmPass(!showConfirmPass)}
+                                                        style={styles.eyeBtn}
+                                                    >
+                                                        <Ionicons
+                                                            name={showConfirmPass ? 'eye-outline' : 'eye-off-outline'}
+                                                            size={20}
+                                                            color="#64748B"
+                                                        />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            </View>
+
+                                            <TouchableOpacity
+                                                style={[styles.signInBtn, forgotLoading && { opacity: 0.7 }, { marginTop: 10 }]}
+                                                onPress={handleResetPassword}
+                                                disabled={forgotLoading}
+                                                activeOpacity={0.85}
+                                            >
+                                                {forgotLoading ? (
+                                                    <ActivityIndicator color="#FFD700" size="small" />
+                                                ) : (
+                                                    <Text style={styles.signInBtnText}>Reset Password</Text>
+                                                )}
+                                            </TouchableOpacity>
+                                        </>
+                                    )}
+
+                                    {modalStep === 1 && (
+                                        <TouchableOpacity
+                                            style={styles.cancelModalBtn}
+                                            onPress={resetModalState}
+                                        >
+                                            <Text style={styles.cancelModalText}>Cancel</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            </TouchableWithoutFeedback>
+                        </TouchableOpacity>
+                    </Modal>
+                </SafeAreaView>
+            </View>
+        </ImageBackground>
     );
 }
 
 const styles = StyleSheet.create({
+    bgContainer: {
+        flex: 1,
+        width: '100%',
+        height: '100%',
+    },
+    bgOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(15, 23, 42, 0.35)', // Dark glass tint to showcase green walls and warm studio bedroom decor
+    },
+    safeArea: {
+        flex: 1,
+    },
     keyboardAvoidingView: {
         flex: 1,
     },
     innerView: {
         flex: 1,
     },
-    container: {
-        flex: 1,
-        backgroundColor: '#F8FAFC',
+
+    /* Footer */
+    footerContainer: {
+        marginTop: 20,
+        alignItems: 'center',
+    },
+    copyrightText: {
+        fontSize: 12,
+        color: '#E2E8F0',
+        fontWeight: '600',
     },
     scrollContent: {
         flexGrow: 1,
@@ -535,22 +563,22 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
 
-    /* Card */
+    /* Card - Professional Glassmorphism */
     card: {
         width: '100%',
         maxWidth: 480,
         alignSelf: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
+        backgroundColor: 'rgba(255, 255, 255, 0.82)',
+        borderRadius: 20,
         paddingHorizontal: 24,
         paddingVertical: 28,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.65)',
         shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.04,
-        shadowRadius: 12,
-        elevation: 3,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 20,
+        elevation: 6,
     },
 
     /* Logo */
