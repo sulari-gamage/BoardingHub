@@ -69,6 +69,8 @@ export default function BookingsScreen({ bookings = [], onSelectBoarding, onView
             bookingType: b.bookingType || 'ROOM_BASED',
             status: b.status === 'APPROVED' ? 'ACCEPTED' : b.status,
             price: b.monthlyPrice || 0,
+            unitPrice: b.unitPrice || b.monthlyPrice || 0,
+            rentType: b.rentType || 'PER_PERSON',
             occupantsCount: b.occupantsCount || 1,
             imageUrl: realImageUrl || null,
             description: b.notes || '',

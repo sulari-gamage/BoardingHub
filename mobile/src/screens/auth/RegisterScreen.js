@@ -20,7 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 
 export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess }) {
-    const [role, setRole] = useState('Seeker'); // Seeker | Owner
+    const [role, setRole] = useState(null); // Seeker | Owner
     const [fullName, setFullName] = useState('');
     const [phone, setPhone] = useState('');
     const [email, setEmail] = useState('');
@@ -34,6 +34,10 @@ export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess })
     const [loading, setLoading] = useState(false);
 
     const handleRegister = async () => {
+        if (!role) {
+            Alert.alert('Account Type Required', 'Please select whether you want to join as a Boarder / Seeker or Property Owner.');
+            return;
+        }
         if (!fullName || !phone || !email || !password || !confirmPassword) {
             Alert.alert('Required Fields', 'Please fill in all required fields.');
             return;

@@ -37,6 +37,8 @@ public class BookingResponse {
     private Integer remainingSpaces;
     private Integer occupantsCount;
     private LocalDate moveInDate;
+    private Double unitPrice;
+    private String rentType;
     private Double monthlyPrice;
     private BookingStatus status;
     private String notes;

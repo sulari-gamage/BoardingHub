@@ -291,7 +291,24 @@ public class BookingService {
     }
 
     private BookingResponse mapToBookingResponse(BookingRequest b) {
-        Double monthlyPrice = b.getRoom() != null ? b.getRoom().getMonthlyPrice() : b.getProperty().getMonthlyRent();
+        Double unitPrice = null;
+        String rentType = "PER_PERSON";
+        Double monthlyPrice = 0.0;
+        int count = b.getOccupantsCount() != null ? b.getOccupantsCount() : 1;
+
+        if (b.getRoom() != null) {
+            unitPrice = b.getRoom().getMonthlyPrice();
+            rentType = b.getRoom().getRentType() != null ? b.getRoom().getRentType() : "PER_PERSON";
+            if ("PER_PERSON".equalsIgnoreCase(rentType)) {
+                monthlyPrice = (unitPrice != null ? unitPrice : 0.0) * count;
+            } else {
+                monthlyPrice = unitPrice != null ? unitPrice : 0.0;
+            }
+        } else if (b.getProperty() != null) {
+            unitPrice = b.getProperty().getMonthlyRent();
+            rentType = "PER_ROOM";
+            monthlyPrice = unitPrice != null ? unitPrice : 0.0;
+        }
 
         String propImageUrl = null;
         if (b.getProperty() != null) {
@@ -335,6 +352,8 @@ public class BookingService {
                 .remainingSpaces(remainingSpaces)
                 .occupantsCount(b.getOccupantsCount())
                 .moveInDate(b.getMoveInDate())
+                .unitPrice(unitPrice)
+                .rentType(rentType)
                 .monthlyPrice(monthlyPrice)
                 .status(b.getStatus())
                 .notes(b.getNotes())

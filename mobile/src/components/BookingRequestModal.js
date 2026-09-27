@@ -15,14 +15,19 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
 
 export default function BookingRequestModal({ visible, onClose, boarding = {}, onSubmitBooking, initialSelectedRoomId = null, currentUser = null }) {
-    const isWholeHouse =
+    const hasRooms = Array.isArray(boarding.rooms) && boarding.rooms.length > 0;
+    const isWholeHouse = !hasRooms && (
         boarding.propertyNature === 'WHOLE_HOUSE' ||
         boarding.propertyNature === 'ANNEX' ||
         boarding.propertyType === 'ANNEX' ||
+        boarding.boardingType === 'WHOLE_HOUSE' ||
+        boarding.boardingType === 'ANNEX' ||
         boarding.isWholeHouse ||
         boarding.raw?.propertyNature === 'WHOLE_HOUSE' ||
         boarding.raw?.propertyNature === 'ANNEX' ||
-        (boarding.title && (boarding.title.toLowerCase().includes('annex') || boarding.title.toLowerCase().includes('house') || boarding.title.toLowerCase().includes('apartment')));
+        boarding.raw?.boardingType === 'WHOLE_HOUSE' ||
+        boarding.raw?.boardingType === 'ANNEX'
+    );
 
     const annexSpaces =
         boarding.totalCapacity ||
@@ -31,21 +36,32 @@ export default function BookingRequestModal({ visible, onClose, boarding = {}, o
         boarding.spaces ||
         (boarding.rooms ? boarding.rooms.reduce((acc, r) => acc + (r.totalCapacity || r.availableSpaces || 1), 0) : 1);
 
-    const rooms = boarding.rooms || [
-        { id: 'r1', number: 'Room 101', type: 'Shared Room', availableSpaces: 2, price: boarding.price || 15000 },
-        { id: 'r2', number: 'Room 102', type: 'Private Room', availableSpaces: 1, price: (boarding.price || 15000) + 3000 }
-    ];
+    const rooms = (boarding.rooms && boarding.rooms.length > 0) ? boarding.rooms : [];
 
-    const [selectedBookingType, setSelectedBookingType] = useState(
-        isWholeHouse ? 'WHOLE_HOUSE' : (initialSelectedRoomId || (rooms.length > 0 ? rooms[0].id : 'WHOLE_HOUSE'))
-    );
+    const [selectedBookingType, setSelectedBookingType] = useState(() => {
+        if (isWholeHouse) return 'WHOLE_HOUSE';
+        if (initialSelectedRoomId && initialSelectedRoomId !== 'default' && initialSelectedRoomId !== 'shared') {
+            const found = rooms.find(r => String(r.id) === String(initialSelectedRoomId) || String(r.roomNumber) === String(initialSelectedRoomId) || String(r.number) === String(initialSelectedRoomId));
+            if (found) return found.id;
+        }
+        return rooms.length > 0 ? rooms[0].id : 'WHOLE_HOUSE';
+    });
     const [showDropdown, setShowDropdown] = useState(false);
 
     useEffect(() => {
-        if (visible && initialSelectedRoomId && !isWholeHouse) {
-            setSelectedBookingType(initialSelectedRoomId);
+        if (visible && !isWholeHouse) {
+            if (initialSelectedRoomId && initialSelectedRoomId !== 'default' && initialSelectedRoomId !== 'shared') {
+                const found = rooms.find(r => String(r.id) === String(initialSelectedRoomId) || String(r.roomNumber) === String(initialSelectedRoomId) || String(r.number) === String(initialSelectedRoomId));
+                if (found) {
+                    setSelectedBookingType(found.id);
+                } else if (rooms.length > 0) {
+                    setSelectedBookingType(rooms[0].id);
+                }
+            } else if (rooms.length > 0) {
+                setSelectedBookingType(rooms[0].id);
+            }
         }
-    }, [visible, initialSelectedRoomId, isWholeHouse]);
+    }, [visible, initialSelectedRoomId, isWholeHouse, rooms]);
 
     // Dynamic Live Real Date Setup
     const getToday = () => new Date();
@@ -676,6 +692,7 @@ export default function BookingRequestModal({ visible, onClose, boarding = {}, o
                                         return typeof bp === 'number' ? bp : (parseFloat(bp) || 0);
                                     }
                                     const val = (
+                                        rm.monthlyPrice ??
                                         rm.pricePerPerson ??
                                         rm.monthlyRent ??
                                         rm.price ??
@@ -683,6 +700,7 @@ export default function BookingRequestModal({ visible, onClose, boarding = {}, o
                                         rm.cost ??
                                         rm.rentPerMonth ??
                                         rm.pricePerRoom ??
+                                        rm.raw?.monthlyPrice ??
                                         rm.raw?.pricePerPerson ??
                                         rm.raw?.monthlyRent ??
                                         rm.raw?.price ??
@@ -693,9 +711,19 @@ export default function BookingRequestModal({ visible, onClose, boarding = {}, o
                                 };
 
                                 const unitPrice = extractPrice(currentRoom);
+
+                                const roomRentTypeStr = (
+                                    currentRoom?.rentType ||
+                                    currentRoom?.raw?.rentType ||
+                                    boarding?.rentType ||
+                                    ''
+                                ).toString().toUpperCase();
+
+                                const isPerRoom = roomRentTypeStr.includes('ROOM');
+
                                 const totalMonthlyRent = isWholeHouse
                                     ? unitPrice
-                                    : (unitPrice * peopleCount);
+                                    : (isPerRoom ? unitPrice : unitPrice * peopleCount);
 
                                 return (
                                     <View style={styles.rentSummaryCard}>
@@ -708,7 +736,7 @@ export default function BookingRequestModal({ visible, onClose, boarding = {}, o
                                             </View>
                                             <View style={styles.rentBasisBadge}>
                                                 <Text style={styles.rentBasisBadgeText}>
-                                                    {isWholeHouse ? 'Full Annex' : 'Per Person Basis'}
+                                                    {isWholeHouse ? 'Full Annex' : (isPerRoom ? 'Per Room Basis' : 'Per Person Basis')}
                                                 </Text>
                                             </View>
                                         </View>
@@ -718,7 +746,9 @@ export default function BookingRequestModal({ visible, onClose, boarding = {}, o
                                         {!isWholeHouse ? (
                                             <>
                                                 <View style={styles.rentDetailRow}>
-                                                    <Text style={styles.rentDetailLabel}>Price per person / month</Text>
+                                                    <Text style={styles.rentDetailLabel}>
+                                                        {isPerRoom ? 'Price per room / month' : 'Price per person / month'}
+                                                    </Text>
                                                     <Text style={styles.rentDetailValue}>Rs. {Number(unitPrice).toLocaleString()}</Text>
                                                 </View>
 

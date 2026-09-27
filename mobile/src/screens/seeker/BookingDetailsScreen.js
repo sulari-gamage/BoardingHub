@@ -117,7 +117,13 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
     const roomType = booking.roomType || 'Room Request';
     const roomName = booking.roomName || (booking.roomType ? booking.roomType.split('(')[0]?.trim() : null);
     const isRoomBased = booking.bookingType === 'ROOM_BASED' || !!booking.roomId || !!booking.roomName;
-    const price = booking.price ? booking.price.toLocaleString() : '0';
+    const occupants = booking.occupantsCount || 1;
+    const priceVal = booking.price || 0;
+    const unitPriceVal = booking.unitPrice || (occupants > 1 && priceVal > 0 ? (priceVal / occupants) : priceVal);
+    const unitPriceFormatted = unitPriceVal ? unitPriceVal.toLocaleString() : '0';
+    const totalPriceFormatted = priceVal ? priceVal.toLocaleString() : '0';
+    const isPerPerson = (booking.rentType || 'PER_PERSON') === 'PER_PERSON';
+    const price = totalPriceFormatted;
     const status = booking.status || 'PENDING';
     const imageUrl = booking.imageUrl;
     const ownerName = liveOwnerData?.ownerName || booking.ownerName || 'Property Owner';
@@ -356,13 +362,13 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
                                 <View style={styles.roomSpecCol}>
                                     <Ionicons name="people-outline" size={15} color="#64748B" style={{ marginBottom: 2 }} />
                                     <Text style={styles.roomSpecLabel}>Occupants</Text>
-                                    <Text style={styles.roomSpecVal}>{booking.occupantsCount || 1} Person(s)</Text>
+                                    <Text style={styles.roomSpecVal}>{occupants} Person(s)</Text>
                                 </View>
 
                                 <View style={styles.roomSpecCol}>
                                     <Ionicons name="cash-outline" size={15} color="#64748B" style={{ marginBottom: 2 }} />
-                                    <Text style={styles.roomSpecLabel}>Rent Rate</Text>
-                                    <Text style={styles.roomSpecValGold}>Rs. {price} / mo</Text>
+                                    <Text style={styles.roomSpecLabel}>{isPerPerson ? 'Rent Rate (per person)' : 'Rent Rate (per room)'}</Text>
+                                    <Text style={styles.roomSpecValGold}>Rs. {unitPriceFormatted} {isPerPerson ? '/ person / mo' : '/ mo'}</Text>
                                 </View>
                             </View>
                         </View>
@@ -439,8 +445,8 @@ export default function BookingDetailsScreen({ booking = {}, onBack, onCancelBoo
                     <View style={styles.summaryDivider} />
 
                     <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Monthly Rent</Text>
-                        <Text style={styles.summaryValGold}>Rs. {price} / mo</Text>
+                        <Text style={styles.summaryLabel}>Total Monthly Rent</Text>
+                        <Text style={styles.summaryValGold}>Rs. {totalPriceFormatted} / mo {occupants > 1 && isPerPerson ? `(Rs. ${unitPriceFormatted} × ${occupants})` : ''}</Text>
                     </View>
                 </View>
 
